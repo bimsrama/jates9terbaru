@@ -1,4 +1,3 @@
-
 name: Deploy Final (Live + Database MySQL + WA)
 
 on:
@@ -8,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: 🚀 Build & Upload
+    name: 🚀 Build & Upload via SFTP (Port 22)
     runs-on: ubuntu-latest
     steps:
       - name: 🚚 Checkout Code
@@ -23,82 +22,74 @@ jobs:
       - name: 🔨 Build Frontend
         run: |
           if [ -d "frontend" ]; then cd frontend; fi
-          # Hapus cache lama agar bersih
           rm -rf node_modules package-lock.json
           npm install --force
           npm install ajv-keywords --save-dev --force
           CI=false npm run build
           
-          # [PENTING] Buat .htaccess untuk React (Supaya tidak 404 saat refresh)
+          # Fix React Routing
           cd build
           echo "Options -MultiViews" > .htaccess
           echo "RewriteEngine On" >> .htaccess
           echo "RewriteCond %{REQUEST_FILENAME} !-f" >> .htaccess
           echo "RewriteRule ^ index.html [QSA,L]" >> .htaccess
 
-      # --- 2. PERSIAPAN BACKEND & ENV ---
-      - name: 📝 Buat File Config Backend
+      # --- 2. PERSIAPAN BACKEND ---
+      - name: 📝 Buat Config Backend
         run: |
           cd backend
           
-          # A. Buat file .env (Menggunakan kredensial MySQL PROD)
-          # Perhatikan: Username DB disesuaikan dengan info sebelumnya (adminjates_db)
+          # DATABASE MYSQL (Sesuai kredensial Anda)
           echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
           echo "JWT_SECRET_KEY=rahasia_jates_super_aman" >> .env
           echo "WHATSAPP_NUMBER_KEY=Hyw8OdnzTHwbi88t" >> .env
           echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
           
-          # Masukkan API Key OpenAI Anda di sini (Ganti SK-.... dengan key asli jika belum ada di secrets)
-          # Jika Anda simpan di GitHub Secrets, gunakan: echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          # PENTING: Masukkan API Key OpenAI Anda di sini (Ganti sk-...)
           echo "OPENAI_API_KEY=sk-..." >> .env
 
-          # B. Buat .htaccess untuk Python (Agar cPanel mendeteksi aplikasi)
+          # SETUP PYTHON CPANEL
           echo "PassengerAppRoot %{DOCUMENT_ROOT}" > .htaccess
           echo "PassengerAppType application/json" >> .htaccess
           echo "PassengerStartupFile main.py" >> .htaccess
-          
-          # Cek file (untuk debug log)
-          cat .env
 
-      # --- 3. UPLOAD FRONTEND (ROOT) ---
-      - name: 📂 Upload Frontend (Public HTML)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      # --- 3. UPLOAD VIA SFTP (PORT 22) ---
+      - name: 📂 Upload Frontend via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ftp.proptuneproject.com
-          username: bimsrama@jagatetapsehat.com
+          server: proptuneproject.com
+          # PENTING: Untuk SFTP, biasanya username adalah USERNAME UTAMA cPanel (bukan email)
+          # Jika 'bimsrama@...' gagal, coba ganti jadi 'bimsrama' saja atau 'prow9975' (sesuai prefix DB)
+          username: bimsrama
           password: kuyen001
+          port: 22 
           
-          # Ambil hasil build frontend
-          local-dir: ./frontend/build/
-          # Taruh di root domain
-          server-dir: ./
+          local_path: './frontend/build/*'
+          remote_path: '/public_html/'
+          sftp_only: true
           
-          # Tidak menggunakan clean-slate di root agar aman (tidak menghapus folder backend_api)
-          exclude: |
-            **/.git*
-            **/.github*
-            **/node_modules/**
-            backend_api/**
+          delete_remote_files: true
+          ignore_remote_files: |
+            backend_api/
+            .well-known/
+            cgi-bin/
+            .htaccess
+            .ftpquota
 
-      # --- 4. UPLOAD BACKEND (FOLDER API) ---
-      - name: 📂 Upload Backend (API Folder)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: 📂 Upload Backend via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ftp.proptuneproject.com
-          username: bimsrama@jagatetapsehat.com
+          server: proptuneproject.com
+          username: bimsrama
           password: kuyen001
+          port: 22
           
-          # Ambil folder backend
-          local-dir: ./backend/
-          # Taruh di folder khusus
-          server-dir: ./backend_api/
+          local_path: './backend/*'
+          remote_path: '/public_html/backend_api/'
+          sftp_only: true
           
-          # [FITUR CLEAN INSTALL] Menghapus isi folder backend_api sebelum upload baru
-          dangerous-clean-slate: true
-          
-          # env & htaccess IKUT terupload
-          exclude: |
-            **/node_modules/**
-            **/.git*
-            **/__pycache__/**
-            **/venv/**
+          delete_remote_files: true
+          ignore_remote_files: |
+            venv/
+            __pycache__/
+            .python_egg_cache/
