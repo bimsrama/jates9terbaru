@@ -1,4 +1,4 @@
-name: Deploy Final (Target: Jagatetapsehat)
+name: Deploy Final (Jagatetapsehat)
 
 on:
   push:
@@ -7,70 +7,57 @@ on:
 
 jobs:
   deploy:
-    name: 🚀 Build & HTTP Deploy
+    name: Build & HTTP Deploy
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Checkout Code
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       # --- 1. BUILD FRONTEND ---
-      - name: 🔨 Build Frontend
+      - name: Build Frontend
         run: |
-          if [ -d "frontend" ]; then cd frontend; fi
+          cd frontend
           rm -rf node_modules package-lock.json
           npm install --force
           npm install ajv-keywords --save-dev --force
           CI=false npm run build
-          
-          # Fix React Routing
           cd build
           echo "Options -MultiViews" > .htaccess
           echo "RewriteEngine On" >> .htaccess
           echo "RewriteCond %{REQUEST_FILENAME} !-f" >> .htaccess
           echo "RewriteRule ^ index.html [QSA,L]" >> .htaccess
 
-      # --- 2. PERSIAPAN BACKEND ---
-      - name: 📝 Buat Config Backend
+      # --- 2. CONFIG BACKEND ---
+      - name: Create Config Backend
         run: |
           cd backend
-          
-          # Config .env (Pastikan kredensial DB benar)
           echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
           echo "JWT_SECRET_KEY=rahasia_jates_super_aman" >> .env
           echo "WHATSAPP_NUMBER_KEY=Hyw8OdnzTHwbi88t" >> .env
           echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
-          
-          # Masukkan API Key OpenAI
           echo "OPENAI_API_KEY=sk-..." >> .env
-          
-          # Config Python cPanel
           echo "PassengerAppRoot %{DOCUMENT_ROOT}" > .htaccess
           echo "PassengerAppType application/json" >> .htaccess
           echo "PassengerStartupFile main.py" >> .htaccess
 
-      # --- 3. UPLOAD KE JAGATETAPSEHAT.COM ---
-      
-      - name: 📦 Zip & Upload Frontend (ROOT)
+      # --- 3. UPLOAD KE JAGATETAPSEHAT ---
+      - name: Upload Frontend (Root)
         run: |
           cd frontend/build
           zip -r ../../frontend_deploy.zip .
           cd ../..
-          
-          echo "🚀 Mengirim Frontend ke jagatetapsehat.com..."
-          # PERHATIKAN URL DI BAWAH INI BERUBAH
+          echo "Mengirim Frontend..."
           curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=root" -F "file=@frontend_deploy.zip" https://jagatetapsehat.com/deploy_bridge.php
 
-      - name: 📦 Zip & Upload Backend (API FOLDER)
+      - name: Upload Backend (API)
         run: |
           cd backend
           zip -r ../backend_deploy.zip . -x "venv/*" -x "__pycache__/*" -x "*.git*"
           cd ..
-          
-          echo "🚀 Mengirim Backend ke jagatetapsehat.com..."
-          # PERHATIKAN URL DI BAWAH INI BERUBAH
+          echo "Mengirim Backend..."
           curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=backend_api" -F "file=@backend_deploy.zip" https://jagatetapsehat.com/deploy_bridge.php
