@@ -1,4 +1,4 @@
-name: Deploy Final (Live + Database MySQL + WA)
+name: Deploy Final (HTTP Bridge Method)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: 🚀 Build & Upload via SFTP (Port 22)
+    name: 🚀 Build & HTTP Deploy
     runs-on: ubuntu-latest
     steps:
       - name: 🚚 Checkout Code
@@ -22,12 +22,13 @@ jobs:
       - name: 🔨 Build Frontend
         run: |
           if [ -d "frontend" ]; then cd frontend; fi
+          # Bersihkan cache
           rm -rf node_modules package-lock.json
           npm install --force
           npm install ajv-keywords --save-dev --force
           CI=false npm run build
           
-          # Fix React Routing
+          # Fix React Routing (.htaccess)
           cd build
           echo "Options -MultiViews" > .htaccess
           echo "RewriteEngine On" >> .htaccess
@@ -39,57 +40,39 @@ jobs:
         run: |
           cd backend
           
-          # DATABASE MYSQL (Sesuai kredensial Anda)
+          # Config .env
           echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
           echo "JWT_SECRET_KEY=rahasia_jates_super_aman" >> .env
           echo "WHATSAPP_NUMBER_KEY=Hyw8OdnzTHwbi88t" >> .env
           echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
           
-          # PENTING: Masukkan API Key OpenAI Anda di sini (Ganti sk-...)
+          # Masukkan API Key OpenAI
           echo "OPENAI_API_KEY=sk-..." >> .env
-
-          # SETUP PYTHON CPANEL
+          
+          # Config Python cPanel
           echo "PassengerAppRoot %{DOCUMENT_ROOT}" > .htaccess
           echo "PassengerAppType application/json" >> .htaccess
           echo "PassengerStartupFile main.py" >> .htaccess
 
-      # --- 3. UPLOAD VIA SFTP (PORT 22) ---
-      - name: 📂 Upload Frontend via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          server: proptuneproject.com
-          # PENTING: Untuk SFTP, biasanya username adalah USERNAME UTAMA cPanel (bukan email)
-          # Jika 'bimsrama@...' gagal, coba ganti jadi 'bimsrama' saja atau 'prow9975' (sesuai prefix DB)
-          username: bimsrama
-          password: kuyen001
-          port: 22 
+      # --- 3. ZIP & UPLOAD (HTTP BRIDGE) ---
+      # Langkah ini akan membypass Firewall Hosting
+      
+      - name: 📦 Zip & Upload Frontend (ROOT)
+        run: |
+          cd frontend/build
+          # Zip isi folder build
+          zip -r ../../frontend_deploy.zip .
+          cd ../..
           
-          local_path: './frontend/build/*'
-          remote_path: '/public_html/'
-          sftp_only: true
-          
-          delete_remote_files: true
-          ignore_remote_files: |
-            backend_api/
-            .well-known/
-            cgi-bin/
-            .htaccess
-            .ftpquota
+          echo "🚀 Mengirim Frontend ke Server..."
+          curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=root" -F "file=@frontend_deploy.zip" https://proptuneproject.com/deploy_bridge.php
 
-      - name: 📂 Upload Backend via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
-        with:
-          server: proptuneproject.com
-          username: bimsrama
-          password: kuyen001
-          port: 22
+      - name: 📦 Zip & Upload Backend (API FOLDER)
+        run: |
+          cd backend
+          # Zip isi folder backend (exclude venv/git)
+          zip -r ../backend_deploy.zip . -x "venv/*" -x "__pycache__/*" -x "*.git*"
+          cd ..
           
-          local_path: './backend/*'
-          remote_path: '/public_html/backend_api/'
-          sftp_only: true
-          
-          delete_remote_files: true
-          ignore_remote_files: |
-            venv/
-            __pycache__/
-            .python_egg_cache/
+          echo "🚀 Mengirim Backend ke Server..."
+          curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=backend_api" -F "file=@backend_deploy.zip" https://proptuneproject.com/deploy_bridge.php
