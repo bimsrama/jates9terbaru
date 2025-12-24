@@ -1,4 +1,4 @@
-name: Deploy Final (HTTP Bridge Method)
+name: Deploy Final (Live + Database MySQL + WA)
 
 on:
   push:
@@ -6,73 +6,78 @@ on:
       - main
 
 jobs:
-  deploy:
-    name: 🚀 Build & HTTP Deploy
+  web-deploy:
+    name: 🎉 Deploy Live System
     runs-on: ubuntu-latest
     steps:
-      - name: 🚚 Checkout Code
+      # --- 1. AMBIL KODE TERBARU ---
+      - name: 🚚 Ambil Kode
         uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
+      # --- 2. SETUP & BUILD FRONTEND ---
+      - name: 🟢 Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # --- 1. BUILD FRONTEND ---
       - name: 🔨 Build Frontend
         run: |
-          if [ -d "frontend" ]; then cd frontend; fi
-          # Bersihkan cache
+          cd frontend
+          # Bersihkan instalasi lama agar fresh
           rm -rf node_modules package-lock.json
-          npm install --force
-          npm install ajv-keywords --save-dev --force
-          CI=false npm run build
           
-          # Fix React Routing (.htaccess)
-          cd build
-          echo "Options -MultiViews" > .htaccess
-          echo "RewriteEngine On" >> .htaccess
-          echo "RewriteCond %{REQUEST_FILENAME} !-f" >> .htaccess
-          echo "RewriteRule ^ index.html [QSA,L]" >> .htaccess
+          # Install dependencies
+          npm install --legacy-peer-deps
+          npm install ajv@8 --save-dev --legacy-peer-deps
+          
+          # Build menjadi folder 'frontend/build'
+          CI=false npm run build
 
-      # --- 2. PERSIAPAN BACKEND ---
-      - name: 📝 Buat Config Backend
+      # --- 3. SETUP DATABASE & ENV (VERSI MYSQL) ---
+      - name: 📝 Buat File Database (.env)
         run: |
           cd backend
           
-          # Config .env
-          echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
+          # 1. DATABASE MYSQL (PENTING!)
+          # Format: mysql+pymysql://USER:PASSWORD@localhost/DB_NAME
+          echo "DATABASE_URL=mysql+pymysql://prow9975_admin_db:jates1110@localhost/prow9975_jates9_db" > .env
+          
+          # 2. KEAMANAN LOGIN
           echo "JWT_SECRET_KEY=rahasia_jates_super_aman" >> .env
+          
+          # 3. WHATSAPP (Watzap.id)
+          echo "WHATSAPP_API_KEY=HHHI0XGX5GAV9COH" >> .env
           echo "WHATSAPP_NUMBER_KEY=Hyw8OdnzTHwbi88t" >> .env
           echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
           
-          # Masukkan API Key OpenAI
-          echo "OPENAI_API_KEY=sk-..." >> .env
-          
-          # Config Python cPanel
-          echo "PassengerAppRoot %{DOCUMENT_ROOT}" > .htaccess
-          echo "PassengerAppType application/json" >> .htaccess
-          echo "PassengerStartupFile main.py" >> .htaccess
+          # Cek file (Log)
+          cat .env
 
-      # --- 3. ZIP & UPLOAD (HTTP BRIDGE) ---
-      # Langkah ini akan membypass Firewall Hosting
-      
-      - name: 📦 Zip & Upload Frontend (ROOT)
-        run: |
-          cd frontend/build
-          # Zip isi folder build
-          zip -r ../../frontend_deploy.zip .
-          cd ../..
-          
-          echo "🚀 Mengirim Frontend ke Server..."
-          curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=root" -F "file=@frontend_deploy.zip" https://proptuneproject.com/deploy_bridge.php
+      # --- 4. UPLOAD FRONTEND KE ROOT (public_html) ---
+      - name: 📂 Upload Web Utama (Frontend)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.proptuneproject.com
+          username: bimsrama@jagatetapsehat.com
+          password: kuyen001
+          local-dir: ./frontend/build/
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
 
-      - name: 📦 Zip & Upload Backend (API FOLDER)
-        run: |
-          cd backend
-          # Zip isi folder backend (exclude venv/git)
-          zip -r ../backend_deploy.zip . -x "venv/*" -x "__pycache__/*" -x "*.git*"
-          cd ..
-          
-          echo "🚀 Mengirim Backend ke Server..."
-          curl -X POST -F "key=kuyen001_rahasia_jates9" -F "target=backend_api" -F "file=@backend_deploy.zip" https://proptuneproject.com/deploy_bridge.php
+      # --- 5. UPLOAD BACKEND KE FOLDER /backend_api/ ---
+      - name: 📂 Upload Backend (API)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.proptuneproject.com
+          username: bimsrama@jagatetapsehat.com
+          password: kuyen001
+          local-dir: ./backend/
+          server-dir: ./backend_api/
+          # PENTING: .env akan ikut terupload
+          exclude: |
+            **/node_modules/**
+            **/.git*
+            **/__pycache__/**
+            **/*.pyc
