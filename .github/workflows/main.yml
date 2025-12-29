@@ -1,1 +1,51 @@
+name: Deploy Website (Incremental)
 
+on:
+  push:
+    branches:
+      - main  # Ganti dengan nama branch utama kamu (misal: master)
+
+jobs:
+  web-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Ambil kodingan terbaru dari GitHub
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Penting untuk mendeteksi perubahan history git
+
+      # 2. Setup Node.js (Wajib untuk file .jsx/React)
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Install Dependencies
+      - name: 📦 Install Dependencies
+        run: npm ci
+
+      # 4. Build Project
+      # Langkah ini mengubah AuthContext.jsx dll menjadi file statis (html/css/js)
+      # Hasilnya biasanya ada di folder 'dist' atau 'build'
+      - name: 🏗️ Build Project
+        run: npm run build
+
+      # 5. Upload hanya file yang berubah via FTP
+      # Action ini menggunakan 'lftp mirror' yang otomatis mendeteksi file baru/edit
+      - name: 📂 Sync Files (Upload Changes Only)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Folder hasil build di lokal (biasanya 'dist' untuk Vite atau 'build' untuk CRA)
+          local-dir: ./dist/ 
+          # Folder tujuan di hosting (public_html atau folder subdomian)
+          server-dir: ./public_html/ 
+          # Opsi Penting untuk Incremental Upload:
+          dangerous-clean-slate: false # Jangan hapus file lain di server yg tidak ada di git (opsional)
+          log-level: verbose # Supaya kelihatan file apa saja yang diupload
