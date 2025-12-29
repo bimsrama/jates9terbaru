@@ -3,43 +3,43 @@ import axios from 'axios';
 
 const AuthContext = createContext(null);
 
-// Ambil URL Backend dari environment variable
+// Gunakan URL Backend Anda
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. FUNGSI UNTUK MENYIMPAN TOKEN DI HEADER AXIOS
+  // Helper: Set Token ke Header Axios & LocalStorage
   const setAuthToken = (token) => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      localStorage.setItem('token', token); // Simpan ke storage
+      localStorage.setItem('token', token);
     } else {
       delete axios.defaults.headers.common['Authorization'];
-      localStorage.removeItem('token'); // Hapus dari storage
+      localStorage.removeItem('token');
     }
   };
 
-  // 2. CEK LOGIN SAAT WEBSITE PERTAMA DIBUKA (REFRESH)
+  // 1. CEK STATUS LOGIN SAAT WEBSITE DI-REFRESH
   useEffect(() => {
     const checkLoggedIn = async () => {
       const token = localStorage.getItem('token');
       
       if (token && token !== "undefined") {
-        setAuthToken(token); // Set token lagi
+        setAuthToken(token); // Pasang token lagi
         try {
-          // Panggil API /me untuk memastikan token masih valid
+          // Validasi ke Backend
           const response = await axios.get(`${BACKEND_URL}/api/auth/me`);
           setUser(response.data.user);
           
-          // Simpan user_id juga untuk keperluan lain (seperti checkin)
+          // Simpan User ID cadangan
           if (response.data.user.id) {
             localStorage.setItem('user_id', response.data.user.id);
           }
         } catch (error) {
-          console.error("Token expired or invalid:", error);
-          logout(); // Jika token basi, logout
+          console.error("Sesi habis:", error);
+          logout(); // Jika token basi, logout otomatis
         }
       }
       setLoading(false);
@@ -48,14 +48,11 @@ export const AuthProvider = ({ children }) => {
     checkLoggedIn();
   }, []);
 
-  // 3. FUNGSI LOGIN
+  // 2. FUNGSI LOGIN
   const login = async (emailOrPhone, password) => {
     try {
-      // Deteksi apakah input berupa email atau telepon
-      const payload = {
-        password: password
-      };
-
+      const payload = { password };
+      // Cek apakah input Email atau No HP
       if (emailOrPhone.includes('@')) {
         payload.email = emailOrPhone;
       } else {
@@ -63,17 +60,15 @@ export const AuthProvider = ({ children }) => {
       }
 
       const response = await axios.post(`${BACKEND_URL}/api/auth/login`, payload);
-      
       const { token, user } = response.data;
 
-      // Simpan data penting
+      // Simpan Sesi
       setAuthToken(token);
       setUser(user);
       localStorage.setItem('user_id', user.id);
 
       return { success: true };
     } catch (error) {
-      console.error("Login Error:", error);
       return { 
         success: false, 
         message: error.response?.data?.message || "Login Gagal" 
@@ -81,7 +76,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 4. FUNGSI LOGOUT
+  // 3. FUNGSI LOGOUT
   const logout = () => {
     setAuthToken(null);
     setUser(null);
@@ -90,11 +85,10 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/login';
   };
 
-  // 5. FUNGSI UNTUK REGISTER (Update agar auto-login setelah daftar)
+  // 4. FUNGSI REGISTER
   const register = async (userData) => {
     try {
       const response = await axios.post(`${BACKEND_URL}/api/auth/register`, userData);
-      // Opsional: Langsung login setelah register, atau minta user login manual
       return { success: true, message: response.data.message };
     } catch (error) {
       return { 
@@ -104,21 +98,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Helper untuk Header (Opsional karena sudah ada default axios)
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
     return { Authorization: `Bearer ${token}` };
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
-      logout, 
-      register,
-      getAuthHeader 
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, getAuthHeader }}>
       {!loading && children}
     </AuthContext.Provider>
   );
