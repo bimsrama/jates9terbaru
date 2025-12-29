@@ -3,38 +3,43 @@ name: Deploy Website (Incremental)
 on:
   push:
     branches:
-      - main
+      - main  # Pastikan branch kamu benar
 
 jobs:
   web-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
 
-    # --- TAMBAHAN PENTING ---
-    # Ini mengatur agar semua perintah 'run' (npm install, dll)
-    # dijalankan di dalam folder project kamu.
+    # --- BAGIAN PENTING ---
+    # Ini memberitahu GitHub untuk menjalankan perintah di dalam folder 'frontend'
     defaults:
       run:
-        working-directory: ./NAMA_FOLDER_PROJECT_KAMU # <--- GANTI INI DENGAN NAMA FOLDER ASLI
-    # ------------------------
+        working-directory: ./frontend
 
     steps:
+      # 1. Ambil kodingan terbaru
       - name: 🚚 Get latest code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # 2. Setup Node.js
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # 3. Install Dependencies
+      # Karena ada 'defaults' di atas, ini otomatis jalan di folder 'frontend'
       - name: 📦 Install Dependencies
         run: npm install
 
+      # 4. Build Project
+      # Ini akan menghasilkan folder 'dist' di dalam folder 'frontend'
       - name: 🏗️ Build Project
         run: npm run build
 
+      # 5. Upload ke Hosting
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -42,11 +47,11 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           
-          # --- PERHATIKAN INI ---
-          # Karena hasil build ada di dalam sub-folder,
-          # kita harus tulis path lengkapnya.
-          local-dir: ./NAMA_FOLDER_PROJECT_KAMU/dist/ # <--- GANTI JUGA INI (tambahkan /dist/ di belakangnya)
+          # Path lengkap ke hasil build
+          # Jika pakai Vite: ./frontend/dist/
+          # Jika pakai Create React App: ./frontend/build/
+          # (Default React sekarang biasanya 'dist')
+          local-dir: ./frontend/dist/
           
           server-dir: ./public_html/
           dangerous-clean-slate: false
-          log-level: verbose
