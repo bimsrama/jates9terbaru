@@ -3,55 +3,45 @@ name: Deploy Website (Incremental)
 on:
   push:
     branches:
-      - main  # Pastikan branch kamu benar
+      - main
 
 jobs:
   web-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
 
-    # --- BAGIAN PENTING ---
-    # Ini memberitahu GitHub untuk menjalankan perintah di dalam folder 'frontend'
+    # Tetap gunakan ini karena folder project kamu bernama 'frontend'
     defaults:
       run:
         working-directory: ./frontend
 
     steps:
-      # 1. Ambil kodingan terbaru
       - name: 🚚 Get latest code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2. Setup Node.js
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. Install Dependencies
-      # Karena ada 'defaults' di atas, ini otomatis jalan di folder 'frontend'
+      # --- PERBAIKAN DI SINI ---
+      # Kita tambahkan flag '--legacy-peer-deps' agar npm tidak error
+      # saat melihat konflik versi date-fns
       - name: 📦 Install Dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
-      # 4. Build Project
-      # Ini akan menghasilkan folder 'dist' di dalam folder 'frontend'
       - name: 🏗️ Build Project
         run: npm run build
 
-      # 5. Upload ke Hosting
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          
-          # Path lengkap ke hasil build
-          # Jika pakai Vite: ./frontend/dist/
-          # Jika pakai Create React App: ./frontend/build/
-          # (Default React sekarang biasanya 'dist')
+          # Path folder hasil build
           local-dir: ./frontend/dist/
-          
           server-dir: ./public_html/
           dangerous-clean-slate: false
