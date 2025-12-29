@@ -26,20 +26,15 @@ jobs:
         with:
           node-version: '20'
 
-      # --- SOLUSI UTAMA ---
-      # 1. Gunakan --force. Ini lebih aman daripada legacy-peer-deps karena
-      #    dia tetap menginstall file yang dibutuhkan meski versinya tabrakan.
+      # 1. Gunakan --force untuk mengatasi konflik version React 19
       - name: 📦 Install Dependencies (Force)
         run: npm install --force
 
-      # 2. Build dengan CI=false.
-      #    React 19 menghasilkan banyak 'Warning', yang di GitHub Actions
-      #    sering dianggap sebagai 'Error' dan membatalkan proses.
-      #    CI=false mencegah hal itu.
+      # 2. Build dengan CI=false agar Warning tidak dianggap Error
       - name: 🏗️ Build Project
         run: CI=false npm run build
 
-      # 3. Upload folder 'build' (karena pakai Craco/CRA)
+      # 3. Upload folder 'build' dengan Setting FTP Khusus Shared Hosting
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -49,7 +44,12 @@ jobs:
           
           # Folder hasil build Craco adalah 'build'
           local-dir: ./frontend/build/
-          
           server-dir: ./public_html/
+          
+          # --- SOLUSI 1: PENGATURAN KONEKSI (ANTI TIMEOUT) ---
+          protocol: ftp        # Memaksa protokol FTP standar (lebih ringan)
+          port: 21             # Port standar
+          # ---------------------------------------------------
+          
           dangerous-clean-slate: false
           log-level: verbose
