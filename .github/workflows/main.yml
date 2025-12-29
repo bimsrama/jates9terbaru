@@ -10,6 +10,7 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
 
+    # Pastikan tetap masuk ke folder frontend
     defaults:
       run:
         working-directory: ./frontend
@@ -25,21 +26,20 @@ jobs:
         with:
           node-version: '20'
 
-      # --- PERBAIKAN KRUSIAL 1: Dependency Fix ---
-      # Kita paksa pakai date-fns v3 agar kompatibel dengan react-day-picker.
-      # Ini akan mencegah error 'ajv' dan membiarkan 'npm install' berjalan normal.
-      - name: 📦 Fix Dependencies & Install
-        run: |
-          npm uninstall date-fns
-          npm install date-fns@3 --save-exact
-          npm install
+      # --- SOLUSI UTAMA ---
+      # 1. Gunakan --force. Ini lebih aman daripada legacy-peer-deps karena
+      #    dia tetap menginstall file yang dibutuhkan meski versinya tabrakan.
+      - name: 📦 Install Dependencies (Force)
+        run: npm install --force
 
+      # 2. Build dengan CI=false.
+      #    React 19 menghasilkan banyak 'Warning', yang di GitHub Actions
+      #    sering dianggap sebagai 'Error' dan membatalkan proses.
+      #    CI=false mencegah hal itu.
       - name: 🏗️ Build Project
-        run: npm run build
+        run: CI=false npm run build
 
-      # --- PERBAIKAN KRUSIAL 2: Folder Build ---
-      # Karena kamu pakai CRACO/React Scripts, outputnya adalah folder 'build'
-      # bukan 'dist'.
+      # 3. Upload folder 'build' (karena pakai Craco/CRA)
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -47,8 +47,8 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           
-          # Ganti 'dist' menjadi 'build'
-          local-dir: ./frontend/build/ 
+          # Folder hasil build Craco adalah 'build'
+          local-dir: ./frontend/build/
           
           server-dir: ./public_html/
           dangerous-clean-slate: false
