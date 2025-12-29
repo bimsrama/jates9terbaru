@@ -3,9 +3,9 @@ import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
-import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
-import { Save, Zap, Lightbulb, ShoppingBag, Sparkles, Calendar } from 'lucide-react';
+import { ScrollArea } from '../../components/ui/scroll-area'; // Pastikan komponen ini ada, atau ganti div biasa
+import { Save, Zap, Lightbulb, ShoppingBag, Sparkles, ChevronRight, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -13,15 +13,16 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const Broadcast = () => {
   const { getAuthHeader } = useAuth();
   
-  // State Hari (Default Hari ke-1)
-  const [day, setDay] = useState(1);
+  // State Hari Aktif (Default Hari 1)
+  const [selectedDay, setSelectedDay] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // State Navigasi Tab
+  // State Tab Editor
   const [activeTab, setActiveTab] = useState('challenge'); // 'challenge', 'fact', 'soft_sell'
   const [activeCategory, setActiveCategory] = useState('A'); // Tipe A, B, C
 
-  // State Data Konten
+  // State Data Konten untuk Hari yang Dipilih
   const [contentData, setContentData] = useState({
     challenge_a: '',
     challenge_b: '',
@@ -30,62 +31,69 @@ const Broadcast = () => {
     soft_sell_content: ''
   });
 
-  // Load Data dari Backend saat 'day' berubah
+  // Load Data saat Hari Berubah (Klik Sidebar)
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/${day}`, {
-          headers: getAuthHeader()
-        });
-        // Pastikan data tidak null
-        const data = res.data || {};
-        setContentData({
-          challenge_a: data.challenge_a || '',
-          challenge_b: data.challenge_b || '',
-          challenge_c: data.challenge_c || '',
-          fact_content: data.fact_content || '',
-          soft_sell_content: data.soft_sell_content || ''
-        });
-      } catch (error) {
-        console.error("Gagal load data", error);
-        // Reset form jika error/data kosong
-        setContentData({ challenge_a: '', challenge_b: '', challenge_c: '', fact_content: '', soft_sell_content: '' });
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [day, getAuthHeader]);
+    fetchData(selectedDay);
+    // eslint-disable-next-line
+  }, [selectedDay]);
 
-  // Handle Perubahan Textarea
-  const handleChange = (field, value) => {
-    setContentData(prev => ({ ...prev, [field]: value }));
-  };
-
-  // Fungsi Simpan ke Database
-  const handleSave = async () => {
+  const fetchData = async (day) => {
     setLoading(true);
     try {
-      await axios.post(
-        `${BACKEND_URL}/api/admin/campaign/store`,
-        { day_sequence: day, ...contentData },
-        { headers: getAuthHeader() }
-      );
-      alert(`✅ Jadwal Hari ke-${day} berhasil disimpan!`);
+      const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/${day}`, {
+        headers: getAuthHeader()
+      });
+      const data = res.data || {};
+      
+      setContentData({
+        challenge_a: data.challenge_a || '',
+        challenge_b: data.challenge_b || '',
+        challenge_c: data.challenge_c || '',
+        fact_content: data.fact_content || '',
+        soft_sell_content: data.soft_sell_content || ''
+      });
     } catch (error) {
-      alert("Gagal menyimpan: " + (error.response?.data?.detail || error.message));
+      console.error("Gagal load data", error);
+      // Reset form jika error/data kosong
+      setContentData({ challenge_a: '', challenge_b: '', challenge_c: '', fact_content: '', soft_sell_content: '' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Render Logic untuk Input Area
-  const renderInputArea = () => {
+  // Handle Input Text
+  const handleChange = (field, value) => {
+    setContentData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Simpan Data
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await axios.post(
+        `${BACKEND_URL}/api/admin/campaign/store`,
+        { day_sequence: selectedDay, ...contentData },
+        { headers: getAuthHeader() }
+      );
+      // Feedback visual sederhana (bisa diganti toast)
+      alert(`✅ Tersimpan! Jadwal Hari ke-${selectedDay} siap.`);
+    } catch (error) {
+      alert("Gagal menyimpan: " + (error.response?.data?.detail || error.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Komponen Input Editor
+  const renderEditor = () => {
+    if (loading) {
+        return <div className="h-[300px] flex items-center justify-center text-gray-400">Memuat data...</div>;
+    }
+
     if (activeTab === 'challenge') {
       const currentField = `challenge_${activeCategory.toLowerCase()}`;
       return (
-        <div className="space-y-4">
+        <div className="space-y-4 animate-in fade-in zoom-in duration-300">
             <div className="flex gap-2 mb-4">
                 {['A', 'B', 'C'].map(grp => (
                     <Button 
@@ -99,15 +107,15 @@ const Broadcast = () => {
                     </Button>
                 ))}
             </div>
-            <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded mb-2 border border-blue-100 flex items-center gap-2">
+            <div className="p-3 bg-blue-50 text-blue-700 text-sm rounded border border-blue-100 flex items-center gap-2">
                 <Zap size={16}/>
-                <span><strong>Jam 07:00 WIB:</strong> Pesan tantangan pagi untuk user Tipe {activeCategory}.</span>
+                <span><strong>Jam 07:00 WIB:</strong> Tantangan untuk Tipe {activeCategory}.</span>
             </div>
             <Textarea 
                 value={contentData[currentField]}
                 onChange={(e) => handleChange(currentField, e.target.value)}
-                placeholder={`Tulis pesan tantangan pagi untuk Tipe ${activeCategory} di sini...`}
-                className="min-h-[250px] font-sans text-base"
+                placeholder={`Masukkan pesan tantangan pagi untuk Tipe ${activeCategory}...`}
+                className="min-h-[300px] text-base font-sans leading-relaxed"
             />
         </div>
       );
@@ -115,16 +123,16 @@ const Broadcast = () => {
     
     if (activeTab === 'fact') {
       return (
-        <div className="space-y-4">
-             <div className="p-3 bg-yellow-50 text-yellow-700 text-sm rounded mb-2 border border-yellow-100 flex items-center gap-2">
+        <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+             <div className="p-3 bg-yellow-50 text-yellow-700 text-sm rounded border border-yellow-100 flex items-center gap-2">
                 <Lightbulb size={16}/>
-                <span><strong>Jam 12:00 WIB:</strong> Fakta & Tips Kesehatan (Dikirim ke SEMUA user).</span>
+                <span><strong>Jam 12:00 WIB:</strong> Fakta & Tips (Broadcast ke SEMUA user).</span>
             </div>
             <Textarea 
                 value={contentData.fact_content}
                 onChange={(e) => handleChange('fact_content', e.target.value)}
                 placeholder="Tulis fakta kesehatan & tips harian di sini..."
-                className="min-h-[250px] font-sans text-base"
+                className="min-h-[300px] text-base font-sans leading-relaxed"
             />
         </div>
       );
@@ -132,19 +140,19 @@ const Broadcast = () => {
 
     if (activeTab === 'soft_sell') {
       return (
-        <div className="space-y-4">
-             <div className="p-3 bg-green-50 text-green-700 text-sm rounded mb-2 border border-green-100 flex justify-between items-center">
+        <div className="space-y-4 animate-in fade-in zoom-in duration-300">
+             <div className="p-3 bg-green-50 text-green-700 text-sm rounded border border-green-100 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <ShoppingBag size={16}/>
-                    <span><strong>Digabung dengan Fakta:</strong> Pesan ini akan ditempel di bawah pesan Jam 12:00.</span>
+                    <span><strong>Digabung:</strong> Muncul di bawah pesan Jam 12:00.</span>
                 </div>
-                {day % 5 === 0 && <Badge className="bg-green-600">Hari Promo (Day {day})</Badge>}
+                {selectedDay % 5 === 0 && <Badge className="bg-green-600">Hari Promo (Day {selectedDay})</Badge>}
             </div>
             <Textarea 
                 value={contentData.soft_sell_content}
                 onChange={(e) => handleChange('soft_sell_content', e.target.value)}
-                placeholder="Tulis promosi produk (Jates, dll) di sini... (Opsional)"
-                className="min-h-[250px] font-sans text-base"
+                placeholder="Tulis promosi produk di sini (Opsional)..."
+                className="min-h-[300px] text-base font-sans leading-relaxed"
             />
         </div>
       );
@@ -152,66 +160,107 @@ const Broadcast = () => {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header */}
-      <div className="flex justify-between items-end mb-6">
+    <div className="p-6 max-w-[1400px] mx-auto h-[calc(100vh-80px)]">
+      <div className="flex justify-between items-center mb-6">
         <div>
-            <h1 className="heading-2">Jadwal Konten Otomatis</h1>
-            <p className="text-gray-500">Isi konten untuk 30 hari, sistem akan mengirim otomatis sesuai jam.</p>
+            <h1 className="text-2xl font-bold tracking-tight">Manajemen Konten 30 Hari</h1>
+            <p className="text-gray-500">Pilih hari di menu kiri, lalu edit konten di kanan.</p>
         </div>
-        <div className="flex items-center gap-2 bg-white border p-1 rounded-md shadow-sm">
-            <div className="bg-gray-100 p-2 rounded">
-                <Calendar size={20} className="text-gray-600"/>
-            </div>
-            <div className="flex flex-col px-2">
-                <span className="text-[10px] uppercase font-bold text-gray-400">Edit Hari Ke</span>
-                <Input 
-                    type="number" 
-                    className="w-16 h-6 p-0 border-none focus-visible:ring-0 font-bold text-lg" 
-                    value={day}
-                    onChange={(e) => setDay(parseInt(e.target.value) || 1)}
-                    min={1} max={30}
-                />
-            </div>
-        </div>
+        <Button onClick={handleSave} disabled={saving} className="bg-slate-900 text-white hover:bg-slate-800 w-40">
+            <Save className="mr-2 h-4 w-4" /> 
+            {saving ? 'Menyimpan...' : 'Simpan'}
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Sidebar Menu */}
-        <Card className="md:col-span-3 h-fit">
-            <CardContent className="p-3 grid gap-2">
-                <Button variant={activeTab === 'challenge' ? 'default' : 'ghost'} className={`justify-start w-full ${activeTab === 'challenge' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('challenge')}>
-                    <Zap className="mr-2 h-4 w-4" /> Challenge (07:00)
-                </Button>
-                <Button variant={activeTab === 'fact' ? 'default' : 'ghost'} className={`justify-start w-full ${activeTab === 'fact' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('fact')}>
-                    <Lightbulb className="mr-2 h-4 w-4" /> Fakta & Tips (12:00)
-                </Button>
-                <Button variant={activeTab === 'soft_sell' ? 'default' : 'ghost'} className={`justify-start w-full ${activeTab === 'soft_sell' ? 'bg-slate-900 text-white' : ''}`} onClick={() => setActiveTab('soft_sell')}>
-                    <ShoppingBag className="mr-2 h-4 w-4" /> Soft Sell (Opsional)
-                </Button>
-            </CardContent>
-        </Card>
-
-        {/* Editor Content */}
-        <Card className="md:col-span-9">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b">
-                <CardTitle className="text-lg font-medium">Editor Pesan</CardTitle>
-                <Button onClick={handleSave} disabled={loading} className="bg-slate-900 text-white hover:bg-slate-800">
-                    <Save className="mr-2 h-4 w-4" /> 
-                    {loading ? 'Menyimpan...' : 'Simpan Jadwal'}
-                </Button>
+      <div className="grid grid-cols-12 gap-6 h-full items-start">
+        
+        {/* KOLOM KIRI: LIST HARI (1-30) */}
+        <Card className="col-span-3 h-[75vh] flex flex-col shadow-md">
+            <CardHeader className="pb-3 border-b bg-gray-50/50">
+                <CardTitle className="text-sm font-bold uppercase text-gray-500">Daftar Hari</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
-                {renderInputArea()}
-                
-                <div className="mt-6 flex gap-2 items-center bg-yellow-50 p-3 rounded text-sm text-yellow-800 border border-yellow-100">
-                    <Sparkles className="h-4 w-4 shrink-0" />
-                    <span>
-                        Tips: Gunakan <code>{`{{nama}}`}</code> untuk menyapa nama user & <code>{`{{link_checkin}}`}</code> untuk link jurnal harian.
-                    </span>
+            <CardContent className="p-0 flex-1 overflow-hidden">
+                {/* Area Scrollable untuk 30 Hari */}
+                <div className="h-full overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    {Array.from({ length: 30 }, (_, i) => i + 1).map((day) => (
+                        <button
+                            key={day}
+                            onClick={() => setSelectedDay(day)}
+                            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-md transition-all duration-200 
+                                ${selectedDay === day 
+                                    ? 'bg-slate-900 text-white shadow-md' 
+                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs 
+                                    ${selectedDay === day ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                                    {day}
+                                </span>
+                                Hari ke-{day}
+                            </span>
+                            
+                            {/* Indikator Promo (Kelipatan 5) */}
+                            {day % 5 === 0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${selectedDay === day ? 'bg-green-500/20 text-green-200' : 'bg-green-100 text-green-700'}`}>
+                                    Promo
+                                </span>
+                            )}
+                            
+                            {selectedDay === day && <ChevronRight size={16} />}
+                        </button>
+                    ))}
                 </div>
             </CardContent>
         </Card>
+
+        {/* KOLOM KANAN: EDITOR */}
+        <Card className="col-span-9 h-[75vh] flex flex-col shadow-md border-t-4 border-t-slate-900">
+            
+            {/* Tab Navigasi Editor */}
+            <div className="flex border-b">
+                <button 
+                    onClick={() => setActiveTab('challenge')}
+                    className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex justify-center items-center gap-2
+                    ${activeTab === 'challenge' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                >
+                    <Zap size={18} /> Challenge (07:00)
+                </button>
+                <button 
+                    onClick={() => setActiveTab('fact')}
+                    className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex justify-center items-center gap-2
+                    ${activeTab === 'fact' ? 'border-yellow-500 text-yellow-600 bg-yellow-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                >
+                    <Lightbulb size={18} /> Fakta & Tips (12:00)
+                </button>
+                <button 
+                    onClick={() => setActiveTab('soft_sell')}
+                    className={`flex-1 py-4 text-sm font-medium border-b-2 transition-colors flex justify-center items-center gap-2
+                    ${activeTab === 'soft_sell' ? 'border-green-600 text-green-600 bg-green-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                >
+                    <ShoppingBag size={18} /> Soft Sell (Opsional)
+                </button>
+            </div>
+
+            {/* Area Edit */}
+            <CardContent className="p-6 overflow-y-auto flex-1 bg-white">
+                <div className="max-w-4xl mx-auto">
+                    {renderEditor()}
+                    
+                    <div className="mt-8 flex gap-3 items-center bg-gray-50 p-4 rounded-lg border border-dashed border-gray-300">
+                        <div className="bg-yellow-100 p-2 rounded-full text-yellow-600">
+                            <Sparkles size={16} />
+                        </div>
+                        <div className="text-xs text-gray-500 space-y-1">
+                            <p className="font-semibold text-gray-700">Variabel Dinamis:</p>
+                            <p>Gunakan <code>{`{{nama}}`}</code> : Akan otomatis berubah menjadi nama user (Contoh: "Halo Budi").</p>
+                            <p>Gunakan <code>{`{{link_checkin}}`}</code> : Link unik untuk user mengisi jurnal harian mereka.</p>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+
       </div>
     </div>
   );
