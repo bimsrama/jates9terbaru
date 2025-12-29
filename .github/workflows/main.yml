@@ -1,1 +1,90 @@
+name: Deploy Shared Hosting (Public HTML)
 
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-hosting:
+    name: 🚀 Build & Deploy to Public HTML
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Ambil Kodingan Terbaru
+      - name: 🚚 Get Latest Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js (Untuk Front End)
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3. Build React (Front End)
+      - name: 🔨 Install & Build Frontend
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          # Build project (Otomatis menyertakan cek_db.php jika ada di folder public)
+          CI=false npm run build
+
+      # 4. Persiapan Back End (Buat .env & passenger_wsgi)
+      - name: 📝 Prepare Backend Files
+        run: |
+          cd backend
+          
+          # A. Buat file .env untuk koneksi SQL (PENTING!)
+          echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
+          echo "JWT_SECRET_KEY=rahasia_jates_super_aman_2025" >> .env
+          echo "WHATSAPP_API_KEY=HHHI0XGX5GAV9COH" >> .env
+          echo "WHATSAPP_NUMBER_KEY=Hyw8OdnzTHwbi88t" >> .env
+          echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          
+          # B. Pastikan passenger_wsgi.py ada (Wajib untuk cPanel Python App)
+          if [ ! -f passenger_wsgi.py ]; then
+            echo "import sys, os" > passenger_wsgi.py
+            echo "from main import app as application" >> passenger_wsgi.py
+          fi
+
+      # 5. Upload Front End (Ke Root public_html)
+      - name: 📂 Upload Frontend to Public HTML
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.proptuneproject.com
+          username: bimsrama@jagatetapsehat.com
+          password: kuyen001
+          # Mengambil hasil jadi React
+          local-dir: ./frontend/build/
+          # Mengupload ke root folder FTP (biasanya public_html)
+          server-dir: ./
+          # Hapus file lama di root, TAPI JANGAN hapus folder backend_api
+          delete: true
+          exclude: |
+            **/.git*
+            backend_api/**
+            cgi-bin/**
+            .well-known/**
+            .htaccess
+            
+      # 6. Upload Back End (Ke folder public_html/backend_api)
+      - name: 📂 Upload Backend to API Folder
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftp.proptuneproject.com
+          username: bimsrama@jagatetapsehat.com
+          password: kuyen001
+          # Mengambil source code Python
+          local-dir: ./backend/
+          # Masukkan ke dalam folder khusus agar rapi
+          server-dir: ./backend_api/
+          delete: true
+          # Hapus file sampah/lama (emergent/mongo) agar tidak ikut terupload
+          exclude: |
+            **/node_modules/**
+            **/__pycache__/**
+            **/venv/**
+            **/*.pyc
+            **/emergent/**
+            *emergent*
