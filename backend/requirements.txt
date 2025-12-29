@@ -1,10 +1,8 @@
-fastapi
-uvicorn
-sqlalchemy
-pymysql
-python-dotenv
-pydantic
-passlib[bcrypt]
-python-multipart
-requests
-openai
+Flask==3.0.0
+SQLAlchemy==2.0.23
+PyMySQL==1.1.0
+python-dotenv==1.0.0
+openai==1.3.0
+requests==2.31.0
+cryptography
+# Hapus baris yang bertuliskan 'emergent' jika ada
