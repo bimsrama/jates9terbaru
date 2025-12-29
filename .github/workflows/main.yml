@@ -10,7 +10,6 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
 
-    # Pastikan tetap masuk ke folder frontend
     defaults:
       run:
         working-directory: ./frontend
@@ -26,15 +25,14 @@ jobs:
         with:
           node-version: '20'
 
-      # 1. Gunakan --force untuk mengatasi konflik version React 19
       - name: 📦 Install Dependencies (Force)
         run: npm install --force
 
-      # 2. Build dengan CI=false agar Warning tidak dianggap Error
       - name: 🏗️ Build Project
         run: CI=false npm run build
 
-      # 3. Upload folder 'build' dengan Setting FTP Khusus Shared Hosting
+      # --- SETTING KHUSUS RUMAHWEB ---
+      # RumahWeb Shared Hosting wajib pakai Port 2223 untuk SFTP
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -42,14 +40,11 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           
-          # Folder hasil build Craco adalah 'build'
           local-dir: ./frontend/build/
           server-dir: ./public_html/
           
-          # --- SOLUSI 1: PENGATURAN KONEKSI (ANTI TIMEOUT) ---
-          protocol: ftp        # Memaksa protokol FTP standar (lebih ringan)
-          port: 21             # Port standar
-          # ---------------------------------------------------
+          protocol: sftp     # Wajib SFTP
+          port: 2223         # <--- INI KUNCINYA (Port Khusus RumahWeb)
           
           dangerous-clean-slate: false
           log-level: verbose
