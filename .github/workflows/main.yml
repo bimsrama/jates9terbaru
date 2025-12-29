@@ -15,18 +15,27 @@ jobs:
       - name: 🚚 Get Latest Code
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js (Untuk Front End)
+      # 2. Setup Node.js
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3. Build React (Front End)
+      # 3. Build React (DIPERBAIKI: Menambahkan Fix untuk AJV Error)
       - name: 🔨 Install & Build Frontend
         run: |
           cd frontend
+          
+          # Hapus package-lock lama agar tidak memaksa versi error
+          rm -rf package-lock.json node_modules
+          
+          # Install dependencies utama
           npm install --legacy-peer-deps
-          # Build project (Otomatis menyertakan cek_db.php jika ada di folder public)
+          
+          # FIX: Install manual AJV versi 8 untuk mengatasi error "Cannot find module ajv/dist/compile/codegen"
+          npm install ajv@8.12.0 ajv-keywords@5.1.0 --save-dev --legacy-peer-deps
+          
+          # Build project
           CI=false npm run build
 
       # 4. Persiapan Back End (Buat .env & passenger_wsgi)
@@ -34,7 +43,7 @@ jobs:
         run: |
           cd backend
           
-          # A. Buat file .env untuk koneksi SQL (PENTING!)
+          # A. Buat file .env untuk koneksi SQL
           echo "DATABASE_URL=mysql+pymysql://prow9975_adminjates_db:jates1110@localhost/prow9975_jates9_db" > .env
           echo "JWT_SECRET_KEY=rahasia_jates_super_aman_2025" >> .env
           echo "WHATSAPP_API_KEY=HHHI0XGX5GAV9COH" >> .env
@@ -42,7 +51,7 @@ jobs:
           echo "WHATSAPP_SERVICE_URL=https://api.watzap.id/v1/send_message" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
           
-          # B. Pastikan passenger_wsgi.py ada (Wajib untuk cPanel Python App)
+          # B. Pastikan passenger_wsgi.py ada
           if [ ! -f passenger_wsgi.py ]; then
             echo "import sys, os" > passenger_wsgi.py
             echo "from main import app as application" >> passenger_wsgi.py
@@ -55,11 +64,8 @@ jobs:
           server: ftp.proptuneproject.com
           username: bimsrama@jagatetapsehat.com
           password: kuyen001
-          # Mengambil hasil jadi React
           local-dir: ./frontend/build/
-          # Mengupload ke root folder FTP (biasanya public_html)
           server-dir: ./
-          # Hapus file lama di root, TAPI JANGAN hapus folder backend_api
           delete: true
           exclude: |
             **/.git*
@@ -75,12 +81,9 @@ jobs:
           server: ftp.proptuneproject.com
           username: bimsrama@jagatetapsehat.com
           password: kuyen001
-          # Mengambil source code Python
           local-dir: ./backend/
-          # Masukkan ke dalam folder khusus agar rapi
           server-dir: ./backend_api/
           delete: true
-          # Hapus file sampah/lama (emergent/mongo) agar tidak ikut terupload
           exclude: |
             **/node_modules/**
             **/__pycache__/**
