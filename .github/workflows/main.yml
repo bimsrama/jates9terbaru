@@ -1,47 +1,47 @@
-name: Build and Deploy Frontend
+name: Deploy Frontend Only (Jates)
 
 on:
   push:
     branches:
-      - main  # Ganti dengan 'master' jika branch utama Anda bernama master
+      - main
 
 jobs:
-  build-and-deploy:
+  deploy-frontend:
+    name: 🚀 Build & Deploy Frontend
     runs-on: ubuntu-latest
-
+    
     steps:
-      # 1. Ambil kodingan dari repository
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: 🚚 Get Latest Code
+        uses: actions/checkout@v4
 
-      # 2. Setup Node.js (untuk menjalankan npm)
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18' # Sesuaikan dengan versi node yg Anda pakai (16/18/20)
+          node-version: '20'
 
-      # 3. Install dan Build Frontend
-      - name: Install Dependencies and Build
-        working-directory: ./frontend  # Masuk ke folder frontend
+      - name: 🔨 Install & Build Frontend
         run: |
-          npm install
-          npm run build
+          cd frontend
+          rm -rf package-lock.json node_modules
+          npm install --legacy-peer-deps
+          npm install ajv@8.12.0 ajv-keywords@5.1.0 --save-dev --legacy-peer-deps
+          CI=false npm run build
 
-      # 4. Deploy menggunakan SFTP (Cocok untuk Port 2223)
-      - name: SFTP Deploy
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      - name: 📂 Upload Frontend to Public HTML
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          username: ${{ secrets.SFTP_USERNAME }}
-          server: ${{ secrets.SFTP_SERVER }}
-          port: 2223                     # Port khusus Anda
-          password: ${{ secrets.SFTP_PASSWORD }}
-          
-          # Folder hasil build di Github Actions (sumber)
-          local_path: './frontend/build/' 
-          
-          # Folder tujuan di Server Hosting
-          remote_path: './public_html/'
-          
-          # Opsi tambahan
-          sftp_only: true
-          delete_remote_files: false # Set true jika ingin folder tujuan dibersihkan dulu (hati-hati)
+          server: 203.175.9.105
+          username: bimsrama@jagatetapsehat.com
+          password: jates1110
+          local-dir: ./frontend/build/
+          server-dir: ./
+          # PENTING: exclude di bawah ini menjaga agar folder backend/api 
+          # yang sudah ada di hosting tidak ikut terhapus saat deploy frontend.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            backend_api/**
+            cgi-bin/**
+            .well-known/**
+            .htaccess
+          timeout: 60000
