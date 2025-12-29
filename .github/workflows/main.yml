@@ -10,7 +10,6 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
 
-    # Tetap gunakan ini karena folder project kamu bernama 'frontend'
     defaults:
       run:
         working-directory: ./frontend
@@ -26,22 +25,31 @@ jobs:
         with:
           node-version: '20'
 
-      # --- PERBAIKAN DI SINI ---
-      # Kita tambahkan flag '--legacy-peer-deps' agar npm tidak error
-      # saat melihat konflik versi date-fns
-      - name: 📦 Install Dependencies
-        run: npm install --legacy-peer-deps
+      # --- PERBAIKAN KRUSIAL 1: Dependency Fix ---
+      # Kita paksa pakai date-fns v3 agar kompatibel dengan react-day-picker.
+      # Ini akan mencegah error 'ajv' dan membiarkan 'npm install' berjalan normal.
+      - name: 📦 Fix Dependencies & Install
+        run: |
+          npm uninstall date-fns
+          npm install date-fns@3 --save-exact
+          npm install
 
       - name: 🏗️ Build Project
         run: npm run build
 
+      # --- PERBAIKAN KRUSIAL 2: Folder Build ---
+      # Karena kamu pakai CRACO/React Scripts, outputnya adalah folder 'build'
+      # bukan 'dist'.
       - name: 📂 Sync Files (Upload Changes Only)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Path folder hasil build
-          local-dir: ./frontend/dist/
+          
+          # Ganti 'dist' menjadi 'build'
+          local-dir: ./frontend/build/ 
+          
           server-dir: ./public_html/
           dangerous-clean-slate: false
+          log-level: verbose
