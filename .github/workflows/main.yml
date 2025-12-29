@@ -1,4 +1,4 @@
-name: Deploy Shared Hosting (Fix Connection)
+name: Deploy Shared Hosting (Final Fix)
 
 on:
   push:
@@ -46,21 +46,20 @@ jobs:
       - name: 📂 Upload Frontend to Public HTML
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          # SAYA GANTI KE IP LANGSUNG AGAR LEBIH STABIL
           server: 203.175.9.105
           username: bimsrama@jagatetapsehat.com
           password: kuyen001
           local-dir: ./frontend/build/
           server-dir: ./
-          # Hapus baris 'delete' yang error, ganti dengan logic standar
+          # PERHATIKAN: Tanda '|' dan spasi di bawah ini SANGAT PENTING
           exclude: |
             **/.git*
+            **/.git*/**
             backend_api/**
             cgi-bin/**
             .well-known/**
             .htaccess
-          # Tambah timeout agar tidak cepat putus
-          timeout: 30000
+          timeout: 60000
 
       # Upload Backend
       - name: 📂 Upload Backend to API Folder
@@ -78,4 +77,4 @@ jobs:
             **/*.pyc
             **/emergent/**
             *emergent*
-          timeout: 30000
+          timeout: 60000
