@@ -96,8 +96,11 @@ const Register = () => {
         { challenge_id: id },
         { headers: getAuthHeader() } // Butuh token
       );
-      // Sukses -> Masuk Dashboard
-      navigate('/dashboard');
+      
+      // [UPDATE PENTING DISINI]
+      // Setelah pilih challenge, arahkan ke Quiz untuk penentuan kategori (A/B/C)
+      navigate('/quiz');
+      
     } catch (err) {
       setError("Gagal memilih challenge. Coba lagi.");
       setLoading(false);
