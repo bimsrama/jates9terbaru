@@ -27,9 +27,9 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       
       if (token && token !== "undefined") {
-        setAuthToken(token); // Pasang token lagi
+        setAuthToken(token); // Pasang token lagi ke header
         try {
-          // Validasi ke Backend
+          // Validasi ke Backend (Endpoint /me)
           const response = await axios.get(`${BACKEND_URL}/api/auth/me`);
           setUser(response.data.user);
           
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error("Sesi habis:", error);
-          logout(); // Jika token basi, logout otomatis
+          logout(); // Jika token basi/invalid, logout otomatis
         }
       }
       setLoading(false);
@@ -48,16 +48,14 @@ export const AuthProvider = ({ children }) => {
     checkLoggedIn();
   }, []);
 
-  // 2. FUNGSI LOGIN
-  const login = async (emailOrPhone, password) => {
+  // 2. FUNGSI LOGIN (Updated: Phone Number Only)
+  const login = async (phoneNumber, password) => {
     try {
-      const payload = { password };
-      // Cek apakah input Email atau No HP
-      if (emailOrPhone.includes('@')) {
-        payload.email = emailOrPhone;
-      } else {
-        payload.phone_number = emailOrPhone;
-      }
+      // Backend mengharapkan JSON { phone_number, password }
+      const payload = { 
+        phone_number: phoneNumber, 
+        password: password 
+      };
 
       const response = await axios.post(`${BACKEND_URL}/api/auth/login`, payload);
       const { token, user } = response.data;
@@ -67,11 +65,11 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       localStorage.setItem('user_id', user.id);
 
-      return { success: true };
+      return { success: true, role: user.role };
     } catch (error) {
       return { 
         success: false, 
-        message: error.response?.data?.message || "Login Gagal" 
+        error: error.response?.data?.message || "Login Gagal. Periksa koneksi Anda." 
       };
     }
   };
@@ -82,22 +80,36 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem('user_id');
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    // Opsional: Redirect ke halaman login
+    // window.location.href = '/login'; 
   };
 
-  // 4. FUNGSI REGISTER
+  // 4. FUNGSI REGISTER (Updated: Auto Login after Register)
   const register = async (userData) => {
     try {
+      // userData berisi: { name, phone_number, password, referral_code }
       const response = await axios.post(`${BACKEND_URL}/api/auth/register`, userData);
+      
+      // Backend sekarang mengembalikan TOKEN juga saat register sukses
+      const { token, user } = response.data;
+      
+      if (token) {
+        setAuthToken(token);
+        setUser(user);
+        localStorage.setItem('user_id', user.id);
+      }
+
       return { success: true, message: response.data.message };
     } catch (error) {
       return { 
         success: false, 
-        message: error.response?.data?.message || "Registrasi Gagal" 
+        error: error.response?.data?.message || "Registrasi Gagal" 
       };
     }
   };
 
+  // Helper untuk mendapatkan Header Authorization (Bearer Token)
+  // Berguna saat memanggil API protected secara manual di komponen lain
   const getAuthHeader = () => {
     const token = localStorage.getItem('token');
     return { Authorization: `Bearer ${token}` };
