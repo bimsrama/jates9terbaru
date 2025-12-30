@@ -24,7 +24,7 @@ const AdminDashboard = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [btnLoading, setBtnLoading] = useState(false);
 
-  // Data States (Sediakan default array [] agar tidak blank saat render awal)
+  // Data States
   const [stats, setStats] = useState({ total_users: 0, pending_withdrawals: 0, total_revenue: 0 });
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
@@ -64,18 +64,30 @@ const AdminDashboard = () => {
     } catch (e) { console.error("Fetch Challenges Error:", e); setChallenges([]); }
   };
 
+  // --- [FIXED] FUNGSI GENERATE AI DENGAN KONFIRMASI & 3 KATEGORI ---
   const handleGenerateChallengeAI = async () => {
     if(!newChallengeTitle) return alert("Masukkan judul tantangan!");
+    
+    // Konfirmasi ke admin karena AI akan membuat kuis otomatis
+    const confirmGen = window.confirm(`AI akan membuat program "${newChallengeTitle}" beserta 3 pertanyaan kuis untuk kategori A, B, dan C. Lanjutkan?`);
+    if(!confirmGen) return;
+
     setBtnLoading(true);
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, 
+      const res = await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, 
         { title: newChallengeTitle }, 
         { headers: getAuthHeader() }
       );
-      alert("AI Berhasil membuat Challenge!");
-      setNewChallengeTitle("");
-      fetchChallengeCards();
-    } catch (e) { alert("Gagal generate AI."); }
+      
+      if(res.data.success) {
+        alert("BERHASIL! Challenge Card & Pertanyaan Kuis telah dibuat secara otomatis oleh AI.");
+        setNewChallengeTitle("");
+        fetchChallengeCards();
+      }
+    } catch (e) { 
+      console.error(e);
+      alert("Gagal generate AI. Pastikan API Groq aktif dan model Llama 3.3 tersedia."); 
+    }
     setBtnLoading(false);
   };
 
@@ -84,6 +96,7 @@ const AdminDashboard = () => {
     try {
       await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, { headers: getAuthHeader() });
       setChallenges(challenges.filter(c => c.id !== id));
+      alert("Challenge dihapus.");
     } catch (e) { alert("Gagal menghapus."); }
   };
 
@@ -225,7 +238,7 @@ const AdminDashboard = () => {
           {/* TAB BROADCAST CONTENT */}
           {activeTab === 'challenge_content' && (
             <div className="animate-in fade-in">
-              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Broadcast Manager</h1>
+              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Broadcast Manager (30 Hari)</h1>
               <Card style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Calendar />
                 <div style={{ flex: 1 }}>
@@ -237,17 +250,17 @@ const AdminDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 <EditorBox title="Challenge (Pagi)" val={challengeForm.challenge_a} onChange={(v) => setChallengeForm({...challengeForm, challenge_a: v})} hint="07:00 WIB" />
                 <EditorBox title="Fakta (Siang)" val={challengeForm.fact_content} onChange={(v) => setChallengeForm({...challengeForm, fact_content: v})} hint="12:00 WIB" />
-                {challengeDay % 5 === 0 && <EditorBox title="Soft Sell" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} color="#f0fdf4" />}
-                {challengeDay % 7 === 0 && <EditorBox title="Evaluasi" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} color="#fff7ed" />}
+                {challengeDay % 5 === 0 && <EditorBox title="Soft Sell (Promo)" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} color="#f0fdf4" />}
+                {challengeDay % 7 === 0 && <EditorBox title="Evaluasi Mingguan" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} color="#fff7ed" />}
               </div>
-              <button onClick={handleSaveDailyContent} className="btn-primary" style={{ marginTop: '2rem', width: '100%' }}>Simpan Konten</button>
+              <button onClick={handleSaveDailyContent} className="btn-primary" style={{ marginTop: '2rem', width: '100%' }}>Simpan Konten Hari ke-{challengeDay}</button>
             </div>
           )}
 
           {/* TAB USER MANAGEMENT */}
           {activeTab === 'users' && (
             <div className="animate-in fade-in">
-              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>User & Badge</h1>
+              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Manajemen User & Badge</h1>
               <Card style={{ overflowX: 'auto', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                   <thead style={{ background: '#f8fafc' }}>
@@ -264,7 +277,7 @@ const AdminDashboard = () => {
                         </td>
                         <td style={tdStyle}>
                           <button onClick={() => handleUpdateUser(u.id, 'role', u.role==='admin'?'user':'admin')} style={btnSmallStyle(u.role==='admin'?'#ef4444':'#3b82f6')}>
-                            {u.role==='admin'?'Revoke':'Set Admin'}
+                            {u.role==='admin'?'Revoke Admin':'Set Admin'}
                           </button>
                         </td>
                       </tr>
