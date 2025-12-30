@@ -21,8 +21,8 @@ const UserDashboard = () => {
   // --- STATE UI ---
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
-  const [showTutorial, setShowTutorial] = useState(true); // State untuk panduan
-  const [dailyTip, setDailyTip] = useState(""); // State untuk saran harian
+  const [showTutorial, setShowTutorial] = useState(true);
+  const [dailyTip, setDailyTip] = useState("");
 
   // --- STATE CHAT AI ---
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -35,7 +35,7 @@ const UserDashboard = () => {
 
   // --- 1. INITIAL LOAD ---
   useEffect(() => {
-    // Cek apakah user pernah menutup tutorial sebelumnya
+    // Cek preferensi tutorial user
     const isTutorialHidden = localStorage.getItem('hide_tutorial');
     if (isTutorialHidden) setShowTutorial(false);
 
@@ -60,7 +60,6 @@ const UserDashboard = () => {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
       
-      // Generate Saran Harian berdasarkan Group User
       generateDailyTip(overviewRes.data.user?.group || 'Sehat');
 
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
@@ -73,25 +72,21 @@ const UserDashboard = () => {
     }
   };
 
-  // --- LOGIC SARAN HARIAN (DOKTER AI) ---
   const generateDailyTip = (group) => {
     const tips = {
-      'A': "Untuk Tipe A (Sembelit), hari ini fokus perbanyak minum air hangat 2 gelas saat bangun tidur dan konsumsi pepaya nanti sore.",
-      'B': "Untuk Tipe B (Kembung), hindari makanan bersantan dan pedas hari ini. Minum Jates9 sebelum makan siang agar perut nyaman.",
-      'C': "Untuk Tipe C (GERD), jangan terlambat makan siang hari ini. Hindari kopi dan teh pekat agar asam lambung tidak naik.",
-      'Sehat': "Kondisi Anda stabil. Pertahankan dengan olahraga ringan 15 menit hari ini dan tidur sebelum jam 10 malam."
+      'A': "Tipe A (Sembelit): Fokus perbanyak air hangat 2 gelas saat bangun tidur dan konsumsi serat tinggi hari ini.",
+      'B': "Tipe B (Kembung): Hindari makanan bersantan dan pedas hari ini. Jaga pola makan teratur.",
+      'C': "Tipe C (GERD): Jangan terlambat makan siang. Hindari kopi dan teh pekat agar asam lambung aman.",
+      'Sehat': "Kondisi stabil. Pertahankan dengan olahraga ringan 15 menit dan tidur cukup."
     };
-    // Default ke tipe user, atau tips umum jika tidak ada match
     setDailyTip(tips[group] || tips['Sehat']);
   };
 
-  // --- LOGIC TUTORIAL ---
   const handleCloseTutorial = () => {
     setShowTutorial(false);
-    localStorage.setItem('hide_tutorial', 'true'); // Simpan preferensi user
+    localStorage.setItem('hide_tutorial', 'true'); 
   };
 
-  // --- LOGIC CHAT & CHALLENGE ---
   const handleSwitchChallenge = async (challengeId) => {
     if(!window.confirm("Pindah tantangan akan mereset progress kuis. Lanjut?")) return;
     try {
@@ -118,7 +113,18 @@ const UserDashboard = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
   return (
-    <div style={{ display: 'flex', background: '#f8fafc', minHeight: '100vh', width: '100%' }}>
+    // [FIX UTAMA] Container Full Screen Fixed agar menutupi Header Bawaan
+    <div style={{ 
+      display: 'flex', 
+      background: '#f8fafc', 
+      width: '100vw', 
+      height: '100vh', 
+      position: 'fixed', // Kunci posisi agar menutupi elemen lain
+      top: 0, 
+      left: 0, 
+      zIndex: 9999, // Pastikan di atas segalanya
+      overflow: 'hidden' // Scroll diurus oleh children
+    }}>
       
       {/* OVERLAY MOBILE */}
       {!isDesktop && isSidebarOpen && (
@@ -128,7 +134,8 @@ const UserDashboard = () => {
       {/* --- SIDEBAR --- */}
       <aside style={{
         width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh',
-        position: isDesktop ? 'sticky' : 'fixed', top: 0, left: 0, zIndex: 50,
+        position: isDesktop ? 'relative' : 'fixed', // Di desktop relative agar tidak melayang aneh
+        top: 0, left: 0, zIndex: 50,
         display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease',
         transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0
       }}>
@@ -150,8 +157,15 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* --- CONTENT --- */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      {/* --- CONTENT AREA (SCROLLABLE) --- */}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minWidth: 0,
+        height: '100vh', // Full height
+        overflowY: 'auto' // Scroll terjadi di sini
+      }}>
         
         {/* MOBILE HEADER */}
         {!isDesktop && (
@@ -164,7 +178,7 @@ const UserDashboard = () => {
           </header>
         )}
 
-        <main style={{ padding: '2rem', flex: 1, overflowX: 'hidden' }}>
+        <main style={{ padding: '2rem', flex: 1 }}>
           
           <div style={{ marginBottom: '2rem' }}>
             <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
@@ -173,7 +187,7 @@ const UserDashboard = () => {
             </p>
           </div>
 
-          {/* --- 1. PROFILE & DAILY TIP (DOKTER AI) --- */}
+          {/* --- 1. PROFILE & DAILY TIP --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.5fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem' }}>
             
             {/* Profile Card */}
@@ -247,14 +261,14 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* --- 3. STATISTIK --- */}
+          {/* --- 3. STATISTIK REAL --- */}
           <div className="ai-grid" style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             <Card className="product-card">
               <CardContent style={{ paddingTop: '1.5rem', textAlign: 'center' }}>
                 <div style={{ margin: '0 auto 1rem', width: '50px', height: '50px', borderRadius: '50%', background: 'var(--accent-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <TrendingUp className="h-6 w-6" style={{ color: 'var(--accent-primary)' }} />
                 </div>
-                {/* AMBIL DATA DARI TOTAL_CHECKINS */}
+                {/* DATA REAL CHECKIN */}
                 <h3 className="heading-3">{overview?.financial?.total_checkins || 0}x</h3>
                 <p className="body-small" style={{ color: 'var(--text-secondary)' }}>Tantangan Selesai</p>
               </CardContent>
@@ -281,7 +295,6 @@ const UserDashboard = () => {
 
           {/* --- 4. REKOMENDASI CHALLENGE & ARTIKEL --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.5fr 1fr' : '1fr', gap: '2rem' }}>
-            
             {/* Challenge Lain */}
             <div>
               <h3 className="heading-3" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -295,10 +308,7 @@ const UserDashboard = () => {
                         <h4 style={{ fontWeight: 'bold', fontSize: '1rem' }}>{c.title}</h4>
                         <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{c.description}</p>
                       </div>
-                      <button 
-                        onClick={() => handleSwitchChallenge(c.id)}
-                        style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                      >
+                      <button onClick={() => handleSwitchChallenge(c.id)} style={{ padding: '0.5rem 1rem', background: 'white', border: '1px solid var(--primary)', color: 'var(--primary)', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         Ikuti
                       </button>
                     </CardContent>
@@ -339,7 +349,7 @@ const UserDashboard = () => {
 
       {/* --- MODAL CHAT DOKTER AI --- */}
       {isChatOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <Card style={{ width: '100%', maxWidth: '450px', height: '600px', display: 'flex', flexDirection: 'column', border: 'none', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
             <div style={{ padding: '1rem', background: 'var(--primary)', color: 'white', borderRadius: '8px 8px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '8px', height: '8px', background: '#4ade80', borderRadius: '50%' }}></div>Dokter AI Jates9</div>
