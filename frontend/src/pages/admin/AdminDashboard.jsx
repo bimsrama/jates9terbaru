@@ -43,7 +43,10 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
-    const handleResize = () => setSidebarOpen(window.innerWidth > 1024);
+    const handleResize = () => {
+        const isDesktop = window.innerWidth > 1024;
+        if (isDesktop) setSidebarOpen(true);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -71,7 +74,6 @@ const AdminDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  // --- GENERATE CHALLENGE CARD BY AI ---
   const handleGenerateChallengeAI = async () => {
     if(!newChallengeTitle) return alert("Masukkan judul tantangan!");
     setBtnLoading(true);
@@ -83,11 +85,10 @@ const AdminDashboard = () => {
       alert("AI Berhasil membuat Challenge & Kuis!");
       setNewChallengeTitle("");
       fetchChallengeCards();
-    } catch (e) { alert("Gagal generate AI. Cek log server."); }
+    } catch (e) { alert("Gagal generate AI."); }
     setBtnLoading(false);
   };
 
-  // --- SAVE CONTENT DAILY ---
   const handleSaveDailyContent = async () => {
     setBtnLoading(true);
     try {
@@ -112,7 +113,7 @@ const AdminDashboard = () => {
       onClick={() => { 
         setActiveTab(id); 
         if(id==='users') fetchUsers(); 
-        if(window.innerWidth < 1024) setSidebarOpen(false);
+        if(window.innerWidth <= 1024) setSidebarOpen(false);
       }}
       style={{
         display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.85rem 1rem',
@@ -126,18 +127,35 @@ const AdminDashboard = () => {
   );
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+    // FULL CANVAS WRAPPER
+    <div style={{ 
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+      background: '#f8fafc', zIndex: 99999, display: 'flex', overflow: 'hidden' 
+    }}>
       
+      {/* MOBILE OVERLAY */}
+      {isSidebarOpen && window.innerWidth <= 1024 && (
+        <div 
+            onClick={() => setSidebarOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100 }}
+        ></div>
+      )}
+
       {/* SIDEBAR */}
       <aside style={{ 
-        width: isSidebarOpen ? '260px' : '0px', transition: 'all 0.3s ease',
-        background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', 
-        position: 'sticky', top: 0, zIndex: 50, display: 'flex', flexDirection: 'column'
+        width: isSidebarOpen ? '260px' : '0px', 
+        position: window.innerWidth <= 1024 ? 'fixed' : 'relative',
+        left: 0, top: 0, bottom: 0,
+        background: 'white', borderRight: '1px solid #e2e8f0', 
+        zIndex: 101, display: 'flex', flexDirection: 'column',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        visibility: isSidebarOpen ? 'visible' : 'hidden'
       }}>
-        <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <Bot size={24} /> Admin Area
+            <Bot size={24} /> Jates Admin
           </h2>
+          {window.innerWidth <= 1024 && <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none' }}><X size={20}/></button>}
         </div>
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
@@ -148,22 +166,41 @@ const AdminDashboard = () => {
           <SidebarItem id="articles" icon={PenTool} label="Artikel" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}>
-          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
             <LogOut size={18} /> Logout
           </button>
         </div>
       </aside>
 
-      {/* MAIN */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* TOPBAR MOBILE */}
-        <header style={{ height: '60px', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', px: '1.5rem', justifyContent: 'space-between', padding: '0 1rem' }}>
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', p: 2, borderRadius: '8px' }}><Menu size={20}/></button>
-          <span style={{ fontWeight: '600', color: '#64748b' }}>{activeTab.replace('_', ' ').toUpperCase()}</span>
+      {/* MAIN CONTENT AREA */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
+        {/* HEADER BAR */}
+        <header style={{ height: '64px', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 1.5rem', justifyContent: 'space-between', flexShrink: 0 }}>
+          <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+            <Menu size={20}/>
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#64748b', background: '#f1f5f9', padding: '4px 12px', borderRadius: '20px' }}>
+                Admin Mode
+            </span>
+          </div>
         </header>
 
-        <main style={{ flex: 1, padding: window.innerWidth < 768 ? '1.5rem' : '2.5rem' }}>
+        {/* SCROLLABLE MAIN CONTENT */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: window.innerWidth < 768 ? '1rem' : '2rem' }}>
           
+          {/* TAB OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div className="animate-in fade-in duration-500">
+              <h1 className="heading-2" style={{ marginBottom: '2rem' }}>Dashboard Overview</h1>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                <StatCard label="Total User" val={stats.total_users} icon={<Users/>} color="#3b82f6" />
+                <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
+                <StatCard label="Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
+              </div>
+            </div>
+          )}
+
           {/* TAB CARD CHALLENGE AI */}
           {activeTab === 'challenge_cards' && (
             <div className="animate-in fade-in duration-500">
@@ -195,7 +232,7 @@ const AdminDashboard = () => {
                   <h3 style={{ fontWeight: 'bold' }}>Challenge Saat Ini</h3>
                   {challenges.map(c => (
                     <Card key={c.id} style={{ padding: '1rem', border: '1px solid #e2e8f0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{c.title}</div>
                           <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>{c.description?.substring(0, 80)}...</div>
@@ -213,31 +250,31 @@ const AdminDashboard = () => {
           {activeTab === 'challenge_content' && (
             <div className="animate-in fade-in duration-500">
               <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Broadcast Manager 30 Hari</h1>
-              <Card style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <Calendar />
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 'bold', fontSize: '0.9rem', display: 'block' }}>Edit Konten Hari Ke-</label>
-                  <input type="number" min="1" max="30" value={challengeDay} onChange={(e) => setChallengeDay(e.target.value)} style={{ ...inputStyle, width: '100px', marginTop: '0.5rem' }} />
+              <Card style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <Calendar size={20} color="var(--primary)" />
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Edit Konten Hari Ke-</label>
+                  <input type="number" min="1" max="30" value={challengeDay} onChange={(e) => setChallengeDay(e.target.value)} style={{ ...inputStyle, width: '100px', marginLeft: '10px' }} />
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                   {challengeDay % 5 === 0 && <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>HARI PROMO</span>}
-                   {challengeDay % 7 === 0 && <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', marginLeft: '5px' }}>HARI EVALUASI</span>}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                   {challengeDay % 5 === 0 && <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold' }}>PROMO</span>}
+                   {challengeDay % 7 === 0 && <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold' }}>EVALUASI</span>}
                 </div>
               </Card>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                <EditorBox title="Pesan Challenge (Pagi)" val={challengeForm.challenge_a} onChange={(v) => setChallengeForm({...challengeForm, challenge_a: v})} hint="Jam 07:00" />
-                <EditorBox title="Fakta & Tips (Siang)" val={challengeForm.fact_content} onChange={(v) => setChallengeForm({...challengeForm, fact_content: v})} hint="Edukasi Harian" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                <EditorBox title="Challenge (Pagi)" val={challengeForm.challenge_a} onChange={(v) => setChallengeForm({...challengeForm, challenge_a: v})} hint="07:00 WIB" />
+                <EditorBox title="Fakta & Tips (Siang)" val={challengeForm.fact_content} onChange={(v) => setChallengeForm({...challengeForm, fact_content: v})} hint="12:00 WIB" />
                 {challengeDay % 5 === 0 && (
-                  <EditorBox title="Pesan Soft Selling" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} color="#f0fdf4" hint="Klik Link Produk" />
+                  <EditorBox title="Soft Selling" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} color="#f0fdf4" hint="Link Produk" />
                 )}
                 {challengeDay % 7 === 0 && (
-                  <EditorBox title="Pesan Evaluasi" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} color="#fff7ed" hint="Review Mingguan" />
+                  <EditorBox title="Evaluasi" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} color="#fff7ed" hint="Mingguan" />
                 )}
               </div>
 
-              <button onClick={handleSaveDailyContent} disabled={btnLoading} className="btn-primary" style={{ marginTop: '2rem', width: '100%', padding: '1rem' }}>
-                {btnLoading ? <Loader2 className="animate-spin" /> : 'Simpan Semua Pesan Hari Ini'}
+              <button onClick={handleSaveDailyContent} disabled={btnLoading} className="btn-primary" style={{ marginTop: '2rem', width: '100%', padding: '1rem', fontSize: '1rem' }}>
+                {btnLoading ? <Loader2 className="animate-spin" /> : 'Simpan Konten Hari Ini'}
               </button>
             </div>
           )}
@@ -245,19 +282,19 @@ const AdminDashboard = () => {
           {/* TAB USER MANAGEMENT */}
           {activeTab === 'users' && (
             <div className="animate-in fade-in duration-500">
-              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Manajemen User</h1>
+              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>User Management</h1>
               <Card style={{ overflowX: 'auto', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                   <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
-                      <th style={thStyle}>User</th><th style={thStyle}>Badge</th><th style={thStyle}>Role</th>
+                      <th style={thStyle}>User Info</th><th style={thStyle}>Badge / Gelar</th><th style={thStyle}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.map(u => (
                       <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={tdStyle}>
-                          <div style={{ fontWeight: '600' }}>{u.name}</div>
+                          <div style={{ fontWeight: '600', color: '#1e293b' }}>{u.name}</div>
                           <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.phone}</div>
                         </td>
                         <td style={tdStyle}>
@@ -267,7 +304,7 @@ const AdminDashboard = () => {
                         </td>
                         <td style={tdStyle}>
                           <button onClick={() => handleUpdateUser(u.id, 'role', u.role==='admin'?'user':'admin')} style={btnSmallStyle(u.role==='admin'?'#ef4444':'#3b82f6')}>
-                            {u.role==='admin'?'Revoke Admin':'Set Admin'}
+                            {u.role==='admin'?'Revoke':'Set Admin'}
                           </button>
                         </td>
                       </tr>
@@ -275,17 +312,6 @@ const AdminDashboard = () => {
                   </tbody>
                 </table>
               </Card>
-            </div>
-          )}
-
-          {/* TAB FINANCE */}
-          {activeTab === 'finance' && (
-            <div className="animate-in fade-in duration-500">
-               <h1 className="heading-2">Statistik Keuangan</h1>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-                  <StatCard label="Total Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
-                  <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
-               </div>
             </div>
           )}
 
@@ -297,12 +323,12 @@ const AdminDashboard = () => {
 
 // --- SUB COMPONENTS ---
 const StatCard = ({ label, val, icon, color }) => (
-  <Card style={{ border: 'none', background: 'white', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+  <Card style={{ border: 'none', background: 'white', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
     <div style={{ height: '4px', background: color }}></div>
     <CardContent style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
         <p style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: '600' }}>{label}</p>
-        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginTop: '0.25rem' }}>{val}</h3>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginTop: '0.25rem' }}>{val || 0}</h3>
       </div>
       <div style={{ color: color, background: `${color}15`, padding: '0.75rem', borderRadius: '12px' }}>{icon}</div>
     </CardContent>
@@ -312,26 +338,26 @@ const StatCard = ({ label, val, icon, color }) => (
 const EditorBox = ({ title, val, onChange, hint, color="white" }) => (
   <Card style={{ background: color, border: '1px solid #e2e8f0' }}>
     <CardHeader style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-      <CardTitle style={{ fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        {title} <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{hint}</span>
+      <CardTitle style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {title} <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'normal' }}>{hint}</span>
       </CardTitle>
     </CardHeader>
     <CardContent style={{ padding: '1rem' }}>
       <textarea 
-        style={{ ...inputStyle, height: '120px', fontSize: '0.85rem', background: 'transparent' }} 
+        style={{ ...inputStyle, height: '140px', fontSize: '0.85rem', background: 'transparent', lineHeight: '1.6' }} 
         value={val} 
         onChange={(e) => onChange(e.target.value)}
-        placeholder={`Ketik pesan ${title}...`}
+        placeholder={`Ketik konten ${title.toLowerCase()}...`}
       />
     </CardContent>
   </Card>
 );
 
 // --- STYLES ---
-const inputStyle = { width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' };
-const selectStyle = { padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem' };
-const btnSmallStyle = (color) => ({ background: color, color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' });
-const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' };
+const inputStyle = { width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', transition: 'border 0.2s' };
+const selectStyle = { padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', width: '100%', maxWidth: '180px' };
+const btnSmallStyle = (color) => ({ background: color, color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' });
+const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', borderBottom: '1px solid #e2e8f0' };
 const tdStyle = { padding: '1rem', fontSize: '0.85rem', color: '#334155' };
 
 export default AdminDashboard;
