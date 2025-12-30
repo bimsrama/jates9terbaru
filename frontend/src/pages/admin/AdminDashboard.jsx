@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,8 +21,9 @@ const AdminDashboard = () => {
   
   // UI States
   const [activeTab, setActiveTab] = useState('overview'); 
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth > 1024);
   const [loading, setLoading] = useState(false);
+  const [btnLoading, setBtnLoading] = useState(false);
 
   // Data States
   const [stats, setStats] = useState({});
@@ -37,13 +38,12 @@ const AdminDashboard = () => {
     fact_content: '', soft_sell_content: '', evaluation_msg: ''
   });
   
-  const [newChallengeCard, setNewChallengeCard] = useState({ title: '', description: '' });
-  const [articleForm, setArticleForm] = useState({ title: '', content: '', image_url: '' });
+  const [newChallengeTitle, setNewChallengeTitle] = useState("");
 
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
-    const handleResize = () => { if(window.innerWidth < 1024) setSidebarOpen(false); };
+    const handleResize = () => setSidebarOpen(window.innerWidth > 1024);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -71,24 +71,40 @@ const AdminDashboard = () => {
     } catch (e) { console.error(e); }
   };
 
-  // --- SAVE CONTENT CHALLENGE PER HARI ---
+  // --- GENERATE CHALLENGE CARD BY AI ---
+  const handleGenerateChallengeAI = async () => {
+    if(!newChallengeTitle) return alert("Masukkan judul tantangan!");
+    setBtnLoading(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, 
+        { title: newChallengeTitle }, 
+        { headers: getAuthHeader() }
+      );
+      alert("AI Berhasil membuat Challenge & Kuis!");
+      setNewChallengeTitle("");
+      fetchChallengeCards();
+    } catch (e) { alert("Gagal generate AI. Cek log server."); }
+    setBtnLoading(false);
+  };
+
+  // --- SAVE CONTENT DAILY ---
   const handleSaveDailyContent = async () => {
+    setBtnLoading(true);
     try {
       await axios.post(`${BACKEND_URL}/api/admin/campaign/store`, 
         { day_sequence: challengeDay, challenge_id: 1, ...challengeForm }, 
         { headers: getAuthHeader() }
       );
       alert(`Berhasil menyimpan konten Hari ke-${challengeDay}`);
-    } catch (e) { alert("Gagal simpan konten harian"); }
+    } catch (e) { alert("Gagal simpan."); }
+    setBtnLoading(false);
   };
 
-  // --- CREATE NEW CHALLENGE CARD ---
-  const handleCreateChallengeCard = async () => {
+  const handleUpdateUser = async (userId, type, value) => {
     try {
-      await axios.post(`${BACKEND_URL}/api/admin/quiz/create-challenge`, newChallengeCard, { headers: getAuthHeader() });
-      alert("Challenge Card Baru Berhasil Dibuat!");
-      fetchChallengeCards();
-    } catch (e) { alert("Gagal membuat card"); }
+      await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, { user_id: userId, [type]: value }, { headers: getAuthHeader() });
+      fetchUsers(); 
+    } catch (e) { alert("Gagal update user"); }
   };
 
   const SidebarItem = ({ id, icon: Icon, label }) => (
@@ -96,189 +112,197 @@ const AdminDashboard = () => {
       onClick={() => { 
         setActiveTab(id); 
         if(id==='users') fetchUsers(); 
-        if(id==='finance') fetchTransactions();
         if(window.innerWidth < 1024) setSidebarOpen(false);
       }}
       style={{
-        display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '1rem',
+        display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.85rem 1rem',
         background: activeTab === id ? 'var(--primary)' : 'transparent', border: 'none',
-        color: activeTab === id ? 'white' : '#64748b', fontWeight: activeTab === id ? 'bold' : 'normal',
-        borderRadius: '8px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
+        color: activeTab === id ? 'white' : '#64748b', fontWeight: activeTab === id ? '600' : '400',
+        borderRadius: '8px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s', marginBottom: '0.25rem'
       }}
     >
-      <Icon size={20} /> {label}
+      <Icon size={18} /> {label}
     </button>
   );
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', position: 'relative' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
       
-      {/* MOBILE OVERLAY */}
-      {!isSidebarOpen && window.innerWidth < 1024 && (
-        <button onClick={() => setSidebarOpen(true)} style={{ position: 'fixed', top: '1rem', left: '1rem', zIndex: 100, background: 'white', p: 2, borderRadius: '50%', border: '1px solid #ddd' }}>
-          <Menu size={24} />
-        </button>
-      )}
-
       {/* SIDEBAR */}
       <aside style={{ 
-        width: isSidebarOpen ? '260px' : '0px', 
-        overflow: 'hidden',
-        background: 'white', 
-        borderRight: '1px solid #e2e8f0', 
-        height: '100vh', 
-        position: 'sticky', 
-        top: 0, 
-        padding: isSidebarOpen ? '1.5rem' : '0px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        transition: 'all 0.3s ease',
-        zIndex: 90
+        width: isSidebarOpen ? '260px' : '0px', transition: 'all 0.3s ease',
+        background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', 
+        position: 'sticky', top: 0, zIndex: 50, display: 'flex', flexDirection: 'column'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-            <LayoutDashboard /> Jates9 Admin
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+            <Bot size={24} /> Admin Area
           </h2>
-          {window.innerWidth < 1024 && <button onClick={() => setSidebarOpen(false)}><X size={20}/></button>}
         </div>
-
-        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
-          <SidebarItem id="challenge_content" icon={Calendar} label="Isi Pesan 30 Hari" />
-          <SidebarItem id="challenge_cards" icon={Award} label="Challenge Cards" />
-          <SidebarItem id="users" icon={Users} label="User Management" />
+          <SidebarItem id="challenge_cards" icon={Award} label="Card Challenge AI" />
+          <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
+          <SidebarItem id="users" icon={Users} label="User & Badge" />
           <SidebarItem id="finance" icon={DollarSign} label="Keuangan" />
           <SidebarItem id="articles" icon={PenTool} label="Artikel" />
         </nav>
-        
-        <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', background: '#fee2e2', border: 'none', padding: '1rem', borderRadius: '8px', cursor: 'pointer', marginTop: 'auto', fontWeight: 'bold' }}>
-          <LogOut size={20} /> Logout
-        </button>
+        <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
       </aside>
 
-      {/* MAIN CONTENT */}
-      <main style={{ flex: 1, padding: window.innerWidth < 768 ? '1rem' : '2.5rem', overflowY: 'auto' }}>
-        
-        {/* TAB OVERVIEW */}
-        {activeTab === 'overview' && (
-          <div className="animate-in fade-in duration-500">
-            <h1 className="heading-2" style={{ marginBottom: '2rem' }}>Statistik Sistem</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-              <StatCard label="Total User" val={stats.total_users} icon={<Users/>} color="#3b82f6" />
-              <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
-              <StatCard label="Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
-            </div>
-          </div>
-        )}
+      {/* MAIN */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {/* TOPBAR MOBILE */}
+        <header style={{ height: '60px', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', px: '1.5rem', justifyContent: 'space-between', padding: '0 1rem' }}>
+          <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', p: 2, borderRadius: '8px' }}><Menu size={20}/></button>
+          <span style={{ fontWeight: '600', color: '#64748b' }}>{activeTab.replace('_', ' ').toUpperCase()}</span>
+        </header>
 
-        {/* TAB ISI PESAN CHALLENGE 30 HARI */}
-        {activeTab === 'challenge_content' && (
-          <div className="animate-in slide-in-from-bottom-4 duration-500">
-            <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Manajemen Pesan 30 Hari</h1>
-            <Card style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label style={{ fontWeight: 'bold' }}>Pilih Hari:</label>
-                <input type="number" min="1" max="30" value={challengeDay} onChange={(e) => setChallengeDay(e.target.value)} style={{ ...inputStyle, width: '80px' }} />
-                <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                  {challengeDay % 5 === 0 ? "⚠️ Hari ini otomatis ada Soft Selling." : ""}
-                  {challengeDay % 7 === 0 ? " ✅ Hari ini ada Evaluasi Mingguan." : ""}
-                </p>
+        <main style={{ flex: 1, padding: window.innerWidth < 768 ? '1.5rem' : '2.5rem' }}>
+          
+          {/* TAB CARD CHALLENGE AI */}
+          {activeTab === 'challenge_cards' && (
+            <div className="animate-in fade-in duration-500">
+              <div style={{ marginBottom: '2rem' }}>
+                <h1 className="heading-2">Challenge Cards AI</h1>
+                <p style={{ color: '#64748b' }}>AI akan membuatkan deskripsi dan kuis otomatis berdasarkan judul anda.</p>
               </div>
-            </Card>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-              <EditorBox title="Pagi (Challenge)" val={challengeForm.challenge_a} onChange={(v) => setChallengeForm({...challengeForm, challenge_a: v})} hint="Kirim jam 07:00" />
-              <EditorBox title="Siang (Fakta/Tips)" val={challengeForm.fact_content} onChange={(v) => setChallengeForm({...challengeForm, fact_content: v})} hint="Setiap Hari - Edukasi" />
-              {challengeDay % 5 === 0 && (
-                <EditorBox title="Soft Selling" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} hint="Muncul per 5 hari" color="#f0fdf4" />
-              )}
-              {challengeDay % 7 === 0 && (
-                <EditorBox title="Evaluasi Mingguan" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} hint="Muncul per 7 hari" color="#eff6ff" />
-              )}
-            </div>
-            
-            <button onClick={handleSaveDailyContent} className="btn-primary" style={{ marginTop: '2rem', width: '100%', padding: '1rem' }}>
-               <Send size={18} style={{marginRight: '8px'}}/> Simpan Konten Hari ke-{challengeDay}
-            </button>
-          </div>
-        )}
-
-        {/* TAB MANAGE CHALLENGE CARDS */}
-        {activeTab === 'challenge_cards' && (
-          <div className="animate-in fade-in duration-500">
-            <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Challenge Cards</h1>
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '2rem' }}>
-              <Card style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Tambah Challenge Baru</h3>
-                <input placeholder="Judul (Contoh: Detoks Liver)" style={{...inputStyle, marginBottom: '1rem'}} value={newChallengeCard.title} onChange={(e) => setNewChallengeCard({...newChallengeCard, title: e.target.value})} />
-                <textarea placeholder="Deskripsi singkat..." style={{...inputStyle, height: '100px', marginBottom: '1rem'}} value={newChallengeCard.description} onChange={(e) => setNewChallengeCard({...newChallengeCard, description: e.target.value})} />
-                <button onClick={handleCreateChallengeCard} className="btn-primary" style={{width: '100%'}}><Plus size={18}/> Tambah ke Database</button>
-              </Card>
-
-              <Card style={{ padding: '1.5rem' }}>
-                <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Challenge Aktif</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {challenges.map(c => (
-                    <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', border: '1px solid #ddd', borderRadius: '8px' }}>
-                      <div>
-                        <div style={{ fontWeight: 'bold' }}>{c.title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.description}</div>
-                      </div>
-                      <Award color="var(--primary)" />
+              <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1.2fr 1fr', gap: '2rem' }}>
+                <Card style={{ padding: '1.5rem', border: '2px dashed #cbd5e1', background: 'white' }}>
+                  <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                    <div style={{ width: '60px', height: '60px', background: '#eff6ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                       <Sparkles color="#3b82f6" />
                     </div>
+                    <h3 style={{ fontWeight: 'bold' }}>Auto-Generate Challenge</h3>
+                  </div>
+                  <input 
+                    placeholder="Contoh: Tantangan Detox Liver 15 Hari" 
+                    style={{ ...inputStyle, marginBottom: '1rem' }} 
+                    value={newChallengeTitle} 
+                    onChange={(e) => setNewChallengeTitle(e.target.value)}
+                  />
+                  <button onClick={handleGenerateChallengeAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', gap: '0.5rem' }}>
+                    {btnLoading ? <Loader2 className="animate-spin" /> : <><Bot size={18}/> Generate via AI</>}
+                  </button>
+                </Card>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ fontWeight: 'bold' }}>Challenge Saat Ini</h3>
+                  {challenges.map(c => (
+                    <Card key={c.id} style={{ padding: '1rem', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{c.title}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>{c.description?.substring(0, 80)}...</div>
+                        </div>
+                        <Award size={20} color="#eab308" />
+                      </div>
+                    </Card>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB BROADCAST CONTENT */}
+          {activeTab === 'challenge_content' && (
+            <div className="animate-in fade-in duration-500">
+              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Broadcast Manager 30 Hari</h1>
+              <Card style={{ padding: '1.5rem', marginBottom: '1.5rem', background: 'white', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Calendar />
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.9rem', display: 'block' }}>Edit Konten Hari Ke-</label>
+                  <input type="number" min="1" max="30" value={challengeDay} onChange={(e) => setChallengeDay(e.target.value)} style={{ ...inputStyle, width: '100px', marginTop: '0.5rem' }} />
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                   {challengeDay % 5 === 0 && <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>HARI PROMO</span>}
+                   {challengeDay % 7 === 0 && <span style={{ background: '#eff6ff', color: '#1e40af', padding: '4px 8px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', marginLeft: '5px' }}>HARI EVALUASI</span>}
+                </div>
+              </Card>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                <EditorBox title="Pesan Challenge (Pagi)" val={challengeForm.challenge_a} onChange={(v) => setChallengeForm({...challengeForm, challenge_a: v})} hint="Jam 07:00" />
+                <EditorBox title="Fakta & Tips (Siang)" val={challengeForm.fact_content} onChange={(v) => setChallengeForm({...challengeForm, fact_content: v})} hint="Edukasi Harian" />
+                {challengeDay % 5 === 0 && (
+                  <EditorBox title="Pesan Soft Selling" val={challengeForm.soft_sell_content} onChange={(v) => setChallengeForm({...challengeForm, soft_sell_content: v})} color="#f0fdf4" hint="Klik Link Produk" />
+                )}
+                {challengeDay % 7 === 0 && (
+                  <EditorBox title="Pesan Evaluasi" val={challengeForm.evaluation_msg} onChange={(v) => setChallengeForm({...challengeForm, evaluation_msg: v})} color="#fff7ed" hint="Review Mingguan" />
+                )}
+              </div>
+
+              <button onClick={handleSaveDailyContent} disabled={btnLoading} className="btn-primary" style={{ marginTop: '2rem', width: '100%', padding: '1rem' }}>
+                {btnLoading ? <Loader2 className="animate-spin" /> : 'Simpan Semua Pesan Hari Ini'}
+              </button>
+            </div>
+          )}
+
+          {/* TAB USER MANAGEMENT */}
+          {activeTab === 'users' && (
+            <div className="animate-in fade-in duration-500">
+              <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>Manajemen User</h1>
+              <Card style={{ overflowX: 'auto', background: 'white' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                      <th style={thStyle}>User</th><th style={thStyle}>Badge</th><th style={thStyle}>Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(u => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={tdStyle}>
+                          <div style={{ fontWeight: '600' }}>{u.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{u.phone}</div>
+                        </td>
+                        <td style={tdStyle}>
+                          <select value={u.badge || "Pejuang Tangguh"} onChange={(e) => handleUpdateUser(u.id, 'badge', e.target.value)} style={selectStyle}>
+                            {GEN_Z_BADGES.map(b => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                        </td>
+                        <td style={tdStyle}>
+                          <button onClick={() => handleUpdateUser(u.id, 'role', u.role==='admin'?'user':'admin')} style={btnSmallStyle(u.role==='admin'?'#ef4444':'#3b82f6')}>
+                            {u.role==='admin'?'Revoke Admin':'Set Admin'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </Card>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ... TAB USER & FINANCE TETAP SAMA NAMUN DIBUNGKUS RESPONSIVE ... */}
-        {activeTab === 'users' && (
-          <div className="animate-in fade-in duration-500">
-            <h1 className="heading-2" style={{ marginBottom: '1.5rem' }}>User Management</h1>
-            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-                <thead style={{ background: '#f8fafc' }}>
-                  <tr>
-                    <th style={thStyle}>Nama</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={tdStyle}>{u.name}<br/><span style={{fontSize:'0.7rem'}}>{u.phone}</span></td>
-                      <td style={tdStyle}>
-                        <select value={u.badge || "Pejuang Tangguh"} onChange={(e) => handleUpdateUser(u.id, 'badge', e.target.value)} style={{p:1, borderRadius:4}}>
-                          {GEN_Z_BADGES.map(b => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                      </td>
-                      <td style={tdStyle}>
-                        <button onClick={() => handleUpdateUser(u.id, 'role', u.role==='admin'?'user':'admin')} style={btnSmallStyle(u.role==='admin'?'#ef4444':'#3b82f6')}>
-                          {u.role==='admin'?'Revoke':'Set Admin'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* TAB FINANCE */}
+          {activeTab === 'finance' && (
+            <div className="animate-in fade-in duration-500">
+               <h1 className="heading-2">Statistik Keuangan</h1>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+                  <StatCard label="Total Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
+                  <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
+               </div>
             </div>
-          </div>
-        )}
+          )}
 
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
 
-// --- SUB-COMPONENTS ---
+// --- SUB COMPONENTS ---
 const StatCard = ({ label, val, icon, color }) => (
-  <Card style={{ border: 'none', background: 'white', overflow: 'hidden' }}>
+  <Card style={{ border: 'none', background: 'white', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
     <div style={{ height: '4px', background: color }}></div>
     <CardContent style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
-        <p style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: '500' }}>{label}</p>
-        <h3 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginTop: '0.25rem' }}>{val}</h3>
+        <p style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: '600' }}>{label}</p>
+        <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginTop: '0.25rem' }}>{val}</h3>
       </div>
       <div style={{ color: color, background: `${color}15`, padding: '0.75rem', borderRadius: '12px' }}>{icon}</div>
     </CardContent>
@@ -286,27 +310,28 @@ const StatCard = ({ label, val, icon, color }) => (
 );
 
 const EditorBox = ({ title, val, onChange, hint, color="white" }) => (
-  <Card style={{ background: color }}>
-    <CardHeader className="pb-2">
-      <CardTitle style={{ fontSize: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+  <Card style={{ background: color, border: '1px solid #e2e8f0' }}>
+    <CardHeader style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+      <CardTitle style={{ fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {title} <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{hint}</span>
       </CardTitle>
     </CardHeader>
-    <CardContent>
+    <CardContent style={{ padding: '1rem' }}>
       <textarea 
-        style={{ ...inputStyle, height: '120px', fontSize: '0.9rem' }} 
+        style={{ ...inputStyle, height: '120px', fontSize: '0.85rem', background: 'transparent' }} 
         value={val} 
         onChange={(e) => onChange(e.target.value)}
-        placeholder={`Tulis pesan ${title.toLowerCase()}...`}
+        placeholder={`Ketik pesan ${title}...`}
       />
     </CardContent>
   </Card>
 );
 
 // --- STYLES ---
-const inputStyle = { width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' };
-const btnSmallStyle = (color) => ({ background: color, color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer' });
-const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase' };
-const tdStyle = { padding: '1rem', fontSize: '0.9rem' };
+const inputStyle = { width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' };
+const selectStyle = { padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem' };
+const btnSmallStyle = (color) => ({ background: color, color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' });
+const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase' };
+const tdStyle = { padding: '1rem', fontSize: '0.85rem', color: '#334155' };
 
 export default AdminDashboard;
