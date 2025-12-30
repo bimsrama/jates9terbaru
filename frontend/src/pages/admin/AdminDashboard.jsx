@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
-  MessageSquare, Download, FileSpreadsheet, Send, Smartphone
+  MessageSquare, Download, FileSpreadsheet, Send, Smartphone,
+  DollarSign // <--- [FIX] SAYA TAMBAHKAN INI AGAR TIDAK EROR
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -34,7 +35,7 @@ const AdminDashboard = () => {
 
   // State WhatsApp Broadcast
   const [broadcastMsg, setBroadcastMsg] = useState("");
-  const [broadcastTarget, setBroadcastTarget] = useState("all"); // 'all' or 'group_a', etc.
+  const [broadcastTarget, setBroadcastTarget] = useState("all"); 
   const [sendingWA, setSendingWA] = useState(false);
 
   // State Artikel
@@ -77,7 +78,6 @@ const AdminDashboard = () => {
     if(!bulkTopic) return alert("Masukkan topik tantangan dulu!");
     setAiLoading(true);
     try {
-      // Request ke Backend untuk generate CSV
       const res = await axios.post(
         `${BACKEND_URL}/api/admin/generate-bulk-plan`,
         { topic: bulkTopic },
@@ -85,7 +85,6 @@ const AdminDashboard = () => {
       );
 
       if (res.data.success) {
-        // Download Logic
         const blob = new Blob([res.data.csv_content], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -145,7 +144,7 @@ const AdminDashboard = () => {
     } catch (e) { alert("Gagal buat artikel"); }
   };
 
-  // --- COMPONENT HELPERS ---
+  // --- SIDEBAR ITEM ---
   const SidebarItem = ({ id, icon: Icon, label }) => (
     <button 
       onClick={() => { setActiveTab(id); if(id==='users') fetchUsers(); if(id==='finance') fetchTransactions(); }}
