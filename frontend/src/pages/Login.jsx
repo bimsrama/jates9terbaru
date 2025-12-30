@@ -3,14 +3,14 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Leaf, User, X, LogIn } from 'lucide-react';
+import { Leaf, User, X, Loader2 } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   
   // --- STATE ---
-  const [savedUser, setSavedUser] = useState(null); // Data user yang tersimpan
+  const [savedUser, setSavedUser] = useState(null); // Data user untuk fitur 'Remember Me'
   const [formData, setFormData] = useState({
     phone_number: '',
     password: ''
@@ -18,14 +18,18 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // --- 1. CEK LOCAL STORAGE SAAT LOAD ---
+  // --- 1. CEK LOCAL STORAGE SAAT LOAD (FITUR INGAT SAYA) ---
   useEffect(() => {
     const storedUser = localStorage.getItem('last_user_info');
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setSavedUser(parsedUser);
-      // Isi otomatis nomor HP ke state
-      setFormData(prev => ({ ...prev, phone_number: parsedUser.phone }));
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setSavedUser(parsedUser);
+        // Otomatis isi nomor HP di background
+        setFormData(prev => ({ ...prev, phone_number: parsedUser.phone }));
+      } catch (e) {
+        localStorage.removeItem('last_user_info');
+      }
     }
   }, []);
 
@@ -35,34 +39,43 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.phone_number, formData.password);
-    
-    if (result.success) {
-      // SIMPAN INFO USER KE LOCAL STORAGE (Tanpa Password)
-      const userInfoToSave = {
-        name: result.user.name, // Pastikan API login mengembalikan object user
-        phone: formData.phone_number
-      };
-      localStorage.setItem('last_user_info', JSON.stringify(userInfoToSave));
+    try {
+      const result = await login(formData.phone_number, formData.password);
+      
+      if (result.success) {
+        // [FIX PENTING] Gunakan optional chaining (?.) agar tidak error jika data user belum lengkap
+        // Ambil nama dari berbagai kemungkinan struktur response
+        const userName = result.user?.name || result.data?.user?.name || "Pengguna";
+        
+        // SIMPAN INFO USER KE LOCAL STORAGE (Tanpa Password)
+        const userInfoToSave = {
+          name: userName, 
+          phone: formData.phone_number
+        };
+        localStorage.setItem('last_user_info', JSON.stringify(userInfoToSave));
 
-      // Redirect
-      if (result.role === 'admin' || result.role === 'super_admin') {
-        navigate('/admin/dashboard');
+        // Redirect sesuai Role
+        if (result.role === 'admin' || result.role === 'super_admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
-        navigate('/dashboard');
+        setError(result.error || "Login gagal. Cek nomor atau password.");
       }
-    } else {
-      setError(result.error || "Login gagal. Cek nomor atau password.");
+    } catch (err) {
+      console.error("Login Error:", err);
+      setError("Terjadi kesalahan koneksi.");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   // --- 3. HANDLE GANTI AKUN ---
   const handleSwitchAccount = () => {
-    setSavedUser(null);
-    setFormData({ phone_number: '', password: '' });
-    localStorage.removeItem('last_user_info'); // Opsional: Hapus atau biarkan tertimpa nanti
+    setSavedUser(null); // Hapus tampilan profil tersimpan
+    setFormData({ phone_number: '', password: '' }); // Reset form
+    localStorage.removeItem('last_user_info'); // Hapus data dari memori browser
   };
 
   return (
@@ -86,14 +99,17 @@ const Login = () => {
 
         <CardContent>
           
-          {/* TAMPILAN JIKA USER TERSIMPAN (QUICK LOGIN) */}
+          {/* === LOGIKA TAMPILAN === */}
+          {/* Jika ada user tersimpan, tampilkan Login Cepat. Jika tidak, tampilkan Login Biasa. */}
+          
           {savedUser ? (
+            // --- TAMPILAN LOGIN CEPAT (Hanya Password) ---
             <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
               <div style={{ 
                 background: '#f1f5f9', padding: '1.5rem', borderRadius: '12px', 
                 marginBottom: '1.5rem', position: 'relative', border: '1px solid #e2e8f0' 
               }}>
-                {/* Tombol X Kecil untuk Ganti Akun Cepat */}
+                {/* Tombol Ganti Akun (X) */}
                 <button 
                   onClick={handleSwitchAccount}
                   style={{ position: 'absolute', top: '10px', right: '10px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
@@ -117,7 +133,7 @@ const Login = () => {
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Masukkan Password"
+                    placeholder="Masukkan Password Anda"
                     required
                     style={{
                       width: '100%', padding: '0.75rem', borderRadius: '8px',
@@ -127,7 +143,7 @@ const Login = () => {
                 </div>
 
                 <Button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%' }}>
-                  {loading ? 'Memproses...' : 'Masuk Sekarang'}
+                  {loading ? <><Loader2 className="animate-spin" size={18} style={{marginRight:'8px'}}/> Memproses...</> : 'Masuk Kembali'}
                 </Button>
               </form>
 
@@ -141,7 +157,7 @@ const Login = () => {
               </div>
             </div>
           ) : (
-            // TAMPILAN LOGIN BIASA (MANUAL)
+            // --- TAMPILAN LOGIN BIASA (Nomor HP + Password) ---
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {error && (
                 <div style={{ background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', padding: '0.75rem', borderRadius: '8px', color: '#dc2626', fontSize: '0.875rem' }}>
@@ -180,7 +196,7 @@ const Login = () => {
               </div>
 
               <Button type="submit" className="btn-primary" disabled={loading} style={{ width: '100%', marginTop: '0.5rem' }}>
-                {loading ? 'Memproses...' : 'Masuk'}
+                {loading ? <><Loader2 className="animate-spin" size={18} style={{marginRight:'8px'}}/> Memproses...</> : 'Masuk'}
               </Button>
 
               <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
