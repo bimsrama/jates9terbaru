@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, ArrowRightCircle, Bell, Lightbulb, Download, Star, Bot 
+  User, Award, Bell, Lightbulb, Download, Bot, Medal 
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -26,15 +26,13 @@ const UserDashboard = () => {
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
-  // Chat history awal kosong, nanti diisi setelah load daily tip
   const [chatHistory, setChatHistory] = useState([]); 
   const [chatLoading, setChatLoading] = useState(false);
   
-  // Refs untuk Auto Scroll
   const chatEndRef = useRef(null);
-  const chatSectionRef = useRef(null); // Ref untuk scroll ke bagian chat
+  const chatSectionRef = useRef(null);
 
-  // --- 1. INITIAL LOAD ---
+  // --- INITIAL LOAD ---
   useEffect(() => {
     const isTutorialHidden = localStorage.getItem('hide_tutorial');
     if (isTutorialHidden) setShowTutorial(false);
@@ -51,7 +49,6 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Auto scroll chat ke bawah setiap ada pesan baru
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
@@ -61,10 +58,9 @@ const UserDashboard = () => {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
       
-      // Generate Tip & Set Initial Chat
       const tip = generateDailyTip(overviewRes.data.user?.group || 'Sehat');
       setChatHistory([
-        { role: "system_tip", content: tip }, // Pesan khusus tipe 'tip'
+        { role: "system_tip", content: tip },
         { role: "assistant", content: "Halo! Saya Dokter AI Jates9. Ada yang bisa saya bantu terkait kesehatan Anda hari ini?" }
       ]);
 
@@ -97,7 +93,7 @@ const UserDashboard = () => {
   };
 
   const handleScrollToChat = () => {
-    setSidebarOpen(false); // Tutup sidebar mobile jika terbuka
+    setSidebarOpen(false); 
     chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
@@ -152,7 +148,7 @@ const UserDashboard = () => {
         <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>
       )}
 
-      {/* --- SIDEBAR --- */}
+      {/* --- SIDEBAR (DESKTOP & MOBILE MENU) --- */}
       <aside style={{
         width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh',
         position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50,
@@ -168,31 +164,32 @@ const UserDashboard = () => {
             <li><button className="nav-item active" style={navItemStyle(true)}><Home size={20} /> Dashboard</button></li>
             <li><button className="nav-item" style={navItemStyle(false)} onClick={() => window.location.href='/dashboard/checkin'}><Activity size={20} /> Check-in Harian</button></li>
             <li><button className="nav-item" style={navItemStyle(false)} onClick={() => window.location.href='/dashboard/health-report'}><FileText size={20} /> Rapor Kesehatan</button></li>
-            {/* TOMBOL CHAT DI MENU: Scroll ke Widget Chat */}
-            <li>
-              <button className="nav-item" style={navItemStyle(false)} onClick={handleScrollToChat}>
-                <MessageCircle size={20} /> Dokter AI
-              </button>
-            </li>
+            <li><button className="nav-item" style={navItemStyle(false)} onClick={handleScrollToChat}><MessageCircle size={20} /> Dokter AI</button></li>
             <li><button className="nav-item" style={navItemStyle(false)}><Settings size={20} /> Pengaturan</button></li>
           </ul>
         </nav>
+        {/* LOGOUT DI SIDEBAR (UTAMA UNTUK DESKTOP) */}
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}>
-          <button onClick={logout} style={{ ...navItemStyle(false), color: '#ef4444' }}><LogOut size={20} /> Keluar</button>
+          <button onClick={logout} style={{ ...navItemStyle(false), color: '#ef4444', justifyContent: 'flex-start' }}>
+            <LogOut size={20} /> Keluar
+          </button>
         </div>
       </aside>
 
       {/* --- CONTENT AREA --- */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         
-        {/* MOBILE HEADER */}
+        {/* MOBILE HEADER (WITH LOGOUT BUTTON) */}
         {!isDesktop && (
-          <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+          <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button>
                 <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>JATES9</span>
             </div>
-            <button style={{ background: 'none', border: 'none', color: '#64748b' }}><Bell size={24} /></button>
+            {/* LOGOUT BUTTON DI HEADER MOBILE */}
+            <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}>
+              <LogOut size={18} /> Keluar
+            </button>
           </header>
         )}
 
@@ -206,55 +203,60 @@ const UserDashboard = () => {
             </p>
           </div>
 
-          {/* --- [BARU] SERTIFIKAT KELULUSAN --- */}
+          {/* --- SERTIFIKAT KELULUSAN --- */}
           {certStatus.eligible && (
             <Card style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)', border: 'none', marginBottom: '2rem', color: '#7c2d12' }}>
               <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ background: 'white', padding: '0.8rem', borderRadius: '50%' }}>
-                    <Award size={32} color="#FDB931" />
-                  </div>
+                  <div style={{ background: 'white', padding: '0.8rem', borderRadius: '50%' }}><Award size={32} color="#FDB931" /></div>
                   <div>
                     <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Selamat! Anda Lulus Tantangan {certStatus.days} Hari</h3>
                     <p style={{ fontSize: '0.9rem' }}>Konsistensi Anda luar biasa. Klaim sertifikat {certStatus.type} Anda sekarang.</p>
                   </div>
                 </div>
-                <button 
-                  onClick={handleDownloadCert}
-                  style={{ background: 'white', color: '#7c2d12', padding: '0.75rem 1.5rem', borderRadius: '25px', fontWeight: 'bold', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}
-                >
+                <button onClick={handleDownloadCert} style={{ background: 'white', color: '#7c2d12', padding: '0.75rem 1.5rem', borderRadius: '25px', fontWeight: 'bold', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                   <Download size={18} /> Download Sertifikat
                 </button>
               </CardContent>
             </Card>
           )}
 
-          {/* --- GRID 1: PROFILE (KIRI) & CHAT WIDGET (KANAN) --- */}
-          {/* Ubah layout agar chat ada di dashboard langsung */}
+          {/* --- GRID PROFILE & CHAT --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
             
-            {/* KOLOM KIRI: Profil & Stats Ringkas */}
+            {/* KOLOM KIRI: Profil & Stats */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
                 <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                     <User size={35} style={{ color: 'var(--primary)' }} />
                   </div>
                   <div>
                     <h2 className="heading-2" style={{ marginBottom: '0.25rem' }}>{overview?.user?.name}</h2>
+                    
+                    {/* BADGE DAN INFO USER */}
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {/* Badge Gelar */}
+                      <span style={{ 
+                        background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', 
+                        padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
+                        display: 'flex', alignItems: 'center', gap: '0.3rem' 
+                      }}>
+                        <Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}
+                      </span>
+
                       <span style={{ background: '#dcfce7', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#166534' }}>
                         Tipe {overview?.user?.group || '-'}
                       </span>
-                      <span style={{ background: 'rgba(255,255,255,0.6)', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', color: '#1e293b' }}>
-                        Kode: {overview?.user?.referral_code}
-                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.5rem', fontWeight: '600' }}>
+                      Kode Referral: <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: '4px' }}>{overview?.user?.referral_code}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Stats Card (Pindah kesini agar layout seimbang) */}
+              {/* Stats Card */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}>
                    <div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div>
@@ -274,69 +276,32 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            {/* KOLOM KANAN: DOKTER AI CHAT (EMBEDDED) */}
+            {/* KOLOM KANAN: DOKTER AI */}
             <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-              {/* Header Chat */}
               <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}>
-                <div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Bot size={24} color="#16a34a" />
-                </div>
+                <div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div>
                 <div>
                   <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online
-                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p>
                 </div>
               </div>
-
-              {/* Area Chat */}
               <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {chatHistory.map((msg, idx) => {
-                  if (msg.role === 'system_tip') {
-                    // Tampilan Khusus untuk Daily Tip (Pinned Message)
-                    return (
-                      <div key={idx} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' }}>
-                        <Lightbulb size={20} style={{ flexShrink: 0 }} />
-                        <div>{msg.content}</div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div key={idx} style={{ 
-                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9',
-                      color: msg.role === 'user' ? 'white' : '#334155',
-                      padding: '0.75rem 1rem', borderRadius: '16px', 
-                      borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px',
-                      borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px',
-                      maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5'
-                    }}>
-                      {msg.content}
-                    </div>
-                  );
-                })}
+                {chatHistory.map((msg, idx) => (
+                  <div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9', color: msg.role === 'user' ? 'white' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                    {msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}
+                  </div>
+                ))}
                 {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
                 <div ref={chatEndRef}></div>
               </div>
-
-              {/* Input Chat */}
               <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}>
-                <input 
-                  type="text" 
-                  value={chatMessage} 
-                  onChange={(e) => setChatMessage(e.target.value)} 
-                  placeholder="Tanya keluhan kesehatan..." 
-                  style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }}
-                />
-                <button type="submit" disabled={chatLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}>
-                  <Send size={20} />
-                </button>
+                <input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} />
+                <button type="submit" disabled={chatLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button>
               </form>
             </Card>
-
           </div>
 
-          {/* --- 2. TUTORIAL (BISA DICLOSE) --- */}
+          {/* --- TUTORIAL --- */}
           {showTutorial && (
             <div style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -366,7 +331,7 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* --- 4. REKOMENDASI CHALLENGE & ARTIKEL --- */}
+          {/* --- CHALLENGE & ARTIKEL --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.5fr 1fr' : '1fr', gap: '2rem' }}>
             <div>
               <h3 className="heading-3" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Award size={20} /> Tantangan Lainnya</h3>
