@@ -24,8 +24,12 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   
+  // --- STATE DAILY CONTENT (DYNAMIC FROM BACKEND) ---
+  const [dailyData, setDailyData] = useState(null);
+  const [journal, setJournal] = useState("");
+  const [checkedTasks, setCheckedTasks] = useState({});
+
   // --- STATE UI & NAVIGATION ---
-  // 'dashboard' | 'checkin' | 'report' | 'friends' | 'shop' | 'settings'
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
@@ -65,6 +69,12 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Fetch Daily Content saat tab Checkin aktif
+  useEffect(() => {
+      if (activeTab === 'checkin') fetchDailyContent();
+      if (activeTab === 'friends') fetchFriendsList();
+  }, [activeTab]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
@@ -90,16 +100,19 @@ const UserDashboard = () => {
     }
   };
 
+  const fetchDailyContent = async () => {
+      try {
+          const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() });
+          setDailyData(res.data);
+      } catch (err) { console.error("Gagal load konten harian"); }
+  };
+
   const fetchFriendsList = async () => {
     try {
         const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() });
         setMyFriends(res.data.friends);
     } catch (err) { console.error("Gagal load teman"); }
   };
-
-  useEffect(() => {
-      if (activeTab === 'friends') fetchFriendsList();
-  }, [activeTab]);
 
   const generateDailyTip = (group) => {
     const tips = {
@@ -167,6 +180,20 @@ const UserDashboard = () => {
       }
   };
 
+  // --- SUBMIT CHECKIN ---
+  const handleSubmitCheckin = async () => {
+      const allChecked = dailyData?.tasks?.every((_, idx) => checkedTasks[idx]);
+      if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
+      
+      try {
+          await axios.post(`${BACKEND_URL}/api/checkin`, { journal }, { headers: getAuthHeader() });
+          alert("Check-in Berhasil! Hari Anda bertambah.");
+          fetchData(); // Refresh data
+          setActiveTab('dashboard');
+      } catch (err) { alert("Gagal check-in."); }
+  };
+
+  // --- FRIEND SEARCH LOGIC ---
   const handleSearchFriend = async () => {
     if(!friendCode.trim()) return alert("Masukkan kode teman!");
     setSearchLoading(true); setFriendData(null);
@@ -199,7 +226,6 @@ const UserDashboard = () => {
     }
   };
 
-  // --- SUB-PAGES DATA MOCKUP ---
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
   const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
   const challengeDay = overview?.user?.challenge_day || 1;
@@ -211,7 +237,6 @@ const UserDashboard = () => {
       
       {!isDesktop && isSidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>}
 
-      {/* SIDEBAR */}
       <aside style={{ width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
@@ -233,7 +258,6 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* CONTENT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -244,9 +268,7 @@ const UserDashboard = () => {
 
         <main style={{ padding: '2rem', flex: 1 }}>
           
-          {/* ======================= */}
-          {/* 1. DASHBOARD VIEW       */}
-          {/* ======================= */}
+          {/* 1. DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem' }}>
@@ -265,7 +287,7 @@ const UserDashboard = () => {
                       </div>
                     </CardContent>
                   </Card>
-                  {/* ...STATS CARDS... */}
+                  
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
@@ -273,7 +295,6 @@ const UserDashboard = () => {
                   </div>
                 </div>
                 
-                {/* DOKTER AI */}
                 <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
                   <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -285,7 +306,6 @@ const UserDashboard = () => {
                 </Card>
               </div>
 
-              {/* CHALLENGE PROGRESS & REFERRAL */}
               <div style={{marginBottom:'2rem'}}>
                 <Card style={{ background: isPaused ? '#fffbeb' : 'white', border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
@@ -324,7 +344,6 @@ const UserDashboard = () => {
                 </Card>
               </div>
 
-              {/* REFERRAL & FRIEND QR */}
               <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1rem' }}>
                 <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
@@ -346,9 +365,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* ======================= */}
-          {/* 2. CHECK-IN PAGE        */}
-          {/* ======================= */}
+          {/* 2. CHECK-IN PAGE */}
           {activeTab === 'checkin' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -358,23 +375,45 @@ const UserDashboard = () => {
                <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto' }}>
                   <CardHeader><CardTitle className="heading-3">Jurnal Hari ke-{challengeDay}</CardTitle></CardHeader>
                   <CardContent style={{ padding: '1.5rem' }}>
-                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-                        <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Activity size={18} className="text-green-600"/> Tantangan Anda:</h4>
-                        <p style={{ color: '#475569' }}>{currentChallenge.title} - Tipe {overview?.user?.group || 'Umum'}</p>
-                     </div>
+                     
+                     {/* BROADCAST MESSAGE */}
+                     {dailyData && (
+                         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
+                            <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e40af' }}>
+                                <Lightbulb size={18} className="text-blue-600"/> Pesan Hari Ini:
+                            </h4>
+                            <p style={{ color: '#475569', fontSize: '0.95rem' }}>{dailyData.message}</p>
+                         </div>
+                     )}
                      
                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer' }}>
-                           <input type="checkbox" style={{ width: '20px', height: '20px' }} />
-                           <span style={{ fontWeight: '600' }}>Sudah minum Jates9 (Pagi)?</span>
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer' }}>
-                           <input type="checkbox" style={{ width: '20px', height: '20px' }} />
-                           <span style={{ fontWeight: '600' }}>Sudah minum Jates9 (Malam)?</span>
-                        </label>
-                        <textarea placeholder="Ada keluhan hari ini? (Opsional)" style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '100px', outline: 'none' }}></textarea>
+                        {/* DYNAMIC TASKS FROM BACKEND */}
+                        {dailyData?.tasks?.length > 0 ? (
+                            dailyData.tasks.map((task, idx) => (
+                                <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', background: checkedTasks[idx] ? '#f0fdf4' : 'white' }}>
+                                   <input 
+                                      type="checkbox" 
+                                      checked={!!checkedTasks[idx]}
+                                      onChange={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
+                                      style={{ width: '20px', height: '20px' }} 
+                                   />
+                                   <span style={{ fontWeight: '600', color: checkedTasks[idx] ? '#166534' : '#334155' }}>{task}</span>
+                                </label>
+                            ))
+                        ) : (
+                            <div className="text-center text-gray-500">Memuat tugas harian...</div>
+                        )}
+
+                        <textarea 
+                            value={journal}
+                            onChange={(e) => setJournal(e.target.value)}
+                            placeholder="Catatan tambahan / keluhan hari ini..." 
+                            style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '100px', outline: 'none', marginTop: '1rem' }}
+                        ></textarea>
                         
-                        <button onClick={() => alert("Check-in Berhasil! Data tersimpan.")} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', marginTop: '1rem', cursor: 'pointer' }}>Simpan Check-in</button>
+                        <button onClick={handleSubmitCheckin} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', marginTop: '1rem', cursor: 'pointer' }}>
+                            Simpan & Selesai
+                        </button>
                      </div>
 
                      {/* UNLOCK EVALUASI */}
@@ -398,9 +437,7 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* ======================= */}
-          {/* 3. HEALTH REPORT PAGE   */}
-          {/* ======================= */}
+          {/* 3. HEALTH REPORT PAGE */}
           {activeTab === 'report' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -452,9 +489,7 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* ======================= */}
           {/* 4. SHOP & PRODUCTS PAGE */}
-          {/* ======================= */}
           {activeTab === 'shop' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -493,9 +528,7 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* ======================= */}
-          {/* 5. SETTINGS PAGE        */}
-          {/* ======================= */}
+          {/* 5. SETTINGS PAGE */}
           {activeTab === 'settings' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -523,9 +556,7 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {/* ======================= */}
-          {/* 6. FRIENDS LIST PAGE    */}
-          {/* ======================= */}
+          {/* 6. FRIENDS LIST PAGE */}
           {activeTab === 'friends' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -588,6 +619,15 @@ const UserDashboard = () => {
                     <input type="text" placeholder="Masukkan Kode Teman" value={friendCode} onChange={(e) => setFriendCode(e.target.value.toUpperCase())} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }} />
                     <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
                  </div>
+                 {friendData && (
+                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s', ':hover': {transform: 'scale(1.02)'} }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                          <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div>
+                          <div><div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div><div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div></div>
+                       </div>
+                       <div style={{ fontSize: '0.85rem', color: '#4b5563', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Klik untuk lihat profil</span><ChevronRight size={16} /></div>
+                    </div>
+                 )}
               </div>
               <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155', width: '100%' }}>Tutup</button>
            </div>
