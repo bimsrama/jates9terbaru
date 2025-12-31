@@ -5,11 +5,11 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
   User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
-  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, Camera, CameraOff
+  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, Camera, CameraOff, Heart
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
-import { QrReader } from 'react-qr-reader'; // Library Baru
+import { QrReader } from 'react-qr-reader'; // Library Baru yang Stabil
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -205,7 +205,7 @@ const UserDashboard = () => {
       }
   };
 
-  // --- SCANNER LOGIC (FIXED with react-qr-reader) ---
+  // --- SCANNER LOGIC (FIXED: React QR Reader) ---
   const handleScan = (result, error) => {
     if (!!result) {
         const rawText = result?.text;
@@ -221,7 +221,7 @@ const UserDashboard = () => {
         }
     }
     if (!!error) {
-        // console.info(error); // Bisa di-uncomment untuk debug
+        // console.info(error); 
     }
   };
 
@@ -268,6 +268,7 @@ const UserDashboard = () => {
 
         <main style={{ padding: '2rem', flex: 1 }}>
           
+          {/* --- DASHBOARD TAB --- */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem' }}>
@@ -275,7 +276,7 @@ const UserDashboard = () => {
                 <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
               </div>
 
-              {/* PROFILE & CHAT */}
+              {/* SECTION 1: PROFILE & CHAT */}
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
@@ -306,7 +307,7 @@ const UserDashboard = () => {
                 </Card>
               </div>
 
-              {/* CHALLENGE PROGRESS */}
+              {/* CHALLENGE PROGRESS (BAWAH) */}
               <Card style={{ background: isPaused ? '#fffbeb' : 'white', border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
                 <CardContent style={{ padding: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -400,6 +401,7 @@ const UserDashboard = () => {
                </div>
                
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  {/* CARD TAMBAH TEMAN */}
                   <Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}>
                       <div style={{ textAlign: 'center', color: '#166534' }}>
                           <div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div>
@@ -407,6 +409,7 @@ const UserDashboard = () => {
                       </div>
                   </Card>
 
+                  {/* LIST TEMAN */}
                   {myFriends.map((friend, idx) => (
                       <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}>
                           <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -504,7 +507,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* --- MODAL FRIEND PROFILE (NEW) --- */}
+      {/* --- MODAL FRIEND PROFILE --- */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
