@@ -180,7 +180,7 @@ const UserDashboard = () => {
       }
   };
 
-  // --- SUBMIT CHECKIN ---
+  // --- SUBMIT CHECKIN (FIXED) ---
   const handleSubmitCheckin = async () => {
       const allChecked = dailyData?.tasks?.every((_, idx) => checkedTasks[idx]);
       if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
@@ -211,6 +211,13 @@ const UserDashboard = () => {
           setFriendData(res.data.friend); setShowFriendProfile(true); 
       } catch (err) { alert("Gagal memuat profil teman."); } 
       finally { setSearchLoading(false); }
+  };
+
+  const handleOpenFriendProfile = () => {
+      if(friendData) {
+          setShowQRModal(false);
+          setShowFriendProfile(true);
+      }
   };
 
   const handleScan = (result, error) => {
@@ -365,7 +372,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE */}
+          {/* 2. CHECK-IN PAGE (FIXED) */}
           {activeTab === 'checkin' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -373,62 +380,106 @@ const UserDashboard = () => {
                   <h1 className="heading-2">Check-in Harian</h1>
                </div>
                <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto' }}>
-                  <CardHeader><CardTitle className="heading-3">Jurnal Hari ke-{challengeDay}</CardTitle></CardHeader>
+                  <CardHeader>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                          <CardTitle className="heading-3">Jurnal Hari ke-{challengeDay}</CardTitle>
+                          <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold' }}>Tipe {overview?.user?.group || 'Umum'}</span>
+                      </div>
+                  </CardHeader>
                   <CardContent style={{ padding: '1.5rem' }}>
                      
                      {/* BROADCAST MESSAGE */}
                      {dailyData && (
-                         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem' }}>
-                            <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e40af' }}>
-                                <Lightbulb size={18} className="text-blue-600"/> Pesan Hari Ini:
+                         <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
+                            <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
+                                <Lightbulb size={20} /> Misi Hari Ini:
                             </h4>
-                            <p style={{ color: '#475569', fontSize: '0.95rem' }}>{dailyData.message}</p>
+                            <p style={{ color: '#334155', fontSize: '1rem', lineHeight: '1.5' }}>{dailyData.message}</p>
                          </div>
                      )}
                      
                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <h4 style={{ fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>Daftar Tugas (Centang jika sudah):</h4>
+                        
                         {/* DYNAMIC TASKS FROM BACKEND */}
                         {dailyData?.tasks?.length > 0 ? (
                             dailyData.tasks.map((task, idx) => (
-                                <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', cursor: 'pointer', background: checkedTasks[idx] ? '#f0fdf4' : 'white' }}>
-                                   <input 
-                                      type="checkbox" 
-                                      checked={!!checkedTasks[idx]}
-                                      onChange={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
-                                      style={{ width: '20px', height: '20px' }} 
-                                   />
-                                   <span style={{ fontWeight: '600', color: checkedTasks[idx] ? '#166534' : '#334155' }}>{task}</span>
-                                </label>
+                                <div key={idx} 
+                                     onClick={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
+                                     style={{ 
+                                         display: 'flex', 
+                                         alignItems: 'center', 
+                                         gap: '1rem', 
+                                         padding: '1rem', 
+                                         border: checkedTasks[idx] ? '2px solid #22c55e' : '1px solid #e2e8f0', 
+                                         borderRadius: '12px', 
+                                         cursor: 'pointer', 
+                                         background: checkedTasks[idx] ? '#f0fdf4' : 'white',
+                                         transition: 'all 0.2s'
+                                     }}>
+                                   <div style={{ 
+                                       width: '24px', 
+                                       height: '24px', 
+                                       borderRadius: '50%', 
+                                       border: checkedTasks[idx] ? 'none' : '2px solid #cbd5e1', 
+                                       background: checkedTasks[idx] ? '#22c55e' : 'transparent',
+                                       display: 'flex', 
+                                       alignItems: 'center', 
+                                       justifyContent: 'center',
+                                       flexShrink: 0
+                                   }}>
+                                       {checkedTasks[idx] && <CheckCircle size={16} color="white" />}
+                                   </div>
+                                   <span style={{ fontWeight: '600', fontSize: '1rem', color: checkedTasks[idx] ? '#15803d' : '#334155', textDecoration: checkedTasks[idx] ? 'line-through' : 'none' }}>{task}</span>
+                                </div>
                             ))
                         ) : (
-                            <div className="text-center text-gray-500">Memuat tugas harian...</div>
+                            <div className="text-center text-gray-500 py-4">Memuat tugas harian...</div>
                         )}
 
-                        <textarea 
-                            value={journal}
-                            onChange={(e) => setJournal(e.target.value)}
-                            placeholder="Catatan tambahan / keluhan hari ini..." 
-                            style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '100px', outline: 'none', marginTop: '1rem' }}
-                        ></textarea>
+                        <div style={{marginTop: '1rem'}}>
+                            <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Catatan / Keluhan (Opsional):</label>
+                            <textarea 
+                                value={journal}
+                                onChange={(e) => setJournal(e.target.value)}
+                                placeholder="Contoh: Hari ini perut terasa lebih enak..." 
+                                style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '100px', outline: 'none', fontSize: '0.95rem' }}
+                            ></textarea>
+                        </div>
                         
-                        <button onClick={handleSubmitCheckin} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', marginTop: '1rem', cursor: 'pointer' }}>
-                            Simpan & Selesai
+                        <button 
+                            onClick={handleSubmitCheckin} 
+                            disabled={!dailyData?.tasks?.every((_, i) => checkedTasks[i])}
+                            style={{ 
+                                background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'var(--primary)' : '#cbd5e1', 
+                                color: 'white', 
+                                border: 'none', 
+                                padding: '1rem', 
+                                borderRadius: '12px', 
+                                fontWeight: 'bold', 
+                                fontSize: '1.1rem', 
+                                marginTop: '1rem', 
+                                cursor: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'pointer' : 'not-allowed',
+                                transition: 'background 0.3s'
+                            }}>
+                            {dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? "Simpan & Selesai ✅" : "Selesaikan Semua Tugas Dulu"}
                         </button>
                      </div>
 
                      {/* UNLOCK EVALUASI */}
-                     <div style={{ marginTop: '2rem', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
+                     <div style={{ marginTop: '2.5rem', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
                         {challengeDay >= 5 ? (
-                           <div style={{ background: '#ecfdf5', color: '#166534', padding: '1rem', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                              <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>🎉 Evaluasi Terbuka!</h4>
-                              <p style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>Anda sudah mencapai hari ke-5. Saatnya evaluasi perkembangan.</p>
-                              <button onClick={() => setActiveTab('report')} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Isi Evaluasi</button>
+                           <div style={{ background: '#fffbeb', color: '#b45309', padding: '1.5rem', borderRadius: '12px', border: '1px solid #fcd34d' }}>
+                              <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '1.1rem' }}>🎉 Evaluasi Terbuka!</h4>
+                              <p style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>Anda sudah mencapai target 5 hari pertama. Yuk isi evaluasi untuk melihat progress.</p>
+                              <button onClick={() => setActiveTab('report')} style={{ background: '#d97706', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}>Isi Evaluasi Sekarang</button>
                            </div>
                         ) : (
-                           <div style={{ color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                              <Lock size={24}/>
-                              <p>Evaluasi kesehatan akan terbuka di <strong>Hari ke-5</strong></p>
-                              <div style={{ width: '100%', maxWidth: '200px', height: '6px', background: '#e2e8f0', borderRadius: '3px' }}><div style={{ width: `${(challengeDay/5)*100}%`, height: '100%', background: '#94a3b8', borderRadius: '3px' }}></div></div>
+                           <div style={{ color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
+                              <div style={{background:'#f1f5f9', padding:'1rem', borderRadius:'50%'}}><Lock size={28}/></div>
+                              <p style={{fontSize:'0.9rem'}}>Evaluasi kesehatan akan terbuka di <strong>Hari ke-5</strong></p>
+                              <div style={{ width: '100%', maxWidth: '250px', height: '8px', background: '#e2e8f0', borderRadius: '4px' }}><div style={{ width: `${(challengeDay/5)*100}%`, height: '100%', background: '#94a3b8', borderRadius: '4px', transition:'width 0.5s' }}></div></div>
+                              <span style={{fontSize:'0.8rem'}}>{challengeDay} / 5 Hari</span>
                            </div>
                         )}
                      </div>
