@@ -4,7 +4,8 @@ import { Card, CardContent } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight, QrCode, PlayCircle
+  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
+  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, CheckSquare
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -25,10 +26,16 @@ const UserDashboard = () => {
   const [showTutorial, setShowTutorial] = useState(true);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [showMenuId, setShowMenuId] = useState(null);
-  const [showQRModal, setShowQRModal] = useState(false);
   
+  // --- STATE FRIEND & QR & PROFILE ---
+  const [showQRModal, setShowQRModal] = useState(false); 
+  const [friendCode, setFriendCode] = useState(""); 
+  const [friendData, setFriendData] = useState(null); 
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showFriendProfile, setShowFriendProfile] = useState(false); // NEW STATE FOR FRIEND PROFILE
+
   // --- STATE LOGIC CHALLENGE ---
-  const [isPaused, setIsPaused] = useState(false); // State untuk status Pause
+  const [isPaused, setIsPaused] = useState(false); 
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
@@ -130,25 +137,40 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- PAUSE & RESUME LOGIC ---
   const handlePauseChallenge = () => {
-      if(window.confirm("Jeda tantangan sementara? Anda bisa melanjutkannya kapan saja.")) {
-          setIsPaused(true);
-          setShowMenuId(null);
+      if(window.confirm("Jeda tantangan sementara?")) {
+          setIsPaused(true); setShowMenuId(null);
+      }
+  };
+  const handleResumeChallenge = () => {
+      setIsPaused(false); setShowMenuId(null); alert("Selamat datang kembali!");
+  };
+  const handleStopChallenge = () => {
+      if(window.confirm("Yakin ingin berhenti? Progress hilang.")) {
+          alert("Tantangan dihentikan."); setShowMenuId(null);
       }
   };
 
-  const handleResumeChallenge = () => {
-      setIsPaused(false);
-      setShowMenuId(null);
-      alert("Selamat datang kembali! Mari lanjutkan tantangan.");
+  // --- FRIEND SEARCH LOGIC ---
+  const handleSearchFriend = async () => {
+    if(!friendCode.trim()) return alert("Masukkan kode teman!");
+    setSearchLoading(true);
+    setFriendData(null);
+    try {
+        const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: friendCode.toUpperCase() }, { headers: getAuthHeader() });
+        setFriendData(res.data.friend);
+    } catch (err) {
+        alert(err.response?.data?.message || "Teman tidak ditemukan.");
+    } finally {
+        setSearchLoading(false);
+    }
   };
 
-  const handleStopChallenge = () => {
-      if(window.confirm("Yakin ingin berhenti total? Progress Anda akan hilang.")) {
-          alert("Tantangan dihentikan.");
-          setShowMenuId(null);
-          // Logic API stop challenge here
+  // --- OPEN FRIEND PROFILE ---
+  const handleOpenFriendProfile = () => {
+      if(friendData) {
+          setShowQRModal(false);
+          setShowFriendProfile(true);
       }
   };
 
@@ -156,30 +178,15 @@ const UserDashboard = () => {
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
   const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
 
-  const getCertificateStatus = () => {
-    const days = overview?.financial?.total_checkins || 0;
-    if (days >= 30) return { eligible: true, type: "Gold", days: 30 };
-    if (days >= 25) return { eligible: true, type: "Silver", days: 25 };
-    if (days >= 20) return { eligible: true, type: "Bronze", days: 20 };
-    return { eligible: false, type: "", days: 0 };
-  };
-  const certStatus = getCertificateStatus();
-
-  const handleDownloadCert = () => {
-    alert("Selamat! Sertifikat sedang diunduh (Simulasi).");
-  };
-
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
   return (
     <div style={{ display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
-      {/* OVERLAY MOBILE SIDEBAR */}
-      {!isDesktop && isSidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>
-      )}
+      {/* MOBILE SIDEBAR OVERLAY */}
+      {!isDesktop && isSidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>}
 
-      {/* --- SIDEBAR --- */}
+      {/* SIDEBAR */}
       <aside style={{ width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
@@ -199,9 +206,8 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* --- CONTENT AREA --- */}
+      {/* CONTENT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
-        
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>JATES9</span></div>
@@ -210,16 +216,13 @@ const UserDashboard = () => {
         )}
 
         <main style={{ padding: '2rem', flex: 1 }}>
-          {/* TITLE DASHBOARD */}
           <div style={{ marginBottom: '2rem' }}>
             <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
             <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
           </div>
 
-          {/* --- SECTION 1: PROFILE & CHAT (SEKARANG PALING ATAS) --- */}
+          {/* SECTION 1: PROFILE & CHAT */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
-            
-            {/* KOLOM KIRI: Profile & Stats */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
                 <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -230,8 +233,6 @@ const UserDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-              
-              {/* Stats Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
@@ -239,7 +240,7 @@ const UserDashboard = () => {
               </div>
             </div>
             
-            {/* KOLOM KANAN: DOKTER AI */}
+            {/* DOKTER AI */}
             <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
               <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
               <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -251,72 +252,35 @@ const UserDashboard = () => {
             </Card>
           </div>
 
-          {/* --- SECTION 2: CHALLENGE PROGRESS (DIPINDAH KE BAWAH PROFILE) --- */}
-          <Card style={{ 
-              background: isPaused ? '#fffbeb' : 'white', // Warna background berubah jika dipause
-              border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', 
-              marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' 
-          }}>
+          {/* --- SECTION 2: CHALLENGE PROGRESS (BAWAH) --- */}
+          <Card style={{ background: isPaused ? '#fffbeb' : 'white', border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
              <CardContent style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                    <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: isPaused ? '#d97706' : 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                         <Activity size={20} /> 
-                         {isPaused ? "Tantangan Dijeda" : "Tantangan Aktif"}
-                      </h3>
-                      <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
-                        {isPaused ? "Silakan lanjut jika sudah siap." : "Pantau progres kesehatan Anda di sini."}
-                      </p>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: isPaused ? '#d97706' : 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> {isPaused ? "Tantangan Dijeda" : "Tantangan Aktif"}</h3>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b' }}>{isPaused ? "Silakan lanjut jika sudah siap." : "Pantau progres kesehatan Anda di sini."}</p>
                    </div>
                    <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
                 </div>
-                
                 <div style={{ background: isPaused ? 'white' : '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <div>
-                         <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4>
-                         <span style={{ fontSize: '0.8rem', background: isPaused ? '#fee2e2' : '#dcfce7', color: isPaused ? '#b91c1c' : '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
-                            {isPaused ? "DIJEDA" : `Tipe ${overview?.user?.group || 'Umum'}`}
-                         </span>
-                      </div>
-                      
+                      <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: isPaused ? '#fee2e2' : '#dcfce7', color: isPaused ? '#b91c1c' : '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>{isPaused ? "DIJEDA" : `Tipe ${overview?.user?.group || 'Umum'}`}</span></div>
                       <div style={{ position: 'relative' }}>
                          <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
                          {showMenuId === 'active' && (
                             <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
-                               
-                               {/* TOMBOL LOGIC PAUSE/RESUME */}
-                               {isPaused ? (
-                                   <button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}>
-                                      <PlayCircle size={16} /> Lanjut
-                                   </button>
-                               ) : (
-                                   <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}>
-                                      <PauseCircle size={16} /> Pause
-                                   </button>
-                               )}
-
+                               {isPaused ? (<button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}><PauseCircle size={16} /> Lanjut</button>) : (<button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>)}
                                <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
                             </div>
                          )}
                       </div>
                    </div>
-                   
                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
                       <div style={{ flex: 1 }}>
                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
-                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ 
-                                width: `${progressPercent}%`, 
-                                height: '100%', 
-                                background: isPaused ? '#fbbf24' : 'var(--primary)', // Bar jadi kuning jika pause
-                                borderRadius: '4px', 
-                                transition: 'width 0.5s ease' 
-                            }}></div>
-                         </div>
+                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: isPaused ? '#fbbf24' : 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
                       </div>
                    </div>
-                   
                    <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
                       <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
                       <div><strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
@@ -325,39 +289,8 @@ const UserDashboard = () => {
              </CardContent>
           </Card>
 
-          {/* --- TUTORIAL --- */}
-          {showTutorial && (
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} /> Langkah Sukses</h3>
-                <button onClick={handleCloseTutorial} style={{ fontSize: '0.85rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>Tutup Panduan <X size={16} /></button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.location.href='/dashboard/checkin'}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#ecfdf5', padding: '0.8rem', borderRadius: '12px', color: '#059669' }}><CheckCircle size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>1. Check-in Harian</div><p className="body-small" style={{ color: '#64748b' }}>Isi jurnal pagi & malam.</p></div>
-                  </CardContent>
-                </Card>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#eff6ff', padding: '0.8rem', borderRadius: '12px', color: '#2563eb' }}><Activity size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>2. Minum Jates9</div><p className="body-small" style={{ color: '#64748b' }}>Rutin sebelum makan.</p></div>
-                  </CardContent>
-                </Card>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={handleScrollToChat}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '12px', color: '#ea580c' }}><MessageCircle size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>3. Konsultasi AI</div><p className="body-small" style={{ color: '#64748b' }}>Gunakan chat di atas.</p></div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-
           {/* --- REFERRAL & FRIEND QR SECTION --- */}
           <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1rem' }}>
-             {/* KARTU KODE REFERRAL */}
              <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
                 <CardContent style={{ padding: '1.5rem' }}>
                    <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Users size={20}/> Kode Referral</h3>
@@ -368,15 +301,10 @@ const UserDashboard = () => {
                    </div>
                 </CardContent>
              </Card>
-
-             {/* KARTU ADD FRIEND (QR) */}
              <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setShowQRModal(true)}>
                 <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                    <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '50%', color: '#16a34a' }}><QrCode size={32}/></div>
-                   <div>
-                      <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a' }}>Tambah Teman</h3>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Scan QR untuk melihat profil & challenge teman.</p>
-                   </div>
+                   <div><h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a' }}>Tambah Teman</h3><p style={{ fontSize: '0.85rem', color: '#64748b' }}>Scan QR / Input Kode Teman</p></div>
                 </CardContent>
              </Card>
           </div>
@@ -408,16 +336,99 @@ const UserDashboard = () => {
         </main>
       </div>
 
-      {/* --- MODAL QR CODE --- */}
+      {/* --- MODAL QR CODE & SEARCH FRIEND --- */}
       {showQRModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}>
-           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '300px', width: '90%' }} onClick={e => e.stopPropagation()}>
-              <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem' }}>QR Code Anda</h3>
-              <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'inline-block' }}>
-                 <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={180} />
+           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                 <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}>
+                    <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} />
+                 </div>
+                 <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
               </div>
-              <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '1rem' }}>Tunjukkan ini ke teman untuk di-scan.</p>
-              <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup</button>
+
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}>
+                 <h4 style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.8rem', color: '#334155' }}>Cari Teman</h4>
+                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <input 
+                       type="text" 
+                       placeholder="Masukkan Kode Teman" 
+                       value={friendCode} 
+                       onChange={(e) => setFriendCode(e.target.value.toUpperCase())}
+                       style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }}
+                    />
+                    <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>
+                       {searchLoading ? '...' : <Search size={18} />}
+                    </button>
+                 </div>
+
+                 {/* HASIL PENCARIAN TEMAN (CLICKABLE) */}
+                 {friendData && (
+                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s', ':hover': {transform: 'scale(1.02)'} }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                          <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div>
+                          <div>
+                             <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div>
+                             <div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div>
+                          </div>
+                       </div>
+                       <div style={{ fontSize: '0.85rem', color: '#4b5563', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>Klik untuk lihat profil</span>
+                          <ChevronRight size={16} />
+                       </div>
+                    </div>
+                 )}
+              </div>
+
+              <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155', width: '100%' }}>Tutup</button>
+           </div>
+        </div>
+      )}
+
+      {/* --- MODAL FRIEND PROFILE (NEW) --- */}
+      {showFriendProfile && friendData && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
+           <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: 'var(--gradient-hero)', padding: '2rem 1rem', color: '#1e293b' }}>
+                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                    <User size={40} style={{ color: 'var(--primary)' }} />
+                 </div>
+                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{friendData.name}</h2>
+                 <div style={{ background: 'white', color: '#ca8a04', padding: '0.4rem 1rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <Medal size={16}/> {friendData.badge}
+                 </div>
+              </div>
+              
+              <div style={{ padding: '1.5rem' }}>
+                 <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                       <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.3rem' }}>{friendData.challenge_title}</div>
+                       <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Tipe {friendData.group || 'Umum'}</span>
+                          <span>Hari ke-{friendData.challenge_day}</span>
+                       </div>
+                       <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: 'var(--primary)' }}></div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ background: '#f0fdf4', padding: '0.8rem', borderRadius: '8px' }}>
+                       <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div>
+                       <div style={{ fontSize: '0.75rem', color: '#166534' }}>Total Check-in</div>
+                    </div>
+                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '8px' }}>
+                       <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div>
+                       <div style={{ fontSize: '0.75rem', color: '#ea580c' }}>Hari Berjalan</div>
+                    </div>
+                 </div>
+
+                 <button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '2rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup Profil</button>
+              </div>
            </div>
         </div>
       )}
