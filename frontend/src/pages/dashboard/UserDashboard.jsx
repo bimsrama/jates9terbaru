@@ -270,7 +270,9 @@ const UserDashboard = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <Card style={{ background: 'white', border: 'none', backgroundImage: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}>
+                  
+                  {/* KARTU PROFIL DENGAN GRADASI */}
+                  <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={35} color="#2563eb" /></div>
                       <div style={{ color: 'white' }}>
@@ -587,7 +589,8 @@ const UserDashboard = () => {
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', padding: '2rem 1rem', color: 'white' }}>
+              {/* HEADER MODAL PROFIL JUGA MENGGUNAKAN GRADASI */}
+              <div style={{ background: 'var(--gradient-hero)', padding: '2rem 1rem', color: 'white' }}>
                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={40} color="#2563eb" /></div>
                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{friendData.name}</h2>
                  <div style={{ background: 'white', color: '#ca8a04', padding: '0.4rem 1rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><Medal size={16}/> {friendData.badge}</div>
