@@ -69,6 +69,7 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Fetch Daily Content saat tab Checkin aktif
   useEffect(() => {
       if (activeTab === 'checkin') fetchDailyContent();
       if (activeTab === 'friends') fetchFriendsList();
@@ -226,14 +227,9 @@ const UserDashboard = () => {
 
   return (
     <div style={{ display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
-      {/* Inject CSS untuk Animasi Badge & Variabel Warna jika belum ada */}
+      
+      {/* CSS Injection untuk Animasi Badge */}
       <style>{`
-        :root {
-          --primary: #2563eb;
-          /* Pastikan variabel ini ada di CSS global Anda. Jika tidak, uncomment baris di bawah sebagai fallback */
-          /* --gradient-hero: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); */
-        }
-        /* Animasi berdenyut halus untuk badge */
         @keyframes badge-pulse {
           0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
           70% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
@@ -241,7 +237,6 @@ const UserDashboard = () => {
         }
         .animated-badge {
           animation: badge-pulse 2s infinite;
-          backdrop-filter: blur(4px); /* Efek kaca buram */
         }
       `}</style>
 
@@ -289,20 +284,47 @@ const UserDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* KARTU PROFIL DENGAN GRADASI FULL & BADGE ANIMASI */}
-                  <Card style={{ border: 'none', backgroundImage: 'var(--gradient-hero)', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' }}>
+                  {/* --- KARTU PROFIL UTAMA (Full Gradient & Animasi) --- */}
+                  <Card style={{ 
+                      border: 'none', 
+                      borderRadius: '16px', 
+                      background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', // Hardcoded Gradient 
+                      color: 'white', 
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                      overflow: 'hidden'
+                  }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}><User size={40} color="#2563eb" /></div>
-                      <div style={{ color: 'white' }}>
-                        <h2 className="heading-2" style={{ marginBottom: '0.5rem', color: 'white', fontSize: '1.5rem' }}>{overview?.user?.name}</h2>
-                        {/* BADGE ANIMASI */}
-                        <span className="animated-badge" style={{ background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)', color: 'white', padding: '0.35rem 0.85rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', width: 'fit-content' }}>
+                      <div style={{ 
+                          width: '80px', height: '80px', borderRadius: '50%', background: 'white', 
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 
+                      }}>
+                          <User size={40} color="#2563eb" />
+                      </div>
+                      <div>
+                        <h2 className="heading-2" style={{ marginBottom: '0.5rem', color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
+                        
+                        {/* BADGE dengan Animasi Pulse & Glass Effect */}
+                        <div className="animated-badge" style={{ 
+                            background: 'rgba(255,255,255,0.2)', 
+                            border: '1px solid rgba(255,255,255,0.4)', 
+                            backdropFilter: 'blur(4px)',
+                            color: 'white', 
+                            padding: '0.35rem 1rem', 
+                            borderRadius: '20px', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 'bold', 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '0.4rem' 
+                        }}>
                           <Medal size={16} /> {overview?.user?.badge || "Pejuang Tangguh"}
-                        </span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
-                  
+                  {/* ----------------------------------------------- */}
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
@@ -373,7 +395,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (FIXED) */}
+          {/* 2. CHECK-IN PAGE (FIXED STYLING) */}
           {activeTab === 'checkin' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -477,6 +499,28 @@ const UserDashboard = () => {
                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                            <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
                            <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
+                        </div>
+                     </CardContent>
+                  </Card>
+
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                     <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
+                     <CardContent>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                           <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
+                              <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
+                              <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
+                           </div>
+                           {challengeDay >= 5 ? (
+                              <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
+                                 <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
+                                 <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
+                              </div>
+                           ) : (
+                              <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
+                                 Evaluasi berikutnya di Hari ke-5
+                              </div>
+                           )}
                         </div>
                      </CardContent>
                   </Card>
@@ -610,8 +654,7 @@ const UserDashboard = () => {
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              {/* HEADER MODAL PROFIL JUGA MENGGUNAKAN GRADASI FULL & BADGE ANIMASI */}
-              <div style={{ background: 'var(--gradient-hero)', padding: '2rem 1rem', color: 'white', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', padding: '2rem 1rem', color: 'white', position: 'relative', overflow: 'hidden' }}>
                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', position: 'relative', zIndex: 2 }}><User size={40} color="#2563eb" /></div>
                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white', position: 'relative', zIndex: 2 }}>{friendData.name}</h2>
                  <div className="animated-badge" style={{ background: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.4)', color: 'white', padding: '0.4rem 1rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', position: 'relative', zIndex: 2 }}><Medal size={16}/> {friendData.badge}</div>
