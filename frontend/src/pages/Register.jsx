@@ -60,13 +60,15 @@ const Register = () => {
   // --- STEP 4.5: ANIMASI BADGE ---
   useEffect(() => {
     if (step === 4.5) {
-      // Tahan animasi lebih lama (6 detik) agar user sempat baca infonya
+      // Tahan animasi selama 6 detik agar user sempat baca infonya
       const timer = setTimeout(() => setStep(5), 6000);
       return () => clearTimeout(timer);
     }
   }, [step]);
 
-  // --- HANDLER OTP & REGISTER ---
+  // ==========================================
+  // LOGIC STEP 1: REGISTER & OTP
+  // ==========================================
   const handleInitialSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -108,7 +110,9 @@ const Register = () => {
     catch (err) { alert("Gagal kirim ulang."); }
   };
 
-  // --- HANDLER CHALLENGE & QUIZ ---
+  // ==========================================
+  // LOGIC STEP 2: PILIH CHALLENGE
+  // ==========================================
   const fetchChallenges = async () => {
     try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); }
     catch (err) { console.error(err); }
@@ -120,14 +124,27 @@ const Register = () => {
       await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: id }, { headers: getAuthHeader() });
       const qRes = await axios.get(`${BACKEND_URL}/api/quiz/questions/${id}`, { headers: getAuthHeader() });
       if (qRes.data && qRes.data.length > 0) { setQuestions(qRes.data); setStep(3); }
-      else { setStep(4.5); } 
+      else { setStep(4.5); } // Jika tidak ada kuis, langsung ke animasi badge
     } catch (err) { setError("Gagal pilih challenge."); }
     finally { setLoading(false); }
   };
 
+  // ==========================================
+  // LOGIC STEP 3: QUIZ (INI YANG TADI EROR)
+  // ==========================================
+  
+  // Fungsi ini harus ada di dalam komponen Register agar bisa dipanggil onClick
+  const handleAnswerOption = (category) => {
+    const currentQ = questions[currentQuestionIndex];
+    setAnswers(prev => ({ ...prev, [currentQ.id]: category }));
+  };
+
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) setCurrentQuestionIndex(prev => prev + 1);
-    else calculateAndSubmitQuiz();
+    if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+    } else { 
+        calculateAndSubmitQuiz();
+    }
   };
 
   const calculateAndSubmitQuiz = async () => {
@@ -145,12 +162,15 @@ const Register = () => {
     finally { setLoading(false); }
   };
 
+  // ==========================================
+  // UI RENDER
+  // ==========================================
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-hero)', paddingTop: '2rem', paddingBottom: '2rem' }}>
       
       {/* CARD KHUSUS ANIMASI BADGE (Step 4.5) */}
       {step === 4.5 ? (
-        <div style={{ textAlign: 'center', animation: 'fadeIn 0.8s ease-in-out', maxWidth: '400px', width: '100%' }}>
+        <div style={{ textAlign: 'center', animation: 'fadeIn 0.8s ease-in-out', maxWidth: '420px', width: '100%', padding: '1rem' }}>
           <div style={{ marginBottom: '1.5rem', position: 'relative', display: 'inline-block' }}>
              <div style={{ position: 'absolute', inset: '-30px', background: 'radial-gradient(circle, rgba(253, 224, 71, 0.5) 0%, rgba(255,255,255,0) 70%)', borderRadius: '50%', animation: 'pulse 2s infinite' }}></div>
              <Trophy size={110} color="#ca8a04" style={{ filter: 'drop-shadow(0 10px 15px rgba(234, 179, 8, 0.5))', transform: 'scale(1.1)' }} />
@@ -214,6 +234,7 @@ const Register = () => {
           <CardContent style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             {error && <div style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>{error}</div>}
 
+            {/* FORM STEP 1 */}
             {step === 1 && (
               <form onSubmit={handleInitialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ position: 'relative' }}><User size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} /><input type="text" name="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nama Lengkap" required style={inputStyle} /></div>
@@ -226,6 +247,7 @@ const Register = () => {
               </form>
             )}
 
+            {/* PILIH CHALLENGE STEP 2 */}
             {step === 2 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {challenges.length === 0 ? <div className="text-center text-gray-500">Memuat Tantangan...</div> : challenges.map((c) => (
@@ -238,6 +260,7 @@ const Register = () => {
               </div>
             )}
 
+            {/* KUIS STEP 3 (PERBAIKAN UTAMA DISINI) */}
             {step === 3 && questions.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <h3 className="heading-3" style={{ marginBottom: '1.5rem' }}>{questions[currentQuestionIndex].question_text}</h3>
@@ -255,6 +278,7 @@ const Register = () => {
               </div>
             )}
 
+            {/* HASIL REPORT STEP 4 */}
             {step === 4 && quizResult && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ marginBottom: '2rem' }}>
@@ -274,6 +298,7 @@ const Register = () => {
               </div>
             )}
 
+            {/* SUKSES STEP 5 */}
             {step === 5 && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}><Check size={48} /></div>
