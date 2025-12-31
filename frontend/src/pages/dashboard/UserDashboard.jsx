@@ -4,9 +4,10 @@ import { Card, CardContent } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight
+  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight, QrCode
 } from 'lucide-react';
 import axios from 'axios';
+import { QRCodeSVG } from 'qrcode.react'; // Pastikan install: npm install qrcode.react
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -22,8 +23,9 @@ const UserDashboard = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showTutorial, setShowTutorial] = useState(true);
-  const [showAllChallenges, setShowAllChallenges] = useState(false); // Modal state
-  const [showMenuId, setShowMenuId] = useState(null); // Untuk menu titik tiga
+  const [showAllChallenges, setShowAllChallenges] = useState(false);
+  const [showMenuId, setShowMenuId] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false); // NEW: Modal QR
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
@@ -136,7 +138,6 @@ const UserDashboard = () => {
       if(window.confirm("Yakin ingin berhenti? Progress Anda akan hilang.")) {
           alert("Tantangan dihentikan.");
           setShowMenuId(null);
-          // Logic berhenti challenge bisa ditambahkan di sini (API call)
       }
   };
 
@@ -160,11 +161,7 @@ const UserDashboard = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
   return (
-    // FULL CANVAS OVERLAY
-    <div style={{ 
-      display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', 
-      position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' 
-    }}>
+    <div style={{ display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
       {/* OVERLAY MOBILE SIDEBAR */}
       {!isDesktop && isSidebarOpen && (
@@ -172,12 +169,7 @@ const UserDashboard = () => {
       )}
 
       {/* --- SIDEBAR --- */}
-      <aside style={{
-        width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh',
-        position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50,
-        display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease',
-        transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0
-      }}>
+      <aside style={{ width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
           {!isDesktop && <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b' }}><X size={24} /></button>}
@@ -192,225 +184,116 @@ const UserDashboard = () => {
           </ul>
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}>
-          <button onClick={logout} style={{ ...navItemStyle(false), color: '#ef4444', justifyContent: 'flex-start' }}>
-            <LogOut size={20} /> Keluar
-          </button>
+          <button onClick={logout} style={{ ...navItemStyle(false), color: '#ef4444', justifyContent: 'flex-start' }}><LogOut size={20} /> Keluar</button>
         </div>
       </aside>
 
       {/* --- CONTENT AREA --- */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         
-        {/* MOBILE HEADER */}
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button>
-                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>JATES9</span>
-            </div>
-            <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}>
-              <LogOut size={18} /> Keluar
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>JATES9</span></div>
+            <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}><LogOut size={18} /> Keluar</button>
           </header>
         )}
 
         <main style={{ padding: '2rem', flex: 1 }}>
-          
-          {/* HEADER DASHBOARD */}
           <div style={{ marginBottom: '2rem' }}>
             <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
-            <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>
-              Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.
-            </p>
+            <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
           </div>
 
-          {/* --- CHALLENGE PROGRESS CARD (NEW FEATURE) --- */}
+          {/* CHALLENGE PROGRESS */}
           <Card style={{ background: 'white', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible' }}>
              <CardContent style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                   <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                         <Activity size={20} /> Tantangan Aktif
-                      </h3>
-                      <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
-                   </div>
-                   <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                      Lihat Semua <ChevronRight size={16} />
-                   </button>
+                   <div><h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3><p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p></div>
+                   <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
                 </div>
-
-                {/* ACTIVE CHALLENGE ITEM */}
                 <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <div>
-                         <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4>
-                         <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
-                            Tipe {overview?.user?.group || 'Umum'}
-                         </span>
-                      </div>
-                      
-                      {/* TITIK TIGA MENU */}
+                      <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
                       <div style={{ position: 'relative' }}>
-                         <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                            <MoreVertical size={20} color="#64748b" />
-                         </button>
+                         <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
                          {showMenuId === 'active' && (
-                            <div style={{ 
-                               position: 'absolute', right: 0, top: '100%', background: 'white', 
-                               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', 
-                               border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden'
-                            }}>
-                               <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}>
-                                  <PauseCircle size={16} /> Pause
-                               </button>
-                               <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}>
-                                  <StopCircle size={16} /> Berhenti
-                               </button>
+                            <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
+                               <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>
+                               <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
                             </div>
                          )}
                       </div>
                    </div>
-
                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
                       <div style={{ flex: 1 }}>
-                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
-                            <span>Progress</span>
-                            <span>{Math.round(progressPercent)}%</span>
-                         </div>
-                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
-                         </div>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
+                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
                       </div>
                    </div>
-                   
                    <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
-                      <div>
-                         <strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span>
-                      </div>
-                      <div>
-                         <strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span>
-                      </div>
+                      <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
+                      <div><strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
                    </div>
                 </div>
              </CardContent>
           </Card>
 
-          {/* --- TUTORIAL --- */}
-          {showTutorial && (
-            <div style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} /> Langkah Sukses</h3>
-                <button onClick={handleCloseTutorial} style={{ fontSize: '0.85rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>Tutup Panduan <X size={16} /></button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.location.href='/dashboard/checkin'}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#ecfdf5', padding: '0.8rem', borderRadius: '12px', color: '#059669' }}><CheckCircle size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>1. Check-in Harian</div><p className="body-small" style={{ color: '#64748b' }}>Isi jurnal pagi & malam.</p></div>
-                  </CardContent>
-                </Card>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#eff6ff', padding: '0.8rem', borderRadius: '12px', color: '#2563eb' }}><Activity size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>2. Minum Jates9</div><p className="body-small" style={{ color: '#64748b' }}>Rutin sebelum makan.</p></div>
-                  </CardContent>
-                </Card>
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={handleScrollToChat}>
-                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '12px', color: '#ea580c' }}><MessageCircle size={24}/></div>
-                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>3. Konsultasi AI</div><p className="body-small" style={{ color: '#64748b' }}>Gunakan chat di atas.</p></div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* --- GRID PROFILE & CHAT --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
-            
-            {/* KOLOM KIRI: Profil & Stats */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
                 <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                    <User size={35} style={{ color: 'var(--primary)' }} />
-                  </div>
+                  <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={35} style={{ color: 'var(--primary)' }} /></div>
                   <div>
                     <h2 className="heading-2" style={{ marginBottom: '0.25rem' }}>{overview?.user?.name}</h2>
-                    <span style={{ 
-                      background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', 
-                      padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content'
-                    }}>
-                      <Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}
-                    </span>
+                    <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content' }}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</span>
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Stats Card */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}>
-                   <div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div>
-                   <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3>
-                   <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p>
-                </Card>
-                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}>
-                   <div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} color="#ea580c" /></div>
-                   <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3>
-                   <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p>
-                </Card>
+                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
+                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
+                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} color="#ea580c" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
               </div>
             </div>
-
-            {/* KOLOM KANAN: DOKTER AI */}
+            
+            {/* DOKTER AI */}
             <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}>
-                <div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div>
-                <div>
-                  <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p>
-                </div>
-              </div>
+              <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
               <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {chatHistory.map((msg, idx) => (
-                  <div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9', color: msg.role === 'user' ? 'white' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>
-                    {msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}
-                  </div>
-                ))}
+                {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9', color: msg.role === 'user' ? 'white' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
                 {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
                 <div ref={chatEndRef}></div>
               </div>
-              <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}>
-                <input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} />
-                <button type="submit" disabled={chatLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button>
-              </form>
+              <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
             </Card>
           </div>
 
-          {/* --- REFERRAL CODE SECTION --- */}
-          <div style={{ marginBottom: '2rem' }}>
+          {/* --- REFERRAL & FRIEND QR SECTION (UPDATED) --- */}
+          <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1rem' }}>
+             {/* KARTU KODE REFERRAL */}
              <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
-                <CardContent style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                   <div>
-                      <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                         <Users size={20}/> Kode Referral Anda
-                      </h3>
-                      <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Bagikan ke teman untuk dapat komisi.</p>
-                   </div>
+                <CardContent style={{ padding: '1.5rem' }}>
+                   <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Users size={20}/> Kode Referral</h3>
+                   <p style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '1rem' }}>Bagikan ke teman untuk dapat komisi.</p>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '8px' }}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.2rem', letterSpacing: '1px' }}>
-                         {overview?.user?.referral_code || "LOADING..."}
-                      </span>
-                      <button onClick={copyReferral} style={{ background: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: '#4f46e5' }}>
-                         <Copy size={16}/>
-                      </button>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.2rem', flex: 1 }}>{overview?.user?.referral_code}</span>
+                      <button onClick={copyReferral} style={{ background: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: '#4f46e5' }}><Copy size={16}/></button>
+                   </div>
+                </CardContent>
+             </Card>
+
+             {/* KARTU ADD FRIEND (QR) */}
+             <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setShowQRModal(true)}>
+                <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                   <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '50%', color: '#16a34a' }}><QrCode size={32}/></div>
+                   <div>
+                      <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a' }}>Tambah Teman</h3>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Scan QR untuk melihat profil & challenge teman.</p>
                    </div>
                 </CardContent>
              </Card>
           </div>
 
-          {/* --- CHALLENGE LAIN & ARTIKEL --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.5fr 1fr' : '1fr', gap: '2rem' }}>
             <div>
               <h3 className="heading-3" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Award size={20} /> Tantangan Lainnya</h3>
@@ -423,30 +306,34 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
                 ))}
-                {challenges.filter(c => c.id !== overview?.user?.challenge_id).length === 0 && <p className="body-small" style={{ color: '#94a3b8' }}>Tidak ada tantangan lain saat ini.</p>}
               </div>
             </div>
-            
-            {/* ARTIKEL SECTION */}
             <div>
               <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Artikel Kesehatan</h3>
               <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
                 <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ width: '50px', height: '50px', background: '#e2e8f0', borderRadius: '8px' }}></div>
-                    <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div>
-                  </li>
-                  <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ width: '50px', height: '50px', background: '#e2e8f0', borderRadius: '8px' }}></div>
-                    <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Yoga untuk Pencernaan</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 5 menit</span></div>
-                  </li>
+                  <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}><div style={{ width: '50px', height: '50px', background: '#e2e8f0', borderRadius: '8px' }}></div><div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div></li>
+                  <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}><div style={{ width: '50px', height: '50px', background: '#e2e8f0', borderRadius: '8px' }}></div><div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Yoga untuk Pencernaan</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 5 menit</span></div></li>
                 </ul>
               </Card>
             </div>
           </div>
-
         </main>
       </div>
+
+      {/* --- MODAL QR CODE --- */}
+      {showQRModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}>
+           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '300px', width: '90%' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem' }}>QR Code Anda</h3>
+              <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'inline-block' }}>
+                 <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={180} />
+              </div>
+              <p style={{ fontSize: '0.9rem', color: '#64748b', marginTop: '1rem' }}>Tunjukkan ini ke teman untuk di-scan.</p>
+              <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup</button>
+           </div>
+        </div>
+      )}
 
     </div>
   );
