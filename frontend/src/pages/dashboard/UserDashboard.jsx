@@ -5,11 +5,11 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
   User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
-  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, Camera, CameraOff, Heart
+  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, Camera, CameraOff
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
-import QrScanner from 'react-qr-scanner';
+import { QrReader } from 'react-qr-reader'; // Library Baru
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -20,10 +20,10 @@ const UserDashboard = () => {
   const [overview, setOverview] = useState(null);
   const [challenges, setChallenges] = useState([]); 
   const [loading, setLoading] = useState(true);
-  const [myFriends, setMyFriends] = useState([]); // List Teman
+  const [myFriends, setMyFriends] = useState([]);
   
   // --- STATE UI ---
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'friends'
+  const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showTutorial, setShowTutorial] = useState(true);
@@ -91,7 +91,6 @@ const UserDashboard = () => {
     }
   };
 
-  // Fetch Friends List saat Tab Teman dibuka
   const fetchFriendsList = async () => {
     try {
         const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() });
@@ -114,7 +113,6 @@ const UserDashboard = () => {
     return selectedTip;
   };
 
-  // --- ACTIONS ---
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem('hide_tutorial', 'true'); 
@@ -170,9 +168,7 @@ const UserDashboard = () => {
       }
   };
 
-  // --- FRIEND LOGIC ---
-  
-  // 1. Cari teman by Code (dari Modal QR)
+  // --- FRIEND SEARCH LOGIC ---
   const handleSearchFriend = async () => {
     if(!friendCode.trim()) return alert("Masukkan kode teman!");
     setSearchLoading(true);
@@ -187,16 +183,14 @@ const UserDashboard = () => {
     }
   };
 
-  // 2. Klik Teman di List -> Load Profilnya
   const handleClickFriendFromList = async (code) => {
-      setFriendCode(code); // Set kode untuk state
+      setFriendCode(code); 
       setSearchLoading(true);
-      setShowQRModal(false); // Tutup QR modal jika terbuka
-      
+      setShowQRModal(false); 
       try {
           const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() });
           setFriendData(res.data.friend);
-          setShowFriendProfile(true); // Buka Modal Profil
+          setShowFriendProfile(true); 
       } catch (err) {
           alert("Gagal memuat profil teman.");
       } finally {
@@ -204,7 +198,6 @@ const UserDashboard = () => {
       }
   };
 
-  // 3. Buka Profil dari hasil search
   const handleOpenFriendProfile = () => {
       if(friendData) {
           setShowQRModal(false);
@@ -212,24 +205,25 @@ const UserDashboard = () => {
       }
   };
 
-  const handleScan = (data) => {
-    if (data) {
-        const rawText = data?.text || data; 
-        if(rawText) {
+  // --- SCANNER LOGIC (FIXED with react-qr-reader) ---
+  const handleScan = (result, error) => {
+    if (!!result) {
+        const rawText = result?.text;
+        if (rawText) {
+            // Format URL: https://jagatetapsehat.com/friend/KODE
             const parts = rawText.split('/');
             const code = parts[parts.length - 1]; 
             if(code) {
                 setFriendCode(code.toUpperCase()); 
                 setIsScanning(false); 
                 alert(`Kode terdeteksi: ${code}`);
-                // Otomatis trigger search
-                // handleSearchFriend(); 
             }
         }
     }
+    if (!!error) {
+        // console.info(error); // Bisa di-uncomment untuk debug
+    }
   };
-
-  const handleScanError = (err) => { console.error(err); };
 
   // --- DATA PROCESSING ---
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
@@ -253,9 +247,7 @@ const UserDashboard = () => {
             <li><button className="nav-item" style={navItemStyle(activeTab === 'dashboard')} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><Home size={20} /> Dashboard</button></li>
             <li><button className="nav-item" style={navItemStyle(false)} onClick={() => window.location.href='/dashboard/checkin'}><Activity size={20} /> Check-in Harian</button></li>
             <li><button className="nav-item" style={navItemStyle(false)} onClick={() => window.location.href='/dashboard/health-report'}><FileText size={20} /> Rapor Kesehatan</button></li>
-            {/* MENU BARU: TEMAN SEHAT */}
             <li><button className="nav-item" style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Heart size={20} /> Teman Sehat</button></li>
-            
             <li><button className="nav-item" style={navItemStyle(false)} onClick={handleScrollToChat}><MessageCircle size={20} /> Dokter AI</button></li>
             <li><button className="nav-item" style={navItemStyle(false)}><Settings size={20} /> Pengaturan</button></li>
           </ul>
@@ -265,7 +257,7 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* CONTENT AREA */}
+      {/* CONTENT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -276,7 +268,6 @@ const UserDashboard = () => {
 
         <main style={{ padding: '2rem', flex: 1 }}>
           
-          {/* --- TAMPILAN DASHBOARD UTAMA --- */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem' }}>
@@ -284,7 +275,7 @@ const UserDashboard = () => {
                 <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
               </div>
 
-              {/* SECTION 1: PROFILE & CHAT */}
+              {/* PROFILE & CHAT */}
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
@@ -315,7 +306,7 @@ const UserDashboard = () => {
                 </Card>
               </div>
 
-              {/* CHALLENGE PROGRESS (BAWAH) */}
+              {/* CHALLENGE PROGRESS */}
               <Card style={{ background: isPaused ? '#fffbeb' : 'white', border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
                 <CardContent style={{ padding: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -409,7 +400,6 @@ const UserDashboard = () => {
                </div>
                
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                  {/* CARD TAMBAH TEMAN */}
                   <Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}>
                       <div style={{ textAlign: 'center', color: '#166534' }}>
                           <div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div>
@@ -417,7 +407,6 @@ const UserDashboard = () => {
                       </div>
                   </Card>
 
-                  {/* LIST TEMAN */}
                   {myFriends.map((friend, idx) => (
                       <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}>
                           <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -466,10 +455,9 @@ const UserDashboard = () => {
                     </>
                  ) : (
                     <div style={{ overflow: 'hidden', borderRadius: '12px', position: 'relative' }}>
-                        <QrScanner
-                            delay={300}
-                            onError={handleScanError}
-                            onScan={handleScan}
+                        <QrReader
+                            onResult={handleScan}
+                            constraints={{ facingMode: 'environment' }}
                             style={{ width: '100%', height: '240px', objectFit: 'cover' }}
                         />
                         <button onClick={() => setIsScanning(false)} style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
@@ -516,7 +504,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* --- MODAL FRIEND PROFILE --- */}
+      {/* --- MODAL FRIEND PROFILE (NEW) --- */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
