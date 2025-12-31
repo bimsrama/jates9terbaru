@@ -69,7 +69,6 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch Daily Content saat tab Checkin aktif
   useEffect(() => {
       if (activeTab === 'checkin') fetchDailyContent();
       if (activeTab === 'friends') fetchFriendsList();
@@ -124,7 +123,6 @@ const UserDashboard = () => {
     return tips[group] || tips['Sehat'];
   };
 
-  // --- ACTIONS ---
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem('hide_tutorial', 'true'); 
@@ -166,11 +164,8 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- SUBMIT CHECKIN ---
   const handleSubmitCheckin = async () => {
-      // Validasi: Pastikan task sudah terload
       if (!dailyData?.tasks) return;
-
       const allChecked = dailyData.tasks.every((_, idx) => checkedTasks[idx]);
       if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
       
@@ -184,7 +179,6 @@ const UserDashboard = () => {
       }
   };
 
-  // --- FRIEND SEARCH ---
   const handleSearchFriend = async () => {
     if(!friendCode.trim()) return alert("Masukkan kode teman!");
     setSearchLoading(true); setFriendData(null);
@@ -356,7 +350,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (FIXED STYLING) */}
+          {/* 2. CHECK-IN PAGE (FIXED) */}
           {activeTab === 'checkin' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
