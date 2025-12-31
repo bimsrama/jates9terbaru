@@ -7,7 +7,7 @@ import {
   User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
   PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, 
   Camera, CameraOff, Heart, ShoppingBag, ChevronLeft, Calendar, Star, Package,
-  AlertCircle, Lock
+  AlertCircle, Lock, Check
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -24,7 +24,7 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   
-  // --- STATE DAILY CONTENT (DYNAMIC FROM BACKEND) ---
+  // --- STATE DAILY CONTENT ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
   const [checkedTasks, setCheckedTasks] = useState({});
@@ -166,34 +166,25 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  const handlePauseChallenge = () => {
-      if(window.confirm("Jeda tantangan sementara?")) {
-          setIsPaused(true); setShowMenuId(null);
-      }
-  };
-  const handleResumeChallenge = () => {
-      setIsPaused(false); setShowMenuId(null); alert("Selamat datang kembali!");
-  };
-  const handleStopChallenge = () => {
-      if(window.confirm("Yakin ingin berhenti? Progress hilang.")) {
-          alert("Tantangan dihentikan."); setShowMenuId(null);
-      }
-  };
-
-  // --- SUBMIT CHECKIN (FIXED) ---
+  // --- SUBMIT CHECKIN ---
   const handleSubmitCheckin = async () => {
-      const allChecked = dailyData?.tasks?.every((_, idx) => checkedTasks[idx]);
+      // Validasi: Pastikan task sudah terload
+      if (!dailyData?.tasks) return;
+
+      const allChecked = dailyData.tasks.every((_, idx) => checkedTasks[idx]);
       if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
       
       try {
           await axios.post(`${BACKEND_URL}/api/checkin`, { journal }, { headers: getAuthHeader() });
           alert("Check-in Berhasil! Hari Anda bertambah.");
-          fetchData(); // Refresh data
+          fetchData(); 
           setActiveTab('dashboard');
-      } catch (err) { alert("Gagal check-in."); }
+      } catch (err) { 
+          alert(err.response?.data?.message || "Gagal check-in."); 
+      }
   };
 
-  // --- FRIEND SEARCH LOGIC ---
+  // --- FRIEND SEARCH ---
   const handleSearchFriend = async () => {
     if(!friendCode.trim()) return alert("Masukkan kode teman!");
     setSearchLoading(true); setFriendData(null);
@@ -246,7 +237,7 @@ const UserDashboard = () => {
 
       <aside style={{ width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
+          <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#2563eb' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
           {!isDesktop && <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b' }}><X size={24} /></button>}
         </div>
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
@@ -268,7 +259,7 @@ const UserDashboard = () => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>JATES9</span></div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#2563eb' }}>JATES9</span></div>
             <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}><LogOut size={18} /> Keluar</button>
           </header>
         )}
@@ -280,17 +271,17 @@ const UserDashboard = () => {
             <>
               <div style={{ marginBottom: '2rem' }}>
                 <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
-                <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
+                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
+                  <Card style={{ background: 'white', border: 'none', backgroundImage: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                      <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={35} style={{ color: 'var(--primary)' }} /></div>
-                      <div>
-                        <h2 className="heading-2" style={{ marginBottom: '0.25rem' }}>{overview?.user?.name}</h2>
-                        <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content' }}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</span>
+                      <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={35} color="#2563eb" /></div>
+                      <div style={{ color: 'white' }}>
+                        <h2 className="heading-2" style={{ marginBottom: '0.25rem', color: 'white' }}>{overview?.user?.name}</h2>
+                        <span style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content' }}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</span>
                       </div>
                     </CardContent>
                   </Card>
@@ -305,41 +296,33 @@ const UserDashboard = () => {
                 <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
                   <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? 'var(--primary)' : '#f1f5f9', color: msg.role === 'user' ? 'white' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
+                    {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? '#2563eb' : '#f1f5f9', color: msg.role === 'user' ? 'white' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
                     {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
                     <div ref={chatEndRef}></div>
                   </div>
-                  <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
+                  <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#2563eb', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
                 </Card>
               </div>
 
+              {/* CHALLENGE PROGRESS */}
               <div style={{marginBottom:'2rem'}}>
-                <Card style={{ background: isPaused ? '#fffbeb' : 'white', border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
+                <Card style={{ background: '#fff', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                         <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: isPaused ? '#d97706' : 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> {isPaused ? "Tantangan Dijeda" : "Tantangan Aktif"}</h3>
-                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>{isPaused ? "Silakan lanjut jika sudah siap." : "Pantau progres kesehatan Anda di sini."}</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2563eb', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
                         </div>
-                        <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
+                        <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
                         </div>
-                        <div style={{ background: isPaused ? 'white' : '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                            <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: isPaused ? '#fee2e2' : '#dcfce7', color: isPaused ? '#b91c1c' : '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>{isPaused ? "DIJEDA" : `Tipe ${overview?.user?.group || 'Umum'}`}</span></div>
-                            <div style={{ position: 'relative' }}>
-                                <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
-                                {showMenuId === 'active' && (
-                                    <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
-                                    {isPaused ? (<button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}><PlayCircle size={16} /> Lanjut</button>) : (<button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>)}
-                                    <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
-                                    </div>
-                                )}
-                            </div>
+                            <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
-                                <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: isPaused ? '#fbbf24' : 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
+                                <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: '#2563eb', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
                             </div>
                         </div>
                         <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
@@ -351,6 +334,7 @@ const UserDashboard = () => {
                 </Card>
               </div>
 
+              {/* REFERRAL */}
               <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1rem' }}>
                 <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
@@ -372,7 +356,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (FIXED) */}
+          {/* 2. CHECK-IN PAGE (FIXED STYLING) */}
           {activeTab === 'checkin' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -388,7 +372,6 @@ const UserDashboard = () => {
                   </CardHeader>
                   <CardContent style={{ padding: '1.5rem' }}>
                      
-                     {/* BROADCAST MESSAGE */}
                      {dailyData && (
                          <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
                             <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
@@ -401,34 +384,24 @@ const UserDashboard = () => {
                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h4 style={{ fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>Daftar Tugas (Centang jika sudah):</h4>
                         
-                        {/* DYNAMIC TASKS FROM BACKEND */}
                         {dailyData?.tasks?.length > 0 ? (
                             dailyData.tasks.map((task, idx) => (
                                 <div key={idx} 
                                      onClick={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
                                      style={{ 
-                                         display: 'flex', 
-                                         alignItems: 'center', 
-                                         gap: '1rem', 
-                                         padding: '1rem', 
+                                         display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', 
                                          border: checkedTasks[idx] ? '2px solid #22c55e' : '1px solid #e2e8f0', 
-                                         borderRadius: '12px', 
-                                         cursor: 'pointer', 
+                                         borderRadius: '12px', cursor: 'pointer', 
                                          background: checkedTasks[idx] ? '#f0fdf4' : 'white',
                                          transition: 'all 0.2s'
                                      }}>
                                    <div style={{ 
-                                       width: '24px', 
-                                       height: '24px', 
-                                       borderRadius: '50%', 
+                                       width: '24px', height: '24px', borderRadius: '50%', 
                                        border: checkedTasks[idx] ? 'none' : '2px solid #cbd5e1', 
                                        background: checkedTasks[idx] ? '#22c55e' : 'transparent',
-                                       display: 'flex', 
-                                       alignItems: 'center', 
-                                       justifyContent: 'center',
-                                       flexShrink: 0
+                                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                                    }}>
-                                       {checkedTasks[idx] && <CheckCircle size={16} color="white" />}
+                                       {checkedTasks[idx] && <Check size={16} color="white" />}
                                    </div>
                                    <span style={{ fontWeight: '600', fontSize: '1rem', color: checkedTasks[idx] ? '#15803d' : '#334155', textDecoration: checkedTasks[idx] ? 'line-through' : 'none' }}>{task}</span>
                                 </div>
@@ -451,37 +424,14 @@ const UserDashboard = () => {
                             onClick={handleSubmitCheckin} 
                             disabled={!dailyData?.tasks?.every((_, i) => checkedTasks[i])}
                             style={{ 
-                                background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'var(--primary)' : '#cbd5e1', 
-                                color: 'white', 
-                                border: 'none', 
-                                padding: '1rem', 
-                                borderRadius: '12px', 
-                                fontWeight: 'bold', 
-                                fontSize: '1.1rem', 
-                                marginTop: '1rem', 
+                                background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#2563eb' : '#cbd5e1', 
+                                color: 'white', border: 'none', padding: '1rem', borderRadius: '12px', 
+                                fontWeight: 'bold', fontSize: '1.1rem', marginTop: '1rem', 
                                 cursor: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'pointer' : 'not-allowed',
                                 transition: 'background 0.3s'
                             }}>
                             {dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? "Simpan & Selesai ✅" : "Selesaikan Semua Tugas Dulu"}
                         </button>
-                     </div>
-
-                     {/* UNLOCK EVALUASI */}
-                     <div style={{ marginTop: '2.5rem', textAlign: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
-                        {challengeDay >= 5 ? (
-                           <div style={{ background: '#fffbeb', color: '#b45309', padding: '1.5rem', borderRadius: '12px', border: '1px solid #fcd34d' }}>
-                              <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '1.1rem' }}>🎉 Evaluasi Terbuka!</h4>
-                              <p style={{ fontSize: '0.95rem', marginBottom: '1rem' }}>Anda sudah mencapai target 5 hari pertama. Yuk isi evaluasi untuk melihat progress.</p>
-                              <button onClick={() => setActiveTab('report')} style={{ background: '#d97706', color: 'white', border: 'none', padding: '0.8rem 2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }}>Isi Evaluasi Sekarang</button>
-                           </div>
-                        ) : (
-                           <div style={{ color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
-                              <div style={{background:'#f1f5f9', padding:'1rem', borderRadius:'50%'}}><Lock size={28}/></div>
-                              <p style={{fontSize:'0.9rem'}}>Evaluasi kesehatan akan terbuka di <strong>Hari ke-5</strong></p>
-                              <div style={{ width: '100%', maxWidth: '250px', height: '8px', background: '#e2e8f0', borderRadius: '4px' }}><div style={{ width: `${(challengeDay/5)*100}%`, height: '100%', background: '#94a3b8', borderRadius: '4px', transition:'width 0.5s' }}></div></div>
-                              <span style={{fontSize:'0.8rem'}}>{challengeDay} / 5 Hari</span>
-                           </div>
-                        )}
                      </div>
                   </CardContent>
                </Card>
@@ -495,7 +445,6 @@ const UserDashboard = () => {
                   <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
                   <h1 className="heading-2">Rapor Kesehatan</h1>
                </div>
-               
                <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
                      <CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader>
@@ -503,7 +452,7 @@ const UserDashboard = () => {
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
                            {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
                               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                 <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? 'var(--primary)' : '#e2e8f0', borderRadius: '4px 4px 0 0', transition: 'height 0.5s' }}></div>
+                                 <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#2563eb' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div>
                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span>
                               </div>
                            ))}
@@ -511,28 +460,6 @@ const UserDashboard = () => {
                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
                            <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
                            <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
-                        </div>
-                     </CardContent>
-                  </Card>
-
-                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                     <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
-                     <CardContent>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                           <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
-                              <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
-                              <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
-                           </div>
-                           {challengeDay >= 5 ? (
-                              <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
-                                 <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
-                                 <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
-                              </div>
-                           ) : (
-                              <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
-                                 Evaluasi berikutnya di Hari ke-5
-                              </div>
-                           )}
                         </div>
                      </CardContent>
                   </Card>
@@ -547,12 +474,6 @@ const UserDashboard = () => {
                   <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
                   <h1 className="heading-2">Toko & Produk</h1>
                </div>
-
-               <div style={{ background: 'linear-gradient(to right, #4f46e5, #3b82f6)', color: 'white', padding: '2rem', borderRadius: '16px', marginBottom: '2rem', textAlign: 'center' }}>
-                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Dapatkan Manfaat Maksimal!</h2>
-                  <p style={{ opacity: 0.9 }}>Beli produk Jates9 melalui link ini agar referral Anda terhitung otomatis.</p>
-               </div>
-
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                   {[
                      { name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" },
@@ -567,7 +488,7 @@ const UserDashboard = () => {
                            <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3>
                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p>
                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 'bold', color: 'var(--primary)', fontSize: '1.1rem' }}>{prod.price}</span>
+                              <span style={{ fontWeight: 'bold', color: '#2563eb', fontSize: '1.1rem' }}>{prod.price}</span>
                               <a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                  <ShoppingBag size={16}/> Beli di Shopee
                               </a>
@@ -597,11 +518,9 @@ const UserDashboard = () => {
                      </CardContent>
                   </Card>
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                     <CardHeader><CardTitle className="heading-3">Keamanan</CardTitle></CardHeader>
-                     <CardContent>
-                        <button style={{ width: '100%', padding: '1rem', border: '1px solid #e2e8f0', background: 'white', textAlign: 'left', borderRadius: '8px', marginBottom: '0.5rem', cursor: 'pointer' }}>Ganti Password</button>
+                      <CardContent style={{padding:'1.5rem'}}>
                         <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', textAlign: 'left', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>Keluar dari Aplikasi</button>
-                     </CardContent>
+                      </CardContent>
                   </Card>
                </div>
             </div>
@@ -636,39 +555,25 @@ const UserDashboard = () => {
                       </Card>
                   ))}
                </div>
-               {myFriends.length === 0 && (
-                   <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}><Users size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} /><p>Belum ada teman. Yuk ajak teman bergabung!</p></div>
-               )}
             </div>
           )}
 
         </main>
       </div>
 
-      {/* --- MODAL QR CODE & SEARCH FRIEND --- */}
       {showQRModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}>
            <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
               <div style={{ marginBottom: '1.5rem' }}>
-                 {!isScanning ? (
-                    <>
-                        <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div>
-                        <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
-                        <button onClick={() => setIsScanning(true)} style={{ marginTop: '1rem', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem auto 0' }}><Camera size={18}/> Scan QR (Kamera)</button>
-                    </>
-                 ) : (
-                    <div style={{ overflow: 'hidden', borderRadius: '12px', position: 'relative' }}>
-                        <QrReader onResult={handleScan} constraints={{ facingMode: 'environment' }} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
-                        <button onClick={() => setIsScanning(false)} style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}><CameraOff size={16}/> Tutup Kamera</button>
-                    </div>
-                 )}
+                  <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
               </div>
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}>
                  <h4 style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.8rem', color: '#334155' }}>Cari Teman</h4>
                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
                     <input type="text" placeholder="Masukkan Kode Teman" value={friendCode} onChange={(e) => setFriendCode(e.target.value.toUpperCase())} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }} />
-                    <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
+                    <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: '#2563eb', color: 'white', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
                  </div>
                  {friendData && (
                     <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s', ':hover': {transform: 'scale(1.02)'} }}>
@@ -685,12 +590,11 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* --- MODAL FRIEND PROFILE --- */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: 'var(--gradient-hero)', padding: '2rem 1rem', color: '#1e293b' }}>
-                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={40} style={{ color: 'var(--primary)' }} /></div>
+              <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', padding: '2rem 1rem', color: 'white' }}>
+                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}><User size={40} color="#2563eb" /></div>
                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{friendData.name}</h2>
                  <div style={{ background: 'white', color: '#ca8a04', padding: '0.4rem 1rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><Medal size={16}/> {friendData.badge}</div>
               </div>
@@ -700,7 +604,7 @@ const UserDashboard = () => {
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                        <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.3rem' }}>{friendData.challenge_title}</div>
                        <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}><span>Tipe {friendData.group || 'Umum'}</span><span>Hari ke-{friendData.challenge_day}</span></div>
-                       <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}><div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: 'var(--primary)' }}></div></div>
+                       <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}><div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: '#2563eb' }}></div></div>
                     </div>
                  </div>
                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -717,7 +621,7 @@ const UserDashboard = () => {
 };
 
 const navItemStyle = (isActive) => ({
-  display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: isActive ? 'var(--accent-wash)' : 'transparent', color: isActive ? 'var(--primary)' : '#475569', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: isActive ? '600' : '400', marginBottom: '0.25rem', textAlign: 'left', transition: 'all 0.2s'
+  display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: isActive ? '#eff6ff' : 'transparent', color: isActive ? '#2563eb' : '#475569', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: isActive ? '600' : '400', marginBottom: '0.25rem', textAlign: 'left', transition: 'all 0.2s'
 });
 
 export default UserDashboard;
