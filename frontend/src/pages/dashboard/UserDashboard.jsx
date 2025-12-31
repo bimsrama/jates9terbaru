@@ -4,7 +4,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy 
+  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -22,7 +22,8 @@ const UserDashboard = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showTutorial, setShowTutorial] = useState(true);
-  const [dailyTip, setDailyTip] = useState("");
+  const [showAllChallenges, setShowAllChallenges] = useState(false); // Modal state
+  const [showMenuId, setShowMenuId] = useState(null); // Untuk menu titik tiga
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
@@ -82,7 +83,6 @@ const UserDashboard = () => {
       'Sehat': "💡 Info Sehat: Kondisi stabil. Pertahankan dengan olahraga ringan 15 menit dan tidur cukup."
     };
     const selectedTip = tips[group] || tips['Sehat'];
-    setDailyTip(selectedTip);
     return selectedTip;
   };
 
@@ -125,7 +125,25 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- LOGIC SERTIFIKAT ---
+  const handlePauseChallenge = () => {
+      if(window.confirm("Apakah Anda ingin menjeda tantangan ini sementara?")) {
+          alert("Tantangan dijeda. Anda bisa melanjutkannya kapan saja.");
+          setShowMenuId(null);
+      }
+  };
+
+  const handleStopChallenge = () => {
+      if(window.confirm("Yakin ingin berhenti? Progress Anda akan hilang.")) {
+          alert("Tantangan dihentikan.");
+          setShowMenuId(null);
+          // Logic berhenti challenge bisa ditambahkan di sini (API call)
+      }
+  };
+
+  // --- DATA PROCESSING ---
+  const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
+  const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
+
   const getCertificateStatus = () => {
     const days = overview?.financial?.total_checkins || 0;
     if (days >= 30) return { eligible: true, type: "Gold", days: 30 };
@@ -138,8 +156,6 @@ const UserDashboard = () => {
   const handleDownloadCert = () => {
     alert("Selamat! Sertifikat sedang diunduh (Simulasi).");
   };
-
-  const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Challenge 30 Hari", description: "Program Kesehatan Holistik" };
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
@@ -208,25 +224,108 @@ const UserDashboard = () => {
             </p>
           </div>
 
-          {/* --- SERTIFIKAT --- */}
-          {certStatus.eligible && (
-            <Card style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FDB931 100%)', border: 'none', marginBottom: '2rem', color: '#7c2d12' }}>
-              <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ background: 'white', padding: '0.8rem', borderRadius: '50%' }}><Award size={32} color="#FDB931" /></div>
-                  <div>
-                    <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Selamat! Anda Lulus Tantangan {certStatus.days} Hari</h3>
-                    <p style={{ fontSize: '0.9rem' }}>Konsistensi Anda luar biasa. Klaim sertifikat {certStatus.type} Anda sekarang.</p>
-                  </div>
+          {/* --- CHALLENGE PROGRESS CARD (NEW FEATURE) --- */}
+          <Card style={{ background: 'white', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible' }}>
+             <CardContent style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                   <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                         <Activity size={20} /> Tantangan Aktif
+                      </h3>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
+                   </div>
+                   <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                      Lihat Semua <ChevronRight size={16} />
+                   </button>
                 </div>
-                <button onClick={handleDownloadCert} style={{ background: 'white', color: '#7c2d12', padding: '0.75rem 1.5rem', borderRadius: '25px', fontWeight: 'bold', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                  <Download size={18} /> Download Sertifikat
-                </button>
-              </CardContent>
-            </Card>
+
+                {/* ACTIVE CHALLENGE ITEM */}
+                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div>
+                         <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4>
+                         <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                            Tipe {overview?.user?.group || 'Umum'}
+                         </span>
+                      </div>
+                      
+                      {/* TITIK TIGA MENU */}
+                      <div style={{ position: 'relative' }}>
+                         <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                            <MoreVertical size={20} color="#64748b" />
+                         </button>
+                         {showMenuId === 'active' && (
+                            <div style={{ 
+                               position: 'absolute', right: 0, top: '100%', background: 'white', 
+                               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', 
+                               border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden'
+                            }}>
+                               <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}>
+                                  <PauseCircle size={16} /> Pause
+                               </button>
+                               <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}>
+                                  <StopCircle size={16} /> Berhenti
+                               </button>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                      <div style={{ flex: 1 }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}>
+                            <span>Progress</span>
+                            <span>{Math.round(progressPercent)}%</span>
+                         </div>
+                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div>
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                      <div>
+                         <strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span>
+                      </div>
+                      <div>
+                         <strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span>
+                      </div>
+                   </div>
+                </div>
+             </CardContent>
+          </Card>
+
+          {/* --- TUTORIAL --- */}
+          {showTutorial && (
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} /> Langkah Sukses</h3>
+                <button onClick={handleCloseTutorial} style={{ fontSize: '0.85rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>Tutup Panduan <X size={16} /></button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.location.href='/dashboard/checkin'}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#ecfdf5', padding: '0.8rem', borderRadius: '12px', color: '#059669' }}><CheckCircle size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>1. Check-in Harian</div><p className="body-small" style={{ color: '#64748b' }}>Isi jurnal pagi & malam.</p></div>
+                  </CardContent>
+                </Card>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#eff6ff', padding: '0.8rem', borderRadius: '12px', color: '#2563eb' }}><Activity size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>2. Minum Jates9</div><p className="body-small" style={{ color: '#64748b' }}>Rutin sebelum makan.</p></div>
+                  </CardContent>
+                </Card>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={handleScrollToChat}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '12px', color: '#ea580c' }}><MessageCircle size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>3. Konsultasi AI</div><p className="body-small" style={{ color: '#64748b' }}>Gunakan chat di atas.</p></div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
 
-          {/* --- GRID UTAMA --- */}
+          {/* --- GRID PROFILE & CHAT --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
             
             {/* KOLOM KIRI: Profil & Stats */}
@@ -236,40 +335,21 @@ const UserDashboard = () => {
                   <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                     <User size={35} style={{ color: 'var(--primary)' }} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <h2 className="heading-2" style={{ marginBottom: '0.5rem' }}>{overview?.user?.name}</h2>
-                    
-                    {/* [MODIFIED] Hapus Tipe, Hanya Tampilkan Badge & Challenge */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                        <span style={{ 
-                          width: 'fit-content', background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', 
-                          padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                          display: 'flex', alignItems: 'center', gap: '0.3rem' 
-                        }}>
-                          <Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}
-                        </span>
-
-                        <div style={{ 
-                            background: 'rgba(255,255,255,0.7)', padding: '0.6rem 1rem', borderRadius: '8px', 
-                            border: '1px solid rgba(0,0,0,0.05)', fontSize: '0.85rem', color: '#334155' 
-                        }}>
-                            <div style={{ fontWeight: 'bold', color: 'var(--primary)', marginBottom: '4px', display:'flex', alignItems:'center', gap:'5px' }}>
-                               <Activity size={16}/> Program Saat Ini:
-                            </div>
-                            <div style={{ fontWeight: '600' }}>{currentChallenge.title}</div>
-                        </div>
-                    </div>
+                  <div>
+                    <h2 className="heading-2" style={{ marginBottom: '0.25rem' }}>{overview?.user?.name}</h2>
+                    <span style={{ 
+                      background: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c', 
+                      padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
+                      display: 'flex', alignItems: 'center', gap: '0.3rem', width: 'fit-content'
+                    }}>
+                      <Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Stats Card */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}>
-                   <div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div>
-                   <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3>
-                   <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p>
-                </Card>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}>
                    <div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div>
                    <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3>
@@ -308,7 +388,7 @@ const UserDashboard = () => {
             </Card>
           </div>
 
-          {/* --- REFERRAL CODE SECTION (BARU) --- */}
+          {/* --- REFERRAL CODE SECTION --- */}
           <div style={{ marginBottom: '2rem' }}>
              <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
                 <CardContent style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
