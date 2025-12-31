@@ -5,10 +5,11 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
   User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
-  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, CheckSquare
+  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, Camera, CameraOff
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
+import QrScanner from 'react-qr-scanner'; // Pastikan sudah npm install react-qr-scanner
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -32,7 +33,10 @@ const UserDashboard = () => {
   const [friendCode, setFriendCode] = useState(""); 
   const [friendData, setFriendData] = useState(null); 
   const [searchLoading, setSearchLoading] = useState(false);
-  const [showFriendProfile, setShowFriendProfile] = useState(false); // NEW STATE FOR FRIEND PROFILE
+  const [showFriendProfile, setShowFriendProfile] = useState(false);
+  
+  // --- STATE KAMERA SCANNER (BARU) ---
+  const [isScanning, setIsScanning] = useState(false);
 
   // --- STATE LOGIC CHALLENGE ---
   const [isPaused, setIsPaused] = useState(false); 
@@ -166,12 +170,38 @@ const UserDashboard = () => {
     }
   };
 
-  // --- OPEN FRIEND PROFILE ---
   const handleOpenFriendProfile = () => {
       if(friendData) {
           setShowQRModal(false);
           setShowFriendProfile(true);
       }
+  };
+
+  // --- SCANNER LOGIC (BARU) ---
+  const handleScan = (data) => {
+    if (data) {
+        // Data scan biasanya berupa object { text: "..." } atau langsung string
+        const rawText = data?.text || data; 
+        if(rawText) {
+            // Format URL: https://jagatetapsehat.com/friend/KODE
+            // Kita ambil bagian terakhir URL
+            const parts = rawText.split('/');
+            const code = parts[parts.length - 1]; 
+            
+            if(code) {
+                setFriendCode(code.toUpperCase()); // Isi input dengan kode
+                setIsScanning(false); // Matikan kamera
+                alert(`Kode terdeteksi: ${code}`);
+                // Opsional: Langsung trigger search
+                // handleSearchFriend(); (Butuh useEffect jika ingin auto search krn state async)
+            }
+        }
+    }
+  };
+
+  const handleScanError = (err) => {
+    console.error(err);
+    // Jangan alert terus menerus, cukup log
   };
 
   // --- DATA PROCESSING ---
@@ -269,7 +299,7 @@ const UserDashboard = () => {
                          <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
                          {showMenuId === 'active' && (
                             <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
-                               {isPaused ? (<button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}><PauseCircle size={16} /> Lanjut</button>) : (<button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>)}
+                               {isPaused ? (<button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}><PlayCircle size={16} /> Lanjut</button>) : (<button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>)}
                                <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
                             </div>
                          )}
@@ -343,10 +373,29 @@ const UserDashboard = () => {
               <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
               
               <div style={{ marginBottom: '1.5rem' }}>
-                 <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}>
-                    <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} />
-                 </div>
-                 <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
+                 {!isScanning ? (
+                    <>
+                        <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}>
+                            <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} />
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
+                        <button onClick={() => setIsScanning(true)} style={{ marginTop: '1rem', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem auto 0' }}>
+                            <Camera size={18}/> Scan QR (Kamera)
+                        </button>
+                    </>
+                 ) : (
+                    <div style={{ overflow: 'hidden', borderRadius: '12px', position: 'relative' }}>
+                        <QrScanner
+                            delay={300}
+                            onError={handleScanError}
+                            onScan={handleScan}
+                            style={{ width: '100%', height: '240px', objectFit: 'cover' }}
+                        />
+                        <button onClick={() => setIsScanning(false)} style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+                            <CameraOff size={16}/> Tutup Kamera
+                        </button>
+                    </div>
+                 )}
               </div>
 
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}>
