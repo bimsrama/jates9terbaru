@@ -4,10 +4,10 @@ import { Card, CardContent } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight, QrCode
+  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, PauseCircle, StopCircle, ChevronRight, QrCode, PlayCircle
 } from 'lucide-react';
 import axios from 'axios';
-import { QRCodeSVG } from 'qrcode.react'; // Pastikan install: npm install qrcode.react
+import { QRCodeSVG } from 'qrcode.react'; 
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -25,7 +25,10 @@ const UserDashboard = () => {
   const [showTutorial, setShowTutorial] = useState(true);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [showMenuId, setShowMenuId] = useState(null);
-  const [showQRModal, setShowQRModal] = useState(false); // NEW: Modal QR
+  const [showQRModal, setShowQRModal] = useState(false);
+  
+  // --- STATE LOGIC CHALLENGE ---
+  const [isPaused, setIsPaused] = useState(false); // State untuk status Pause
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
@@ -127,17 +130,25 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
+  // --- PAUSE & RESUME LOGIC ---
   const handlePauseChallenge = () => {
-      if(window.confirm("Apakah Anda ingin menjeda tantangan ini sementara?")) {
-          alert("Tantangan dijeda. Anda bisa melanjutkannya kapan saja.");
+      if(window.confirm("Jeda tantangan sementara? Anda bisa melanjutkannya kapan saja.")) {
+          setIsPaused(true);
           setShowMenuId(null);
       }
   };
 
+  const handleResumeChallenge = () => {
+      setIsPaused(false);
+      setShowMenuId(null);
+      alert("Selamat datang kembali! Mari lanjutkan tantangan.");
+  };
+
   const handleStopChallenge = () => {
-      if(window.confirm("Yakin ingin berhenti? Progress Anda akan hilang.")) {
+      if(window.confirm("Yakin ingin berhenti total? Progress Anda akan hilang.")) {
           alert("Tantangan dihentikan.");
           setShowMenuId(null);
+          // Logic API stop challenge here
       }
   };
 
@@ -199,46 +210,16 @@ const UserDashboard = () => {
         )}
 
         <main style={{ padding: '2rem', flex: 1 }}>
+          {/* TITLE DASHBOARD */}
           <div style={{ marginBottom: '2rem' }}>
             <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
             <p className="body-medium" style={{ color: 'var(--text-secondary)' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
           </div>
 
-          {/* CHALLENGE PROGRESS */}
-          <Card style={{ background: 'white', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible' }}>
-             <CardContent style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                   <div><h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3><p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p></div>
-                   <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
-                </div>
-                <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                      <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
-                      <div style={{ position: 'relative' }}>
-                         <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
-                         {showMenuId === 'active' && (
-                            <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
-                               <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}><PauseCircle size={16} /> Pause</button>
-                               <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
-                            </div>
-                         )}
-                      </div>
-                   </div>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                      <div style={{ flex: 1 }}>
-                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
-                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary)', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
-                      </div>
-                   </div>
-                   <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
-                      <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
-                      <div><strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
-                   </div>
-                </div>
-             </CardContent>
-          </Card>
-
+          {/* --- SECTION 1: PROFILE & CHAT (SEKARANG PALING ATAS) --- */}
           <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
+            
+            {/* KOLOM KIRI: Profile & Stats */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <Card style={{ background: 'white', border: 'none', backgroundImage: 'var(--gradient-hero)' }}>
                 <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -249,6 +230,8 @@ const UserDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Stats Cards */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#2563eb" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
                 <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
@@ -256,7 +239,7 @@ const UserDashboard = () => {
               </div>
             </div>
             
-            {/* DOKTER AI */}
+            {/* KOLOM KANAN: DOKTER AI */}
             <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
               <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#16a34a" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
               <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -268,7 +251,111 @@ const UserDashboard = () => {
             </Card>
           </div>
 
-          {/* --- REFERRAL & FRIEND QR SECTION (UPDATED) --- */}
+          {/* --- SECTION 2: CHALLENGE PROGRESS (DIPINDAH KE BAWAH PROFILE) --- */}
+          <Card style={{ 
+              background: isPaused ? '#fffbeb' : 'white', // Warna background berubah jika dipause
+              border: isPaused ? '1px solid #fcd34d' : '1px solid #e2e8f0', 
+              marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' 
+          }}>
+             <CardContent style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                   <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: isPaused ? '#d97706' : 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                         <Activity size={20} /> 
+                         {isPaused ? "Tantangan Dijeda" : "Tantangan Aktif"}
+                      </h3>
+                      <p style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                        {isPaused ? "Silakan lanjut jika sudah siap." : "Pantau progres kesehatan Anda di sini."}
+                      </p>
+                   </div>
+                   <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
+                </div>
+                
+                <div style={{ background: isPaused ? 'white' : '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                      <div>
+                         <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4>
+                         <span style={{ fontSize: '0.8rem', background: isPaused ? '#fee2e2' : '#dcfce7', color: isPaused ? '#b91c1c' : '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                            {isPaused ? "DIJEDA" : `Tipe ${overview?.user?.group || 'Umum'}`}
+                         </span>
+                      </div>
+                      
+                      <div style={{ position: 'relative' }}>
+                         <button onClick={() => setShowMenuId(showMenuId === 'active' ? null : 'active')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}><MoreVertical size={20} color="#64748b" /></button>
+                         {showMenuId === 'active' && (
+                            <div style={{ position: 'absolute', right: 0, top: '100%', background: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', borderRadius: '8px', border: '1px solid #e2e8f0', zIndex: 10, width: '160px', overflow: 'hidden' }}>
+                               
+                               {/* TOMBOL LOGIC PAUSE/RESUME */}
+                               {isPaused ? (
+                                   <button onClick={handleResumeChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: '#ecfdf5', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#166534', fontWeight: '600' }}>
+                                      <PlayCircle size={16} /> Lanjut
+                                   </button>
+                               ) : (
+                                   <button onClick={handlePauseChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#334155' }}>
+                                      <PauseCircle size={16} /> Pause
+                                   </button>
+                               )}
+
+                               <button onClick={handleStopChallenge} style={{ width: '100%', padding: '0.8rem', textAlign: 'left', background: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#ef4444' }}><StopCircle size={16} /> Berhenti</button>
+                            </div>
+                         )}
+                      </div>
+                   </div>
+                   
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                      <div style={{ flex: 1 }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
+                         <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ 
+                                width: `${progressPercent}%`, 
+                                height: '100%', 
+                                background: isPaused ? '#fbbf24' : 'var(--primary)', // Bar jadi kuning jika pause
+                                borderRadius: '4px', 
+                                transition: 'width 0.5s ease' 
+                            }}></div>
+                         </div>
+                      </div>
+                   </div>
+                   
+                   <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                      <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
+                      <div><strong>{overview?.user?.challenge_day || 1}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
+                   </div>
+                </div>
+             </CardContent>
+          </Card>
+
+          {/* --- TUTORIAL --- */}
+          {showTutorial && (
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpen size={20} /> Langkah Sukses</h3>
+                <button onClick={handleCloseTutorial} style={{ fontSize: '0.85rem', color: '#64748b', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>Tutup Panduan <X size={16} /></button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => window.location.href='/dashboard/checkin'}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#ecfdf5', padding: '0.8rem', borderRadius: '12px', color: '#059669' }}><CheckCircle size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>1. Check-in Harian</div><p className="body-small" style={{ color: '#64748b' }}>Isi jurnal pagi & malam.</p></div>
+                  </CardContent>
+                </Card>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#eff6ff', padding: '0.8rem', borderRadius: '12px', color: '#2563eb' }}><Activity size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>2. Minum Jates9</div><p className="body-small" style={{ color: '#64748b' }}>Rutin sebelum makan.</p></div>
+                  </CardContent>
+                </Card>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={handleScrollToChat}>
+                  <CardContent style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '12px', color: '#ea580c' }}><MessageCircle size={24}/></div>
+                    <div><div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>3. Konsultasi AI</div><p className="body-small" style={{ color: '#64748b' }}>Gunakan chat di atas.</p></div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* --- REFERRAL & FRIEND QR SECTION --- */}
           <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1rem' }}>
              {/* KARTU KODE REFERRAL */}
              <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
