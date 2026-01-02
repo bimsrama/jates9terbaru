@@ -3,15 +3,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
-  BookOpen, CheckCircle, FileText, Menu, Home, LogOut, Settings, 
-  User, Award, Bell, Lightbulb, Download, Bot, Medal, Copy, MoreVertical, 
-  PauseCircle, StopCircle, ChevronRight, QrCode, Search, ScanLine, 
-  Camera, CameraOff, Heart, ShoppingBag, ChevronLeft, Calendar, Star, Package,
-  AlertCircle, Lock, Check
+  Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
+  Package, ShoppingBag, ChevronLeft, Bell, Lightbulb, CheckCircle, Clock, AlertCircle
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
-import { QrReader } from 'react-qr-reader';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -24,18 +20,18 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   
-  // --- STATE DAILY CONTENT ---
+  // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
   const [checkedTasks, setCheckedTasks] = useState({});
+  const [checkinStatus, setCheckinStatus] = useState(null); // 'pending', 'completed', 'skipped', null
+  const [countdown, setCountdown] = useState(null);
 
   // --- STATE UI & NAVIGATION ---
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
-  const [showTutorial, setShowTutorial] = useState(true);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
-  const [showMenuId, setShowMenuId] = useState(null);
   
   // --- STATE FEATURES ---
   const [showQRModal, setShowQRModal] = useState(false); 
@@ -43,8 +39,6 @@ const UserDashboard = () => {
   const [friendData, setFriendData] = useState(null); 
   const [searchLoading, setSearchLoading] = useState(false);
   const [showFriendProfile, setShowFriendProfile] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false); 
 
   // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
@@ -56,9 +50,6 @@ const UserDashboard = () => {
 
   // --- INITIAL LOAD ---
   useEffect(() => {
-    const isTutorialHidden = localStorage.getItem('hide_tutorial');
-    if (isTutorialHidden) setShowTutorial(false);
-
     const handleResize = () => {
         const desktop = window.innerWidth > 1024;
         setIsDesktop(desktop);
@@ -69,7 +60,7 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch Daily Content saat tab Checkin aktif
+  // Fetch content saat tab berubah
   useEffect(() => {
       if (activeTab === 'checkin') fetchDailyContent();
       if (activeTab === 'friends') fetchFriendsList();
@@ -78,6 +69,32 @@ const UserDashboard = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
+
+  // --- COUNTDOWN TIMER (SAMPAI JAM 19:00) ---
+  useEffect(() => {
+    let timer;
+    if (activeTab === 'checkin' && checkinStatus !== 'completed' && checkinStatus !== 'skipped') {
+      timer = setInterval(() => {
+        const now = new Date();
+        const target = new Date();
+        target.setHours(19, 0, 0, 0); // Jam 19:00 Hari Ini
+
+        // Jika lewat jam 19:00, target jadi besok (atau stop countdown jika mau)
+        // Di sini kita stop countdown jika sudah lewat jam 19:00
+        if (now > target) {
+          setCountdown("Waktu Habis");
+          clearInterval(timer);
+        } else {
+          const diff = target - now;
+          const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+          const minutes = Math.floor((diff / (1000 * 60)) % 60);
+          const seconds = Math.floor((diff / 1000) % 60);
+          setCountdown(`${hours}j ${minutes}m ${seconds}d`);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeTab, checkinStatus]);
 
   const fetchData = async () => {
     try {
@@ -104,6 +121,9 @@ const UserDashboard = () => {
       try {
           const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() });
           setDailyData(res.data);
+          // Reset atau set state checkin jika ada data dari backend (perlu endpoint status checkin hari ini kalau mau persist)
+          // Untuk simplifikasi, kita asumsikan status pending jika belum completed.
+          // Idealnya backend kirim status hari ini: { ..., today_status: 'pending'/'completed' }
       } catch (err) { console.error("Gagal load konten harian"); }
   };
 
@@ -125,25 +145,12 @@ const UserDashboard = () => {
   };
 
   // --- ACTIONS ---
-  const handleCloseTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem('hide_tutorial', 'true'); 
-  };
-
   const handleScrollToChat = () => {
     setActiveTab('dashboard');
     setSidebarOpen(false); 
     setTimeout(() => {
         chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
-  };
-
-  const handleSwitchChallenge = async (challengeId) => {
-    if(!window.confirm("Pindah tantangan akan mereset progress kuis. Lanjut?")) return;
-    try {
-      await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: challengeId }, { headers: getAuthHeader() });
-      window.location.href = '/quiz'; 
-    } catch (error) { alert("Gagal."); }
   };
 
   const handleSendChat = async (e) => {
@@ -166,21 +173,29 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- FUNGSI CHECKIN (UPDATED DENGAN BOX & SUBMIT) ---
+  // --- FUNGSI CHECKIN BARU ---
   const handleSubmitCheckin = async () => {
-      if (!dailyData?.tasks) return;
-      const allChecked = dailyData.tasks.every((_, idx) => checkedTasks[idx]);
-      if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
-      
+      // Logic baru: Boleh submit walau belum selesai (pending)
+      // Tentukan status yang dikirim ke backend
+      const allChecked = dailyData?.tasks ? dailyData.tasks.every((_, idx) => checkedTasks[idx]) : false;
+      const statusToSend = allChecked ? 'completed' : 'pending';
+
       try {
-          const res = await axios.post(`${BACKEND_URL}/api/checkin`, { journal }, { headers: getAuthHeader() });
+          const res = await axios.post(`${BACKEND_URL}/api/checkin`, { 
+            journal, 
+            status: statusToSend 
+          }, { headers: getAuthHeader() });
           
-          // Tampilkan pesan motivasi dari backend (jika ada)
-          const motivasi = res.data.motivasi || "Check-in Berhasil! Hari Anda bertambah.";
-          alert(`✅ BERHASIL!\n\n"${motivasi}"`);
-          
-          fetchData(); 
-          setActiveTab('dashboard');
+          if (res.data.success) {
+            setCheckinStatus(statusToSend);
+            if(statusToSend === 'completed') {
+              alert("✅ Check-in SELESAI! Anda hebat hari ini.");
+              setActiveTab('dashboard');
+              fetchData();
+            } else {
+              alert("⚠️ Check-in PENDING tercatat. Selesaikan tugas sebelum jam 19:00!");
+            }
+          }
       } catch (err) { 
           alert(err.response?.data?.message || "Gagal check-in."); 
       }
@@ -212,19 +227,6 @@ const UserDashboard = () => {
       }
   };
 
-  const handleScan = (result, error) => {
-    if (!!result) {
-        const rawText = result?.text;
-        if (rawText) {
-            const parts = rawText.split('/');
-            const code = parts[parts.length - 1]; 
-            if(code) {
-                setFriendCode(code.toUpperCase()); setIsScanning(false); alert(`Kode terdeteksi: ${code}`);
-            }
-        }
-    }
-  };
-
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
   const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
   const challengeDay = overview?.user?.challenge_day || 1;
@@ -234,25 +236,21 @@ const UserDashboard = () => {
   return (
     <div style={{ display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
-      {/* CSS Injection: Warna Hijau Baru (#8fec78) & Gold Badge */}
+      {/* CSS Injection */}
       <style>{`
         :root {
-          --primary: #8fec78; /* Hijau Cerah */
+          --primary: #8fec78;
           --primary-dark: #6bd455;
           --gradient-profile: linear-gradient(135deg, #ffffff 0%, #8fec78 100%);
         }
-        
-        /* Animasi Gold Badge */
         @keyframes badge-pulse {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
           70% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
           100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
         }
-        
-        /* Style Gold Luxury */
         .gold-badge {
-          background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); /* Emas Tua */
-          border: 1px solid #FCD34D; /* Emas Muda */
+          background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%);
+          border: 1px solid #FCD34D;
           color: white;
           padding: 0.35rem 1rem;
           border-radius: 99px;
@@ -265,11 +263,9 @@ const UserDashboard = () => {
           text-shadow: 0 1px 2px rgba(0,0,0,0.2);
           animation: badge-pulse 2s infinite;
         }
-
-        /* Override warna ikon aktif di nav */
         .nav-item.active {
-          background: #dcfce7 !important; /* Hijau sangat muda */
-          color: #166534 !important; /* Hijau tua */
+          background: #dcfce7 !important;
+          color: #166534 !important;
           font-weight: 600;
         }
       `}</style>
@@ -285,8 +281,8 @@ const UserDashboard = () => {
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} style={navItemStyle(activeTab === 'dashboard')} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><Home size={20} /> Dashboard</button></li>
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} style={navItemStyle(activeTab === 'checkin')} onClick={() => { setActiveTab('checkin'); setSidebarOpen(false); }}><Activity size={20} /> Check-in Harian</button></li>
-            <li><button className={`nav-item ${activeTab==='report'?'active':''}`} style={navItemStyle(activeTab === 'report')} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><FileText size={20} /> Rapor Kesehatan</button></li>
-            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Heart size={20} /> Teman Sehat</button></li>
+            <li><button className={`nav-item ${activeTab==='report'?'active':''}`} style={navItemStyle(activeTab === 'report')} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><TrendingUp size={20} /> Rapor Kesehatan</button></li>
+            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Users size={20} /> Teman Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} style={navItemStyle(activeTab === 'shop')} onClick={() => { setActiveTab('shop'); setSidebarOpen(false); }}><ShoppingBag size={20} /> Produk & Toko</button></li>
             <li><button className="nav-item" style={navItemStyle(false)} onClick={handleScrollToChat}><MessageCircle size={20} /> Dokter AI</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} style={navItemStyle(activeTab === 'settings')} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}><Settings size={20} /> Pengaturan</button></li>
@@ -300,7 +296,7 @@ const UserDashboard = () => {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Menu size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#166534' }}>JATES9</span></div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Home size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#166534' }}>JATES9</span></div>
             <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}><LogOut size={18} /> Keluar</button>
           </header>
         )}
@@ -318,34 +314,19 @@ const UserDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* --- KARTU PROFIL UTAMA (Gradient Hijau Cerah) --- */}
-                  <Card style={{ 
-                      border: 'none', 
-                      borderRadius: '16px', 
-                      background: 'var(--gradient-profile)', 
-                      color: '#1e293b', // Text gelap agar terbaca di background terang
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                      overflow: 'hidden'
-                  }}>
+                  <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                      <div style={{ 
-                          width: '80px', height: '80px', borderRadius: '50%', background: 'white', 
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 
-                      }}>
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
                           <User size={40} color="#166534" />
                       </div>
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
-                        
-                        {/* BADGE GOLD LUXURY */}
                         <div className="gold-badge">
                           <Medal size={16} /> {overview?.user?.badge || "Pejuang Tangguh"}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                  {/* ----------------------------------------------- */}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#166534" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
@@ -355,7 +336,7 @@ const UserDashboard = () => {
                 </div>
                 
                 <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                  <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Bot size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
+                  <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
                   <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? '#dcfce7' : '#f1f5f9', color: msg.role === 'user' ? '#14532d' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
                     {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
@@ -407,22 +388,6 @@ const UserDashboard = () => {
                       </div>
                     </CardContent>
                 </Card>
-
-                <div>
-                  <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Artikel Kesehatan</h3>
-                  <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
-                    <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s' }}>
-                        <div style={{ width: '50px', height: '50px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center' }}><FileText size={24} color="#166534"/></div>
-                        <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div>
-                      </li>
-                      <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                        <div style={{ width: '50px', height: '50px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center' }}><Activity size={24} color="#166534"/></div>
-                        <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Yoga untuk Pencernaan</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 5 menit</span></div>
-                      </li>
-                    </ul>
-                  </Card>
-                </div>
               </div>
             </>
           )}
@@ -439,11 +404,15 @@ const UserDashboard = () => {
                 <CardHeader>
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                     <CardTitle className="heading-3">Aktivitas Hari Ini</CardTitle>
-                    <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold' }}>Wajib Selesai</span>
+                    {/* STATUS BADGE */}
+                    {checkinStatus === 'completed' && <span style={{fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SELESAI</span>}
+                    {checkinStatus === 'pending' && <span style={{fontSize: '0.8rem', background: '#fffbeb', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>PENDING</span>}
+                    {checkinStatus === 'skipped' && <span style={{fontSize: '0.8rem', background: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SKIPPED</span>}
                   </div>
                 </CardHeader>
                 
                 <CardContent style={{ padding: '1.5rem' }}>
+                  {/* FAKTA HARIAN */}
                   {dailyData && (
                     <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
                       <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
@@ -453,23 +422,48 @@ const UserDashboard = () => {
                     </div>
                   )}
 
+                  {/* COUNTDOWN TIMER JIKA PENDING */}
+                  {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && countdown && (
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                      <div style={{ color: '#92400e', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Clock size={20} /> Sisa Waktu Check-in:
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b45309', marginTop: '0.5rem' }}>{countdown}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#92400e' }}>Batas waktu: 19:00 WIB</div>
+                    </div>
+                  )}
+
+                  {/* STATUS SKIPPED ALERT */}
+                  {checkinStatus === 'skipped' && (
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                       <div style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <AlertCircle size={20} /> Hari Dilewatkan
+                      </div>
+                      <p style={{ fontSize: '0.9rem', color: '#b91c1c', marginTop: '0.5rem' }}>Anda melewatkan check-in kemarin/hari ini. Tetap semangat untuk besok!</p>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Pilih tugas yang sudah dilakukan:</h4>
                     
-                    {/* TAMPILAN PILIHAN BOX (Task Cards) */}
+                    {/* TASK CARDS */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                       {dailyData?.tasks?.map((task, idx) => (
                         <div key={idx} 
-                          onClick={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
+                          onClick={() => {
+                            if(checkinStatus === 'completed' || checkinStatus === 'skipped') return; // Disable edit if done
+                            setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))
+                          }}
                           style={{ 
                             padding: '1.25rem', 
                             borderRadius: '16px', 
-                            cursor: 'pointer', 
+                            cursor: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 'default' : 'pointer', 
                             display: 'flex', 
                             alignItems: 'center', 
                             justifyContent: 'space-between',
                             border: checkedTasks[idx] ? '2.5px solid #8fec78' : '1px solid #e2e8f0',
                             background: checkedTasks[idx] ? '#f0fdf4' : '#ffffff',
+                            opacity: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 0.7 : 1,
                             transition: 'all 0.2s ease-in-out',
                             transform: checkedTasks[idx] ? 'scale(1.02)' : 'scale(1)'
                           }}>
@@ -483,37 +477,33 @@ const UserDashboard = () => {
                       ))}
                     </div>
 
-                    <div style={{marginTop: '1rem'}}>
-                      <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Jurnal Singkat (Apa yang dirasakan?):</label>
-                      <textarea 
-                          value={journal}
-                          onChange={(e) => setJournal(e.target.value)}
-                          placeholder="Contoh: Perut terasa lebih nyaman hari ini..." 
-                          style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
-                      ></textarea>
-                    </div>
+                    {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && (
+                      <div style={{marginTop: '1rem'}}>
+                        <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Jurnal Singkat:</label>
+                        <textarea 
+                            value={journal}
+                            onChange={(e) => setJournal(e.target.value)}
+                            placeholder="Contoh: Perut terasa lebih nyaman hari ini..." 
+                            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
+                        ></textarea>
+                      </div>
+                    )}
 
-                    {/* INFORMASI PENGINGAT JAM 7 MALAM */}
-                    <div style={{ display: 'flex', gap: '0.75rem', background: '#fffbeb', padding: '1rem', borderRadius: '12px', border: '1px solid #fef3c7', marginTop: '0.5rem' }}>
-                      <Bell size={20} color="#d97706" style={{flexShrink: 0}} />
-                      <p style={{ fontSize: '0.8rem', color: '#92400e', lineHeight: '1.4' }}>
-                        <strong>Perhatian:</strong> Jika Anda belum menyelesaikan tugas ini, sistem akan otomatis mengirim pengingat ke WhatsApp Anda pada <strong>jam 19:00 WIB</strong>.
-                      </p>
-                    </div>
-                    
-                    <button 
-                      onClick={handleSubmitCheckin} 
-                      disabled={!dailyData?.tasks?.every((_, i) => checkedTasks[i])}
-                      style={{ 
-                        background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#8fec78' : '#cbd5e1', 
-                        color: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#064e3b' : '#94a3b8', 
-                        border: 'none', padding: '1.25rem', borderRadius: '16px', 
-                        fontWeight: '800', fontSize: '1.2rem', marginTop: '1rem', 
-                        cursor: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'pointer' : 'not-allowed',
-                        boxShadow: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '0 10px 15px -3px rgba(143, 236, 120, 0.4)' : 'none'
-                      }}>
-                      SUBMIT
-                    </button>
+                    {/* TOMBOL SUBMIT */}
+                    {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && (
+                      <button 
+                        onClick={handleSubmitCheckin} 
+                        style={{ 
+                          background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#8fec78' : '#fbbf24', // Hijau jika lengkap, Kuning jika pending
+                          color: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#064e3b' : '#92400e', 
+                          border: 'none', padding: '1.25rem', borderRadius: '16px', 
+                          fontWeight: '800', fontSize: '1.2rem', marginTop: '1rem', 
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'
+                        }}>
+                        {dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'SUBMIT SELESAI' : 'SIMPAN SEMENTARA (PENDING)'}
+                      </button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -529,43 +519,43 @@ const UserDashboard = () => {
                </div>
                <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                     <CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader>
-                     <CardContent>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-                           {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
-                              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                 <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#8fec78' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div>
-                                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span>
-                              </div>
-                           ))}
-                        </div>
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                           <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
-                           <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
-                        </div>
-                     </CardContent>
+                      <CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                            {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
+                               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                  <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#8fec78' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span>
+                               </div>
+                            ))}
+                         </div>
+                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                            <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
+                            <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
+                         </div>
+                      </CardContent>
                   </Card>
 
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                     <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
-                     <CardContent>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                           <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
-                              <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
-                              <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
-                           </div>
-                           {challengeDay >= 5 ? (
-                              <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
-                                 <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
-                                 <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
-                              </div>
-                           ) : (
-                              <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
-                                 Evaluasi berikutnya di Hari ke-5
-                              </div>
-                           )}
-                        </div>
-                     </CardContent>
+                      <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
+                               <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
+                            </div>
+                            {challengeDay >= 5 ? (
+                               <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
+                                  <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
+                                  <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
+                               </div>
+                            ) : (
+                               <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
+                                  Evaluasi berikutnya di Hari ke-5
+                               </div>
+                            )}
+                         </div>
+                      </CardContent>
                   </Card>
                </div>
             </div>
@@ -580,25 +570,25 @@ const UserDashboard = () => {
                </div>
                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                   {[
-                     { name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" },
-                     { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" },
-                     { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }
+                      { name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" },
+                      { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" },
+                      { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }
                   ].map((prod, idx) => (
-                     <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                        <div style={{ height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                           <Package size={64} color="#94a3b8"/>
-                        </div>
-                        <CardContent style={{ padding: '1.5rem' }}>
-                           <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3>
-                           <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p>
-                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span>
-                              <a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                 <ShoppingBag size={16}/> Beli di Shopee
-                              </a>
-                           </div>
-                        </CardContent>
-                     </Card>
+                      <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                         <div style={{ height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                            <Package size={64} color="#94a3b8"/>
+                         </div>
+                         <CardContent style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                               <span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span>
+                               <a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <ShoppingBag size={16}/> Beli di Shopee
+                               </a>
+                            </div>
+                         </CardContent>
+                      </Card>
                   ))}
                </div>
             </div>
@@ -613,13 +603,13 @@ const UserDashboard = () => {
                </div>
                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                     <CardHeader><CardTitle className="heading-3">Profil Saya</CardTitle></CardHeader>
-                     <CardContent>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                           <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nama Lengkap</label><input type="text" value={overview?.user?.name} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-                           <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nomor WhatsApp</label><input type="text" value={overview?.user?.referral_code} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-                        </div>
-                     </CardContent>
+                      <CardHeader><CardTitle className="heading-3">Profil Saya</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nama Lengkap</label><input type="text" value={overview?.user?.name} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nomor WhatsApp</label><input type="text" value={overview?.user?.referral_code} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+                         </div>
+                      </CardContent>
                   </Card>
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
                       <CardContent style={{padding:'1.5rem'}}>
