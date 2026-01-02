@@ -198,17 +198,35 @@ const AdminDashboard = () => {
                      </button>
                   </div>
               </div>
+              
               {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading matrix...</div> : (
                   <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
-                    <table style={{ width: '100%', minWidth: '1500px', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f8fafc' }}>
+                    <table style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
+                        {/* Header Grouping */}
                         <tr>
-                          <th style={thStyle}>Hari</th>
-                          <th style={thStyle}>Tipe A (Sembelit)<br/><small>09:00</small></th>
-                          <th style={thStyle}>Tipe B (Kembung)<br/><small>09:00</small></th>
-                          <th style={thStyle}>Tipe C (GERD)<br/><small>09:00</small></th>
-                          <th style={thStyle}>Fakta Kesehatan<br/><small>12:00</small></th>
-                          <th style={thStyle}>Soft Sell<br/><small>H+3</small></th>
+                            <th style={{...thStyle, width: '50px', background: '#f1f5f9'}}></th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af', borderRight:'2px solid white'}}>GROUP A (Misal: Sembelit)</th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534', borderRight:'2px solid white'}}>GROUP B (Misal: Kembung)</th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>GROUP C (Misal: GERD)</th>
+                        </tr>
+                        <tr>
+                          <th style={{...thStyle, textAlign:'center'}}>Hari</th>
+                          
+                          {/* Group A Columns */}
+                          <th style={subThStyle}>Tugas A (Pagi)</th>
+                          <th style={subThStyle}>Fakta A (Siang)</th>
+                          <th style={subThStyle}>Soft Sell A (Sore)</th>
+
+                          {/* Group B Columns */}
+                          <th style={subThStyle}>Tugas B (Pagi)</th>
+                          <th style={subThStyle}>Fakta B (Siang)</th>
+                          <th style={subThStyle}>Soft Sell B (Sore)</th>
+
+                          {/* Group C Columns */}
+                          <th style={subThStyle}>Tugas C (Pagi)</th>
+                          <th style={subThStyle}>Fakta C (Siang)</th>
+                          <th style={subThStyle}>Soft Sell C (Sore)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -217,11 +235,39 @@ const AdminDashboard = () => {
                             return (
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
-                                    <td style={tdStyle}><textarea style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} /></td>
-                                    <td style={tdStyle}><textarea style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} /></td>
-                                    <td style={tdStyle}><textarea style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} /></td>
-                                    <td style={tdStyle}><textarea style={tableInputStyle} value={row.fact_content||""} onChange={e=>handleMatrixChange(day,'fact_content',e.target.value)} /></td>
-                                    <td style={tdStyle}>{day%3===0 ? <textarea style={{...tableInputStyle, background:'#f0fdf4'}} value={row.soft_sell_content||""} onChange={e=>handleMatrixChange(day,'soft_sell_content',e.target.value)} /> : '-'}</td>
+                                    
+                                    {/* GROUP A */}
+                                    <td style={{...tdStyle, background: '#eff6ff'}}>
+                                        <textarea placeholder="Tugas A..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}>
+                                        <textarea placeholder="Fakta A..." style={tableInputStyle} value={row.fact_a||""} onChange={e=>handleMatrixChange(day,'fact_a',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}>
+                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo A..." style={{...tableInputStyle, borderColor: '#93c5fd'}} value={row.soft_sell_a||""} onChange={e=>handleMatrixChange(day,'soft_sell_a',e.target.value)} /> : <span style={dashStyle}>-</span>}
+                                    </td>
+
+                                    {/* GROUP B */}
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
+                                        <textarea placeholder="Tugas B..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
+                                        <textarea placeholder="Fakta B..." style={tableInputStyle} value={row.fact_b||""} onChange={e=>handleMatrixChange(day,'fact_b',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
+                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo B..." style={{...tableInputStyle, borderColor: '#86efac'}} value={row.soft_sell_b||""} onChange={e=>handleMatrixChange(day,'soft_sell_b',e.target.value)} /> : <span style={dashStyle}>-</span>}
+                                    </td>
+
+                                    {/* GROUP C */}
+                                    <td style={{...tdStyle, background: '#faf5ff'}}>
+                                        <textarea placeholder="Tugas C..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}>
+                                        <textarea placeholder="Fakta C..." style={tableInputStyle} value={row.fact_c||""} onChange={e=>handleMatrixChange(day,'fact_c',e.target.value)} />
+                                    </td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}>
+                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo C..." style={{...tableInputStyle, borderColor: '#d8b4fe'}} value={row.soft_sell_c||""} onChange={e=>handleMatrixChange(day,'soft_sell_c',e.target.value)} /> : <span style={dashStyle}>-</span>}
+                                    </td>
                                 </tr>
                             )
                         })}
@@ -258,5 +304,8 @@ const tableInputStyle = { width: '100%', padding: '0.4rem', borderRadius: '4px',
 const selectStyle = { padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1' };
 const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' };
 const tdStyle = { padding: '0.75rem', fontSize: '0.85rem' };
+// STYLE TAMBAHAN UNTUK TABEL BARU
+const subThStyle = { padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', minWidth: '180px' };
+const dashStyle = { display:'block', textAlign:'center', color:'#cbd5e1', fontSize:'1.2rem' };
 
 export default AdminDashboard;
