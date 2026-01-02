@@ -166,14 +166,19 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
+  // --- FUNGSI CHECKIN (UPDATED) ---
   const handleSubmitCheckin = async () => {
       if (!dailyData?.tasks) return;
       const allChecked = dailyData.tasks.every((_, idx) => checkedTasks[idx]);
       if (!allChecked) return alert("Mohon selesaikan semua tugas sebelum check-in!");
       
       try {
-          await axios.post(`${BACKEND_URL}/api/checkin`, { journal }, { headers: getAuthHeader() });
-          alert("Check-in Berhasil! Hari Anda bertambah.");
+          const res = await axios.post(`${BACKEND_URL}/api/checkin`, { journal }, { headers: getAuthHeader() });
+          
+          // Tampilkan pesan motivasi dari backend (jika ada)
+          const motivasi = res.data.motivasi || "Check-in Berhasil! Hari Anda bertambah.";
+          alert(`✅ BERHASIL!\n\n"${motivasi}"`);
+          
           fetchData(); 
           setActiveTab('dashboard');
       } catch (err) { 
