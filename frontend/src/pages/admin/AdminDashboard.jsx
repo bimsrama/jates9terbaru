@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -28,24 +28,29 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState({ total_users: 0, pending_withdrawals: 0, total_revenue: 0 });
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
+  const [articles, setArticles] = useState([]); // State untuk Artikel
 
   // --- MATRIX CONTENT STATE ---
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
-  const [contentMatrix, setContentMatrix] = useState({}); // { 1: {row data}, 2: {row data} }
+  const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
 
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
+
+  // --- ARTICLE STATE ---
+  const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
 
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
   }, []);
 
-  // Fetch Matrix saat Challenge ID berubah
   useEffect(() => {
-    if (selectedChallengeId && activeTab === 'challenge_content') {
+    if (activeTab === 'challenge_content' && selectedChallengeId) {
         fetchContentMatrix(selectedChallengeId);
     }
+    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'articles') fetchArticles();
   }, [selectedChallengeId, activeTab]);
 
   const fetchStats = async () => {
@@ -79,6 +84,13 @@ const AdminDashboard = () => {
           setContentMatrix(matrix);
       } catch (e) { console.error(e); setContentMatrix({}); }
       setLoadingMatrix(false);
+  };
+
+  const fetchArticles = async () => {
+      try {
+          const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() });
+          setArticles(res.data);
+      } catch(e) { console.error(e); }
   };
 
   const handleMatrixChange = (day, field, value) => {
@@ -127,8 +139,30 @@ const AdminDashboard = () => {
     try { await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, { user_id: userId, [type]: value }, { headers: getAuthHeader() }); fetchUsers(); } catch (e) { alert("Gagal update"); }
   };
 
+  // --- HANDLE ARTICLE POST ---
+  const handlePostArticle = async (e) => {
+      e.preventDefault();
+      setBtnLoading(true);
+      const formData = new FormData();
+      formData.append('title', articleForm.title);
+      formData.append('content', articleForm.content);
+      if(articleForm.image) formData.append('image', articleForm.image);
+
+      try {
+          const res = await axios.post(`${BACKEND_URL}/api/admin/articles`, formData, { 
+              headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } 
+          });
+          if(res.data.success) {
+              alert(`Artikel Terbit! Estimasi baca AI: ${res.data.reading_time}`);
+              setArticleForm({ title: '', content: '', image: null });
+              fetchArticles();
+          }
+      } catch(e) { alert("Gagal post artikel."); }
+      setBtnLoading(false);
+  };
+
   const SidebarItem = ({ id, icon: Icon, label }) => (
-    <button onClick={() => { setActiveTab(id); if(id==='users') fetchUsers(); if(window.innerWidth <= 1024) setSidebarOpen(false); }}
+    <button onClick={() => { setActiveTab(id); if(window.innerWidth <= 1024) setSidebarOpen(false); }}
       style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.85rem 1rem', background: activeTab === id ? 'var(--primary)' : 'transparent', border: 'none', color: activeTab === id ? 'white' : '#64748b', fontWeight: activeTab === id ? '600' : '400', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', marginBottom: '0.25rem' }}>
       <Icon size={18} /> {label}
     </button>
@@ -143,7 +177,8 @@ const AdminDashboard = () => {
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
           <SidebarItem id="challenge_cards" icon={Award} label="Card Challenge AI" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
-          <SidebarItem id="users" icon={Users} label="User & Badge" />
+          <SidebarItem id="users" icon={Users} label="User & Referral" />
+          <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
       </aside>
@@ -203,7 +238,6 @@ const AdminDashboard = () => {
                   <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
                     <table style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
-                        {/* Header Grouping */}
                         <tr>
                             <th style={{...thStyle, width: '50px', background: '#f1f5f9'}}></th>
                             <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af', borderRight:'2px solid white'}}>GROUP A (Misal: Sembelit)</th>
@@ -212,21 +246,9 @@ const AdminDashboard = () => {
                         </tr>
                         <tr>
                           <th style={{...thStyle, textAlign:'center'}}>Hari</th>
-                          
-                          {/* Group A Columns */}
-                          <th style={subThStyle}>Tugas A (Pagi)</th>
-                          <th style={subThStyle}>Fakta A (Siang)</th>
-                          <th style={subThStyle}>Soft Sell A (Sore)</th>
-
-                          {/* Group B Columns */}
-                          <th style={subThStyle}>Tugas B (Pagi)</th>
-                          <th style={subThStyle}>Fakta B (Siang)</th>
-                          <th style={subThStyle}>Soft Sell B (Sore)</th>
-
-                          {/* Group C Columns */}
-                          <th style={subThStyle}>Tugas C (Pagi)</th>
-                          <th style={subThStyle}>Fakta C (Siang)</th>
-                          <th style={subThStyle}>Soft Sell C (Sore)</th>
+                          <th style={subThStyle}>Tugas A</th><th style={subThStyle}>Fakta A</th><th style={subThStyle}>Soft Sell A</th>
+                          <th style={subThStyle}>Tugas B</th><th style={subThStyle}>Fakta B</th><th style={subThStyle}>Soft Sell B</th>
+                          <th style={subThStyle}>Tugas C</th><th style={subThStyle}>Fakta C</th><th style={subThStyle}>Soft Sell C</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -235,39 +257,18 @@ const AdminDashboard = () => {
                             return (
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
-                                    
                                     {/* GROUP A */}
-                                    <td style={{...tdStyle, background: '#eff6ff'}}>
-                                        <textarea placeholder="Tugas A..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#eff6ff'}}>
-                                        <textarea placeholder="Fakta A..." style={tableInputStyle} value={row.fact_a||""} onChange={e=>handleMatrixChange(day,'fact_a',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#eff6ff'}}>
-                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo A..." style={{...tableInputStyle, borderColor: '#93c5fd'}} value={row.soft_sell_a||""} onChange={e=>handleMatrixChange(day,'soft_sell_a',e.target.value)} /> : <span style={dashStyle}>-</span>}
-                                    </td>
-
+                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.fact_a||""} onChange={e=>handleMatrixChange(day,'fact_a',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#93c5fd'}} value={row.soft_sell_a||""} onChange={e=>handleMatrixChange(day,'soft_sell_a',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
                                     {/* GROUP B */}
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
-                                        <textarea placeholder="Tugas B..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
-                                        <textarea placeholder="Fakta B..." style={tableInputStyle} value={row.fact_b||""} onChange={e=>handleMatrixChange(day,'fact_b',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}>
-                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo B..." style={{...tableInputStyle, borderColor: '#86efac'}} value={row.soft_sell_b||""} onChange={e=>handleMatrixChange(day,'soft_sell_b',e.target.value)} /> : <span style={dashStyle}>-</span>}
-                                    </td>
-
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.fact_b||""} onChange={e=>handleMatrixChange(day,'fact_b',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#86efac'}} value={row.soft_sell_b||""} onChange={e=>handleMatrixChange(day,'soft_sell_b',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
                                     {/* GROUP C */}
-                                    <td style={{...tdStyle, background: '#faf5ff'}}>
-                                        <textarea placeholder="Tugas C..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#faf5ff'}}>
-                                        <textarea placeholder="Fakta C..." style={tableInputStyle} value={row.fact_c||""} onChange={e=>handleMatrixChange(day,'fact_c',e.target.value)} />
-                                    </td>
-                                    <td style={{...tdStyle, background: '#faf5ff'}}>
-                                        {day % 3 === 0 || day === 1 ? <textarea placeholder="Promo C..." style={{...tableInputStyle, borderColor: '#d8b4fe'}} value={row.soft_sell_c||""} onChange={e=>handleMatrixChange(day,'soft_sell_c',e.target.value)} /> : <span style={dashStyle}>-</span>}
-                                    </td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.fact_c||""} onChange={e=>handleMatrixChange(day,'fact_c',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#d8b4fe'}} value={row.soft_sell_c||""} onChange={e=>handleMatrixChange(day,'soft_sell_c',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
                                 </tr>
                             )
                         })}
@@ -281,16 +282,54 @@ const AdminDashboard = () => {
           {activeTab === 'users' && (
               <Card style={{ overflowX: 'auto', background: 'white' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr style={{background:'#f8fafc'}}><th style={thStyle}>User</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead>
+                  <thead><tr style={{background:'#f8fafc'}}><th style={thStyle}>User</th><th style={thStyle}>Statistik</th><th style={thStyle}>Challenge</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead>
                   <tbody>{users.map(u => (
                       <tr key={u.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                           <td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td>
+                          <td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td>
+                          <td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td>
                           <td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td>
                           <td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td>
                       </tr>
                   ))}</tbody>
                 </table>
               </Card>
+          )}
+
+          {activeTab === 'articles' && (
+             <div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}>
+                 <Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3>
+                    <form onSubmit={handlePostArticle}>
+                        <div style={{marginBottom:'1rem'}}>
+                            <label style={labelStyle}>Judul Artikel</label>
+                            <input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." />
+                        </div>
+                        <div style={{marginBottom:'1rem'}}>
+                            <label style={labelStyle}>Gambar (Otomatis Kompres)</label>
+                            <input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" />
+                        </div>
+                        <div style={{marginBottom:'1rem'}}>
+                            <label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label>
+                            <textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." />
+                        </div>
+                        <button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>
+                             {btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}
+                        </button>
+                    </form>
+                 </Card>
+                 <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                     {articles.map(a => (
+                         <Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>
+                             {a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}
+                             <div>
+                                 <h4 style={{fontWeight:'bold'}}>{a.title}</h4>
+                                 <p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p>
+                             </div>
+                         </Card>
+                     ))}
+                 </div>
+             </div>
           )}
         </main>
       </div>
@@ -304,8 +343,8 @@ const tableInputStyle = { width: '100%', padding: '0.4rem', borderRadius: '4px',
 const selectStyle = { padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1' };
 const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' };
 const tdStyle = { padding: '0.75rem', fontSize: '0.85rem' };
-// STYLE TAMBAHAN UNTUK TABEL BARU
 const subThStyle = { padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.7rem', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0', minWidth: '180px' };
 const dashStyle = { display:'block', textAlign:'center', color:'#cbd5e1', fontSize:'1.2rem' };
+const labelStyle = { display:'block', marginBottom:'0.4rem', fontSize:'0.85rem', fontWeight:'600', color:'#475569'};
 
 export default AdminDashboard;
