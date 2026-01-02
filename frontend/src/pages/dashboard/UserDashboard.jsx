@@ -124,6 +124,7 @@ const UserDashboard = () => {
     return tips[group] || tips['Sehat'];
   };
 
+  // --- ACTIONS ---
   const handleCloseTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem('hide_tutorial', 'true'); 
@@ -262,7 +263,7 @@ const UserDashboard = () => {
 
         /* Override warna ikon aktif di nav */
         .nav-item.active {
-          background: #f0fdf4 !important; /* Hijau sangat muda */
+          background: #dcfce7 !important; /* Hijau sangat muda */
           color: #166534 !important; /* Hijau tua */
           font-weight: 600;
         }
