@@ -166,7 +166,7 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- FUNGSI CHECKIN (UPDATED) ---
+  // --- FUNGSI CHECKIN (UPDATED DENGAN BOX & SUBMIT) ---
   const handleSubmitCheckin = async () => {
       if (!dailyData?.tasks) return;
       const allChecked = dailyData.tasks.every((_, idx) => checkedTasks[idx]);
@@ -408,12 +408,11 @@ const UserDashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* --- ARTIKEL KESEHATAN (DITAMBAHKAN KEMBALI) --- */}
                 <div>
                   <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Artikel Kesehatan</h3>
                   <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
                     <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s', ':hover':{transform:'scale(1.02)'} }}>
+                      <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s' }}>
                         <div style={{ width: '50px', height: '50px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center' }}><FileText size={24} color="#166534"/></div>
                         <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div>
                       </li>
@@ -428,85 +427,96 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE */}
+          {/* 2. CHECK-IN PAGE (UPDATED WITH BOX & SUBMIT) */}
           {activeTab === 'checkin' && (
             <div>
-               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
-                  <h1 className="heading-2">Check-in Harian</h1>
-               </div>
-               <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto' }}>
-                  <CardHeader>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <CardTitle className="heading-3">Jurnal Hari ke-{challengeDay}</CardTitle>
-                          <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold' }}>Tipe {overview?.user?.group || 'Umum'}</span>
-                      </div>
-                  </CardHeader>
-                  <CardContent style={{ padding: '1.5rem' }}>
-                     
-                     {dailyData && (
-                         <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
-                            <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
-                                <Lightbulb size={20} /> Misi Hari Ini:
-                            </h4>
-                            <p style={{ color: '#334155', fontSize: '1rem', lineHeight: '1.5' }}>{dailyData.message}</p>
-                         </div>
-                     )}
-                     
-                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h4 style={{ fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>Daftar Tugas (Centang jika sudah):</h4>
-                        
-                        {dailyData?.tasks?.length > 0 ? (
-                            dailyData.tasks.map((task, idx) => (
-                                <div key={idx} 
-                                     onClick={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
-                                     style={{ 
-                                         display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', 
-                                         border: checkedTasks[idx] ? '2px solid #22c55e' : '1px solid #e2e8f0', 
-                                         borderRadius: '12px', cursor: 'pointer', 
-                                         background: checkedTasks[idx] ? '#f0fdf4' : 'white',
-                                         transition: 'all 0.2s'
-                                     }}>
-                                   <div style={{ 
-                                       width: '24px', height: '24px', borderRadius: '50%', 
-                                       border: checkedTasks[idx] ? 'none' : '2px solid #cbd5e1', 
-                                       background: checkedTasks[idx] ? '#22c55e' : 'transparent',
-                                       display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                                   }}>
-                                       {checkedTasks[idx] && <Check size={16} color="white" />}
-                                   </div>
-                                   <span style={{ fontWeight: '600', fontSize: '1rem', color: checkedTasks[idx] ? '#15803d' : '#334155', textDecoration: checkedTasks[idx] ? 'line-through' : 'none' }}>{task}</span>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="text-center text-gray-500 py-4">Memuat tugas harian...</div>
-                        )}
+              <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                <h1 className="heading-2">Check-in Hari ke-{challengeDay}</h1>
+              </div>
+              
+              <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                <CardHeader>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <CardTitle className="heading-3">Aktivitas Hari Ini</CardTitle>
+                    <span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold' }}>Wajib Selesai</span>
+                  </div>
+                </CardHeader>
+                
+                <CardContent style={{ padding: '1.5rem' }}>
+                  {dailyData && (
+                    <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
+                      <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
+                        <Lightbulb size={20} /> Fakta Sehat:
+                      </h4>
+                      <p style={{ color: '#334155', fontSize: '0.95rem', lineHeight: '1.5' }}>{dailyData.fact || dailyData.message}</p>
+                    </div>
+                  )}
 
-                        <div style={{marginTop: '1rem'}}>
-                            <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Catatan / Keluhan (Opsional):</label>
-                            <textarea 
-                                value={journal}
-                                onChange={(e) => setJournal(e.target.value)}
-                                placeholder="Contoh: Hari ini perut terasa lebih enak..." 
-                                style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '100px', outline: 'none', fontSize: '0.95rem' }}
-                            ></textarea>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Pilih tugas yang sudah dilakukan:</h4>
+                    
+                    {/* TAMPILAN PILIHAN BOX (Task Cards) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                      {dailyData?.tasks?.map((task, idx) => (
+                        <div key={idx} 
+                          onClick={() => setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))}
+                          style={{ 
+                            padding: '1.25rem', 
+                            borderRadius: '16px', 
+                            cursor: 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            border: checkedTasks[idx] ? '2.5px solid #8fec78' : '1px solid #e2e8f0',
+                            background: checkedTasks[idx] ? '#f0fdf4' : '#ffffff',
+                            transition: 'all 0.2s ease-in-out',
+                            transform: checkedTasks[idx] ? 'scale(1.02)' : 'scale(1)'
+                          }}>
+                          <span style={{ fontWeight: '700', color: checkedTasks[idx] ? '#166534' : '#475569', fontSize: '1rem' }}>{task}</span>
+                          {checkedTasks[idx] ? (
+                            <CheckCircle size={24} color="#166534" fill="#8fec78" />
+                          ) : (
+                            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #cbd5e1' }} />
+                          )}
                         </div>
-                        
-                        <button 
-                            onClick={handleSubmitCheckin} 
-                            disabled={!dailyData?.tasks?.every((_, i) => checkedTasks[i])}
-                            style={{ 
-                                background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#8fec78' : '#cbd5e1', 
-                                color: '#064e3b', border: 'none', padding: '1rem', borderRadius: '12px', 
-                                fontWeight: 'bold', fontSize: '1.1rem', marginTop: '1rem', 
-                                cursor: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'pointer' : 'not-allowed',
-                                transition: 'background 0.3s'
-                            }}>
-                            {dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? "Simpan & Selesai ✅" : "Selesaikan Semua Tugas Dulu"}
-                        </button>
-                     </div>
-                  </CardContent>
-               </Card>
+                      ))}
+                    </div>
+
+                    <div style={{marginTop: '1rem'}}>
+                      <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Jurnal Singkat (Apa yang dirasakan?):</label>
+                      <textarea 
+                          value={journal}
+                          onChange={(e) => setJournal(e.target.value)}
+                          placeholder="Contoh: Perut terasa lebih nyaman hari ini..." 
+                          style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
+                      ></textarea>
+                    </div>
+
+                    {/* INFORMASI PENGINGAT JAM 7 MALAM */}
+                    <div style={{ display: 'flex', gap: '0.75rem', background: '#fffbeb', padding: '1rem', borderRadius: '12px', border: '1px solid #fef3c7', marginTop: '0.5rem' }}>
+                      <Bell size={20} color="#d97706" style={{flexShrink: 0}} />
+                      <p style={{ fontSize: '0.8rem', color: '#92400e', lineHeight: '1.4' }}>
+                        <strong>Perhatian:</strong> Jika Anda belum menyelesaikan tugas ini, sistem akan otomatis mengirim pengingat ke WhatsApp Anda pada <strong>jam 19:00 WIB</strong>.
+                      </p>
+                    </div>
+                    
+                    <button 
+                      onClick={handleSubmitCheckin} 
+                      disabled={!dailyData?.tasks?.every((_, i) => checkedTasks[i])}
+                      style={{ 
+                        background: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#8fec78' : '#cbd5e1', 
+                        color: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '#064e3b' : '#94a3b8', 
+                        border: 'none', padding: '1.25rem', borderRadius: '16px', 
+                        fontWeight: '800', fontSize: '1.2rem', marginTop: '1rem', 
+                        cursor: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? 'pointer' : 'not-allowed',
+                        boxShadow: dailyData?.tasks?.every((_, i) => checkedTasks[i]) ? '0 10px 15px -3px rgba(143, 236, 120, 0.4)' : 'none'
+                      }}>
+                      SUBMIT
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -670,7 +680,7 @@ const UserDashboard = () => {
                     <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
                  </div>
                  {friendData && (
-                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s', ':hover': {transform: 'scale(1.02)'} }}>
+                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s' }}>
                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
                           <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div>
                           <div><div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div><div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div></div>
@@ -687,7 +697,6 @@ const UserDashboard = () => {
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              {/* HEADER MODAL PROFIL JUGA MENGGUNAKAN GRADASI FULL & BADGE ANIMASI */}
               <div style={{ background: 'var(--gradient-profile)', padding: '2rem 1rem', color: '#1e293b', position: 'relative', overflow: 'hidden' }}>
                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', position: 'relative', zIndex: 2 }}><User size={40} color="#166534" /></div>
                  <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b', position: 'relative', zIndex: 2 }}>{friendData.name}</h2>
