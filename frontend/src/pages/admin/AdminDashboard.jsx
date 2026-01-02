@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -25,19 +25,24 @@ const AdminDashboard = () => {
   const [btnLoading, setBtnLoading] = useState(false);
 
   // Data States
-  const [stats, setStats] = useState({ total_users: 0, pending_withdrawals: 0, total_revenue: 0 });
+  const [stats, setStats] = useState({});
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
-  const [articles, setArticles] = useState([]); // State untuk Artikel
+  const [articles, setArticles] = useState([]);
+  
+  // FINANCE STATES (NEW)
+  const [salesData, setSalesData] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [wdRefInput, setWdRefInput] = useState(""); // Input ID Transaksi manual
+  const [wdProcessingId, setWdProcessingId] = useState(null);
 
-  // --- MATRIX CONTENT STATE ---
+  // MATRIX STATES
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
   const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
-
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
 
-  // --- ARTICLE STATE ---
+  // ARTICLE STATE
   const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
 
   useEffect(() => {
@@ -46,123 +51,53 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'challenge_content' && selectedChallengeId) {
-        fetchContentMatrix(selectedChallengeId);
-    }
+    if (activeTab === 'challenge_content' && selectedChallengeId) fetchContentMatrix(selectedChallengeId);
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
-  }, [selectedChallengeId, activeTab]);
+    if (activeTab === 'finance') { fetchSales(); fetchWithdrawals(); }
+  }, [activeTab, selectedChallengeId]);
 
-  const fetchStats = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/admin/stats`, { headers: getAuthHeader() });
-      setStats(res.data);
-    } catch (e) { console.error(e); }
-  };
+  // --- API FETCH ---
+  const fetchStats = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/stats`, { headers: getAuthHeader() }); setStats(res.data); } catch (e) {} };
+  const fetchUsers = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/users`, { headers: getAuthHeader() }); setUsers(res.data); } catch (e) {} };
+  const fetchChallengeCards = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); if(res.data.length && !selectedChallengeId) setSelectedChallengeId(res.data[0].id); } catch (e) {} };
+  const fetchContentMatrix = async (id) => { setLoadingMatrix(true); try { const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/matrix/${id}`, { headers: getAuthHeader() }); const m={}; res.data.forEach(x=>{m[x.day_sequence]=x}); setContentMatrix(m); } catch(e){} setLoadingMatrix(false); };
+  const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() }); setArticles(res.data); } catch(e){} };
+  
+  // FINANCE FETCH
+  const fetchSales = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/sales`, { headers: getAuthHeader() }); setSalesData(res.data); } catch(e){} };
+  const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
 
-  const fetchUsers = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/admin/users`, { headers: getAuthHeader() });
-      setUsers(Array.isArray(res.data) ? res.data : []);
-    } catch (e) { console.error(e); setUsers([]); }
-  };
-
-  const fetchChallengeCards = async () => {
-    try {
-      const res = await axios.get(`${BACKEND_URL}/api/challenges`);
-      setChallenges(Array.isArray(res.data) ? res.data : []);
-      if(res.data.length > 0 && !selectedChallengeId) setSelectedChallengeId(res.data[0].id);
-    } catch (e) { console.error(e); setChallenges([]); }
-  };
-
-  const fetchContentMatrix = async (challengeId) => {
-      setLoadingMatrix(true);
-      try {
-          const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/matrix/${challengeId}`, { headers: getAuthHeader() });
-          const matrix = {};
-          res.data.forEach(item => { matrix[item.day_sequence] = item; });
-          setContentMatrix(matrix);
-      } catch (e) { console.error(e); setContentMatrix({}); }
-      setLoadingMatrix(false);
-  };
-
-  const fetchArticles = async () => {
-      try {
-          const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() });
-          setArticles(res.data);
-      } catch(e) { console.error(e); }
-  };
-
-  const handleMatrixChange = (day, field, value) => {
-      setContentMatrix(prev => ({
-          ...prev,
-          [day]: { ...prev[day], [field]: value }
-      }));
-  };
-
-  const handleSaveMatrix = async () => {
-      if (!selectedChallengeId) return alert("Pilih Challenge dulu!");
+  // --- HANDLERS ---
+  const handleApproveWD = async (id) => {
+      if(!wdRefInput) return alert("Masukkan Nomor ID/Bukti Transfer dulu!");
+      if(!window.confirm("Setujui penarikan ini?")) return;
+      
       setBtnLoading(true);
       try {
-          const payload = Object.keys(contentMatrix).map(day => ({
-              day_sequence: parseInt(day),
-              challenge_id: selectedChallengeId,
-              ...contentMatrix[day]
-          }));
-          await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, { challenge_id: selectedChallengeId, data: payload }, { headers: getAuthHeader() });
-          alert("✅ Konten 30 hari berhasil disimpan!");
-      } catch (e) { alert("Gagal menyimpan."); }
+          await axios.post(`${BACKEND_URL}/api/admin/finance/withdrawals/approve`, { id, transaction_ref: wdRefInput }, { headers: getAuthHeader() });
+          alert("Penarikan Disetujui!");
+          setWdProcessingId(null);
+          setWdRefInput("");
+          fetchWithdrawals();
+      } catch (e) { alert("Gagal proses"); }
       setBtnLoading(false);
   };
 
-  const handleGenerateChallengeAI = async () => {
-    if(!newChallengeTitle) return alert("Masukkan judul!");
-    const confirmGen = window.confirm(`Generate challenge "${newChallengeTitle}" dengan AI?`);
-    if(!confirmGen) return;
-    setBtnLoading(true);
-    try {
-      const res = await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, { title: newChallengeTitle }, { headers: getAuthHeader() });
-      if(res.data.success) { alert("Sukses generate!"); setNewChallengeTitle(""); fetchChallengeCards(); }
-    } catch (e) { alert("Gagal generate."); }
-    setBtnLoading(false);
-  };
-
-  const handleDeleteChallenge = async (id) => {
-    if(!window.confirm("Hapus permanen?")) return;
-    try {
-      await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, { headers: getAuthHeader() });
-      setChallenges(challenges.filter(c => c.id !== id));
-    } catch (e) { alert("Gagal hapus."); }
-  };
-
-  const handleUpdateUser = async (userId, type, value) => {
-    try { await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, { user_id: userId, [type]: value }, { headers: getAuthHeader() }); fetchUsers(); } catch (e) { alert("Gagal update"); }
-  };
-
-  // --- HANDLE ARTICLE POST ---
   const handlePostArticle = async (e) => {
-      e.preventDefault();
-      setBtnLoading(true);
-      const formData = new FormData();
-      formData.append('title', articleForm.title);
-      formData.append('content', articleForm.content);
-      if(articleForm.image) formData.append('image', articleForm.image);
-
-      try {
-          const res = await axios.post(`${BACKEND_URL}/api/admin/articles`, formData, { 
-              headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } 
-          });
-          if(res.data.success) {
-              alert(`Artikel Terbit! Estimasi baca AI: ${res.data.reading_time}`);
-              setArticleForm({ title: '', content: '', image: null });
-              fetchArticles();
-          }
-      } catch(e) { alert("Gagal post artikel."); }
-      setBtnLoading(false);
+      e.preventDefault(); setBtnLoading(true);
+      const fd = new FormData(); fd.append('title', articleForm.title); fd.append('content', articleForm.content); if(articleForm.image) fd.append('image', articleForm.image);
+      try { const res = await axios.post(`${BACKEND_URL}/api/admin/articles`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); if(res.data.success){ alert(`Posted! Time: ${res.data.reading_time}`); setArticleForm({title:'',content:'',image:null}); fetchArticles(); } } catch(e){ alert("Error"); } setBtnLoading(false);
   };
+
+  const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
+  const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
+  const handleDeleteChallenge = async (id) => { if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} };
+  const handleUpdateUser = async (uid, type, val) => { try { await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, {user_id:uid, [type]:val}, {headers:getAuthHeader()}); fetchUsers(); } catch(e){} };
+  const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
   const SidebarItem = ({ id, icon: Icon, label }) => (
-    <button onClick={() => { setActiveTab(id); if(window.innerWidth <= 1024) setSidebarOpen(false); }}
+    <button onClick={() => { setActiveTab(id); if(window.innerWidth<=1024) setSidebarOpen(false); }}
       style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.85rem 1rem', background: activeTab === id ? 'var(--primary)' : 'transparent', border: 'none', color: activeTab === id ? 'white' : '#64748b', fontWeight: activeTab === id ? '600' : '400', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', marginBottom: '0.25rem' }}>
       <Icon size={18} /> {label}
     </button>
@@ -178,6 +113,7 @@ const AdminDashboard = () => {
           <SidebarItem id="challenge_cards" icon={Award} label="Card Challenge AI" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
+          <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
@@ -190,6 +126,8 @@ const AdminDashboard = () => {
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+          
+          {/* --- TAB OVERVIEW --- */}
           {activeTab === 'overview' && (
             <div>
               <h1 className="heading-2" style={{marginBottom:'1.5rem'}}>Overview</h1>
@@ -201,12 +139,107 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {/* --- TAB FINANCE (SALES & WD) --- */}
+          {activeTab === 'finance' && (
+            <div style={{display:'flex', flexDirection:'column', gap:'2rem'}}>
+                
+                {/* 1. SECTION WITHDRAWAL */}
+                <Card style={{padding:'1.5rem', background:'white'}}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan</h3>
+                    <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead style={{background:'#fefce8'}}>
+                                <tr>
+                                    <th style={thStyle}>Tanggal</th>
+                                    <th style={thStyle}>User</th>
+                                    <th style={thStyle}>Jumlah</th>
+                                    <th style={thStyle}>Bank Info</th>
+                                    <th style={thStyle}>Status</th>
+                                    <th style={thStyle}>Aksi / ID Transaksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {withdrawals.map(w => (
+                                    <tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                        <td style={tdStyle}>{w.date}</td>
+                                        <td style={tdStyle}><b>{w.user_name}</b></td>
+                                        <td style={tdStyle}>Rp {w.amount.toLocaleString()}</td>
+                                        <td style={tdStyle}>{w.bank_info}</td>
+                                        <td style={tdStyle}>
+                                            <span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>
+                                                {w.status.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td style={tdStyle}>
+                                            {w.status === 'pending' ? (
+                                                <div style={{display:'flex', gap:'0.5rem'}}>
+                                                    <input 
+                                                        placeholder="No. Bukti Transfer..." 
+                                                        style={{...selectStyle, width:'150px'}} 
+                                                        value={wdProcessingId === w.id ? wdRefInput : ''}
+                                                        onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }}
+                                                    />
+                                                    <button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}>
+                                                        <CheckCircle size={16}/>
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+
+                {/* 2. SECTION SALES HISTORY */}
+                <Card style={{padding:'1.5rem', background:'white'}}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><ShoppingCart size={20}/> Riwayat Penjualan & Referral</h3>
+                    <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead style={{background:'#f0fdf4'}}>
+                                <tr>
+                                    <th style={thStyle}>Tanggal</th>
+                                    <th style={thStyle}>Produk</th>
+                                    <th style={thStyle}>Pembeli</th>
+                                    <th style={thStyle}>Harga</th>
+                                    <th style={thStyle}>Referral (Upline)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {salesData.map(s => (
+                                    <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                        <td style={tdStyle}>{s.date}</td>
+                                        <td style={tdStyle}>{s.product}</td>
+                                        <td style={tdStyle}><b>{s.buyer_name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{s.buyer_phone}</span></td>
+                                        <td style={tdStyle}>Rp {s.amount.toLocaleString()}</td>
+                                        <td style={tdStyle}>
+                                            {s.referrer_name !== '-' ? (
+                                                <div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}>
+                                                    <span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span>
+                                                    <br/>
+                                                    <span style={{fontSize:'0.75rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</span>
+                                                </div>
+                                            ) : <span style={{color:'#cbd5e1'}}>-</span>}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            </div>
+          )}
+
+          {/* --- TAB LAINNYA (SAMA SEPERTI SEBELUMNYA) --- */}
           {activeTab === 'challenge_cards' && (
             <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Buat Challenge Baru</h3>
                   <input placeholder="Judul Tantangan..." style={{ ...inputStyle, marginBottom: '1rem' }} value={newChallengeTitle} onChange={(e) => setNewChallengeTitle(e.target.value)} />
-                  <button onClick={handleGenerateChallengeAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Generate via AI'}</button>
+                  <button onClick={handleGenerateAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Generate via AI'}</button>
                 </Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
