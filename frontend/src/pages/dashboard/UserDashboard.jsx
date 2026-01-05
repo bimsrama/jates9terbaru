@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Bell, Lightbulb, CheckCircle, Clock, AlertCircle
+  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -23,8 +23,8 @@ const UserDashboard = () => {
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
-  const [checkedTasks, setCheckedTasks] = useState({});
-  const [checkinStatus, setCheckinStatus] = useState(null); // 'pending', 'completed', 'skipped', null (belum ada status)
+  // [REMOVED] const [checkedTasks, setCheckedTasks] = useState({}); -> Tidak perlu centang lagi
+  const [checkinStatus, setCheckinStatus] = useState(null); 
   const [countdown, setCountdown] = useState(null);
 
   // --- STATE UI & NAVIGATION ---
@@ -60,7 +60,6 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch content saat tab berubah ke checkin
   useEffect(() => {
       if (activeTab === 'checkin') fetchDailyContent();
       if (activeTab === 'friends') fetchFriendsList();
@@ -70,17 +69,15 @@ const UserDashboard = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory]);
 
-  // --- COUNTDOWN TIMER (HANYA JALAN JIKA STATUS == PENDING) ---
+  // --- COUNTDOWN TIMER ---
   useEffect(() => {
     let timer;
-    // Timer HANYA muncul jika statusnya 'pending' (User sudah klik 'Lakukan Nanti')
     if (activeTab === 'checkin' && checkinStatus === 'pending') {
       timer = setInterval(() => {
         const now = new Date();
         const target = new Date();
-        target.setHours(19, 0, 0, 0); // Jam 19:00 Hari Ini
+        target.setHours(19, 0, 0, 0); 
 
-        // Jika lewat jam 19:00
         if (now > target) {
           setCountdown("Waktu Habis");
           clearInterval(timer);
@@ -93,7 +90,7 @@ const UserDashboard = () => {
         }
       }, 1000);
     } else {
-        setCountdown(null); // Reset timer jika status bukan pending
+        setCountdown(null); 
     }
     return () => clearInterval(timer);
   }, [activeTab, checkinStatus]);
@@ -124,12 +121,10 @@ const UserDashboard = () => {
           const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() });
           setDailyData(res.data);
           
-          // [LOGIKA BARU] Set status checkin berdasarkan data dari backend
-          // Backend sekarang mengirimkan field 'today_status'
           if (res.data.today_status) {
             setCheckinStatus(res.data.today_status);
           } else {
-            setCheckinStatus(null); // Reset ke null (belum ada interaksi hari ini)
+            setCheckinStatus(null); 
           }
       } catch (err) { console.error("Gagal load konten harian"); }
   };
@@ -180,36 +175,20 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- FUNGSI CHECKIN (LOGIKA BARU) ---
-  const handleSubmitCheckin = async (forcedStatus = null) => {
-      // forcedStatus bisa 'pending' (jika klik Nanti) atau 'completed' (jika klik Selesai)
+  // --- FUNGSI CHECKIN (TANPA VALIDASI CENTANG) ---
+  const handleSubmitCheckin = async (forcedStatus) => {
+      // forcedStatus: 'pending' (Nanti) atau 'completed' (Sudah)
       
-      let statusToSend = 'pending';
-      
-      if (forcedStatus) {
-        statusToSend = forcedStatus;
-      } else {
-        // Fallback (jika dipanggil tanpa argumen)
-        const allChecked = dailyData?.tasks ? dailyData.tasks.every((_, idx) => checkedTasks[idx]) : false;
-        statusToSend = allChecked ? 'completed' : 'pending';
-      }
-
-      // Validasi: Jika ingin 'completed', tugas harus dicentang semua
-      if (statusToSend === 'completed') {
-         const allChecked = dailyData?.tasks ? dailyData.tasks.every((_, idx) => checkedTasks[idx]) : false;
-         if (!allChecked) return alert("Mohon centang semua tugas jika sudah selesai!");
-      }
-
       try {
           const res = await axios.post(`${BACKEND_URL}/api/checkin`, { 
             journal, 
-            status: statusToSend 
+            status: forcedStatus // Langsung kirim status tanpa cek centang
           }, { headers: getAuthHeader() });
           
           if (res.data.success) {
-            setCheckinStatus(statusToSend); // Update UI Status
+            setCheckinStatus(forcedStatus); 
             
-            if(statusToSend === 'completed') {
+            if(forcedStatus === 'completed') {
               alert("✅ Check-in SELESAI! Anda hebat hari ini.");
               setActiveTab('dashboard');
               fetchData();
@@ -413,7 +392,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU) */}
+          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU - TANPA CHECKBOX) */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -465,35 +444,24 @@ const UserDashboard = () => {
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Pilih tugas yang sudah dilakukan:</h4>
+                    <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Daftar Tugas Harian:</h4>
                     
-                    {/* TASK CARDS */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                    {/* TASK LIST (STATIC - NO CHECKBOXES) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.8rem' }}>
                       {dailyData?.tasks?.map((task, idx) => (
                         <div key={idx} 
-                          onClick={() => {
-                            if(checkinStatus === 'completed' || checkinStatus === 'skipped') return; 
-                            setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))
-                          }}
                           style={{ 
-                            padding: '1.25rem', 
-                            borderRadius: '16px', 
-                            cursor: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 'default' : 'pointer', 
+                            padding: '1rem', 
+                            borderRadius: '12px', 
                             display: 'flex', 
                             alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            border: checkedTasks[idx] ? '2.5px solid #8fec78' : '1px solid #e2e8f0',
-                            background: checkedTasks[idx] ? '#f0fdf4' : '#ffffff',
-                            opacity: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 0.7 : 1,
-                            transition: 'all 0.2s ease-in-out',
-                            transform: checkedTasks[idx] ? 'scale(1.02)' : 'scale(1)'
+                            gap: '1rem',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
                           }}>
-                          <span style={{ fontWeight: '700', color: checkedTasks[idx] ? '#166534' : '#475569', fontSize: '1rem' }}>{task}</span>
-                          {checkedTasks[idx] ? (
-                            <CheckCircle size={24} color="#166534" fill="#8fec78" />
-                          ) : (
-                            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #cbd5e1' }} />
-                          )}
+                          {/* Bullet Point Simple */}
+                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8fec78', flexShrink: 0 }}></div>
+                          <span style={{ fontWeight: '600', color: '#334155', fontSize: '0.95rem' }}>{task}</span>
                         </div>
                       ))}
                     </div>
@@ -504,7 +472,7 @@ const UserDashboard = () => {
                         <textarea 
                             value={journal}
                             onChange={(e) => setJournal(e.target.value)}
-                            placeholder="Contoh: Perut terasa lebih nyaman hari ini..." 
+                            placeholder="Bagaimana perasaanmu setelah melakukan tugas hari ini?" 
                             style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
                         ></textarea>
                       </div>
