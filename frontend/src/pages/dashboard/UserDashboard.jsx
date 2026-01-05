@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle2
+  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -23,7 +23,7 @@ const UserDashboard = () => {
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
-  // [REMOVED] const [checkedTasks, setCheckedTasks] = useState({}); -> Tidak perlu centang lagi
+  // [REMOVED] checkedTasks
   const [checkinStatus, setCheckinStatus] = useState(null); 
   const [countdown, setCountdown] = useState(null);
 
@@ -146,7 +146,6 @@ const UserDashboard = () => {
     return tips[group] || tips['Sehat'];
   };
 
-  // --- ACTIONS ---
   const handleScrollToChat = () => {
     setActiveTab('dashboard');
     setSidebarOpen(false); 
@@ -177,12 +176,10 @@ const UserDashboard = () => {
 
   // --- FUNGSI CHECKIN (TANPA VALIDASI CENTANG) ---
   const handleSubmitCheckin = async (forcedStatus) => {
-      // forcedStatus: 'pending' (Nanti) atau 'completed' (Sudah)
-      
       try {
           const res = await axios.post(`${BACKEND_URL}/api/checkin`, { 
             journal, 
-            status: forcedStatus // Langsung kirim status tanpa cek centang
+            status: forcedStatus 
           }, { headers: getAuthHeader() });
           
           if (res.data.success) {
@@ -392,7 +389,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU - TANPA CHECKBOX) */}
+          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU - TANPA CHECKBOX, TANPA DAFTAR TUGAS) */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -444,27 +441,8 @@ const UserDashboard = () => {
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Daftar Tugas Harian:</h4>
                     
-                    {/* TASK LIST (STATIC - NO CHECKBOXES) */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.8rem' }}>
-                      {dailyData?.tasks?.map((task, idx) => (
-                        <div key={idx} 
-                          style={{ 
-                            padding: '1rem', 
-                            borderRadius: '12px', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '1rem',
-                            border: '1px solid #e2e8f0',
-                            background: '#f8fafc',
-                          }}>
-                          {/* Bullet Point Simple */}
-                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8fec78', flexShrink: 0 }}></div>
-                          <span style={{ fontWeight: '600', color: '#334155', fontSize: '0.95rem' }}>{task}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {/* [DAFTAR TUGAS DIHILANGKAN] */}
 
                     {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && (
                       <div style={{marginTop: '1rem'}}>
