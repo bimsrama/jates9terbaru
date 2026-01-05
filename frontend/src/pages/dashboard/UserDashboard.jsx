@@ -1,650 +1,769 @@
-from flask import Flask, request, jsonify, g, send_from_directory
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
-import jwt
-import datetime
-import os
-import sys
-import random
-import string
-import uuid
-import requests 
-import json
-import threading # [PENTING] Untuk background process agar tidak lemot
-from dotenv import load_dotenv 
-from sqlalchemy import func
+import React, { useEffect, useState, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { 
+  Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
+  Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
+  Package, ShoppingBag, ChevronLeft, Bell, Lightbulb, CheckCircle, Clock, AlertCircle
+} from 'lucide-react';
+import axios from 'axios';
+import { QRCodeSVG } from 'qrcode.react'; 
 
-# Load Env
-load_dotenv()
-sys.path.append(os.getcwd())
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-# Import Database & Models
-from database import engine, SessionLocal
-import models 
+const UserDashboard = () => {
+  const { getAuthHeader, logout } = useAuth();
+  
+  // --- STATE DATA ---
+  const [overview, setOverview] = useState(null);
+  const [challenges, setChallenges] = useState([]); 
+  const [loading, setLoading] = useState(true);
+  const [myFriends, setMyFriends] = useState([]);
+  
+  // --- STATE DAILY CONTENT & CHECKIN ---
+  const [dailyData, setDailyData] = useState(null);
+  const [journal, setJournal] = useState("");
+  const [checkedTasks, setCheckedTasks] = useState({});
+  const [checkinStatus, setCheckinStatus] = useState(null); // 'pending', 'completed', 'skipped', null (belum ada status)
+  const [countdown, setCountdown] = useState(null);
 
-# ==========================================
-# 1. KONFIGURASI
-# ==========================================
-WATZAP_API_KEY = 'HHHI0XGX5GAV9COH'
-WATZAP_NUMBER_KEY_MAIN = 'Hyw8OdnzTHwbi88t' 
-WATZAP_NUMBER_KEY_OTP = 'lAaoF727veffmfRm'
+  // --- STATE UI & NAVIGATION ---
+  const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
+  const [showAllChallenges, setShowAllChallenges] = useState(false);
+  
+  // --- STATE FEATURES ---
+  const [showQRModal, setShowQRModal] = useState(false); 
+  const [friendCode, setFriendCode] = useState(""); 
+  const [friendData, setFriendData] = useState(null); 
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showFriendProfile, setShowFriendProfile] = useState(false);
 
-# [PENTING] URL AppScript (Pastikan Deploy sebagai Web App -> Execute as Me -> Access: Anyone)
-# Ganti URL ini dengan URL Deployment AppScript terbaru Anda jika berubah
-APPSCRIPT_URL = "https://script.google.com/macros/s/AKfycbz8yJaOliingOSPDVdkgl09H8BgACQj3H_VgDri1-d2rSblp58K6GvKw-Fg1bFG7jGj/exec"
+  // --- STATE CHAT AI ---
+  const [chatMessage, setChatMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([]); 
+  const [chatLoading, setChatLoading] = useState(false);
+  
+  const chatEndRef = useRef(null);
+  const chatSectionRef = useRef(null);
 
-# --- GROQ AI SETUP ---
-AI_MODEL = "llama-3.3-70b-versatile"
-client = None
-try:
-    from openai import OpenAI
-    try:
-        client = OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            base_url="https://api.groq.com/openai/v1"
-        )
-        print("INFO: Groq AI Connected", flush=True)
-    except Exception as e:
-        print(f"Warning: Fitur AI Error: {e}", flush=True)
-        client = None
-except ImportError:
-    print("Warning: Library OpenAI belum terinstall.", flush=True)
+  // --- INITIAL LOAD ---
+  useEffect(() => {
+    const handleResize = () => {
+        const desktop = window.innerWidth > 1024;
+        setIsDesktop(desktop);
+        if(desktop) setSidebarOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    fetchData();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-# --- SETUP PATH FRONTEND & UPLOADS ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_FOLDER = os.path.abspath(os.path.join(BASE_DIR, '..'))
-UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, 'uploads')
+  // Fetch content saat tab berubah ke checkin
+  useEffect(() => {
+      if (activeTab === 'checkin') fetchDailyContent();
+      if (activeTab === 'friends') fetchFriendsList();
+  }, [activeTab]);
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
 
-app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
-CORS(app, resources={r"/*": {"origins": "*"}})
-app.config['SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'kuncirahasia123')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+  // --- COUNTDOWN TIMER (HANYA JALAN JIKA STATUS == PENDING) ---
+  useEffect(() => {
+    let timer;
+    // Timer HANYA muncul jika statusnya 'pending' (User sudah klik 'Lakukan Nanti')
+    if (activeTab === 'checkin' && checkinStatus === 'pending') {
+      timer = setInterval(() => {
+        const now = new Date();
+        const target = new Date();
+        target.setHours(19, 0, 0, 0); // Jam 19:00 Hari Ini
 
-# --- OTP STORAGE (Reset saat restart) ---
-otp_storage = {}
-
-# --- DATABASE SETUP ---
-try:
-    models.Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Database Error: {e}", flush=True)
-
-def get_db():
-    if 'db' not in g:
-        g.db = SessionLocal()
-    return g.db
-
-@app.teardown_appcontext
-def close_db(exception):
-    db = g.pop('db', None)
-    if db is not None:
-        try: db.close()
-        except: pass
-
-# ==========================================
-# 2. HELPER FUNCTIONS (OPTIMIZED)
-# ==========================================
-
-def format_phone_number(phone):
-    phone = str(phone).strip()
-    if phone.startswith('0'): return '62' + phone[1:]
-    elif phone.startswith('+62'): return phone[1:]
-    return phone
-
-def _send_wa_background(url, payload):
-    """Kirim WA di background agar server tidak freeze"""
-    try:
-        # Timeout 15 detik agar thread mati sendiri jika Watzap down
-        requests.post(url, json=payload, headers={'Content-Type': 'application/json'}, timeout=15)
-        print(f"[WA SENT] {payload['phone_no']}", flush=True)
-    except Exception as e:
-        print(f"[WA ERROR] {e}", flush=True)
-
-def send_whatsapp_main(phone_number, message_text):
-    try:
-        formatted_phone = format_phone_number(phone_number)
-        url = "https://api.watzap.id/v1/send_message"
-        payload = {
-            "api_key": WATZAP_API_KEY, 
-            "number_key": WATZAP_NUMBER_KEY_MAIN, 
-            "phone_no": formatted_phone, 
-            "message": message_text
+        // Jika lewat jam 19:00
+        if (now > target) {
+          setCountdown("Waktu Habis");
+          clearInterval(timer);
+        } else {
+          const diff = target - now;
+          const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+          const minutes = Math.floor((diff / (1000 * 60)) % 60);
+          const seconds = Math.floor((diff / 1000) % 60);
+          setCountdown(`${hours}j ${minutes}m ${seconds}d`);
         }
-        # Gunakan Threading
-        threading.Thread(target=_send_wa_background, args=(url, payload)).start()
-        return True
-    except: return False
+      }, 1000);
+    } else {
+        setCountdown(null); // Reset timer jika status bukan pending
+    }
+    return () => clearInterval(timer);
+  }, [activeTab, checkinStatus]);
 
-def send_whatsapp_otp_message(phone_number, otp_code):
-    try:
-        formatted_phone = format_phone_number(phone_number)
-        message = f"Kode Verifikasi Jates9: *{otp_code}*\n\nJANGAN BERIKAN kode ini kepada siapa pun.\nBerlaku 5 menit."
-        url = "https://api.watzap.id/v1/send_message"
-        payload = {
-            "api_key": WATZAP_API_KEY, 
-            "number_key": WATZAP_NUMBER_KEY_OTP,
-            "phone_no": formatted_phone, 
-            "message": message
-        }
-        print(f"[OTP] Mengirim ke {formatted_phone}...", flush=True)
-        threading.Thread(target=_send_wa_background, args=(url, payload)).start()
-        return True
-    except: return False
+  const fetchData = async () => {
+    try {
+      const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
+      setOverview(overviewRes.data);
+      
+      const tip = generateDailyTip(overviewRes.data.user?.group || 'Sehat');
+      setChatHistory([
+        { role: "system_tip", content: tip },
+        { role: "assistant", content: "Halo! Saya Dokter AI Jates9. Ada yang bisa saya bantu terkait kesehatan Anda hari ini?" }
+      ]);
 
-def send_whatsapp_welcome(phone_number, user_name, challenge_title):
-    try:
-        formatted_phone = format_phone_number(phone_number)
-        msg = f"Selamat Datang di Jates9, Kak *{user_name}*! 👋\n\nPendaftaran Berhasil! Anda telah resmi memilih:\n🏆 *{challenge_title}*\n\n🚀 *MULAI SEKARANG:* \n👉 https://jagatetapsehat.com/dashboard\n\nSemangat hidup sehat! 💪"
-        url = "https://api.watzap.id/v1/send_message"
-        payload = {"api_key": WATZAP_API_KEY, "number_key": WATZAP_NUMBER_KEY_MAIN, "phone_no": formatted_phone, "message": msg}
-        threading.Thread(target=_send_wa_background, args=(url, payload)).start()
-    except: pass
+      const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
+      setChallenges(challengeRes.data);
 
-def _sync_sheet_background(url, payload):
-    """Kirim data ke Google Sheet di background"""
-    try:
-        requests.post(url, json=payload, timeout=10)
-        print("[SHEET] Sync Berhasil", flush=True)
-    except Exception as e:
-        print(f"[SHEET ERROR] {e}", flush=True)
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-def sync_to_sheet(user, challenge_id=None, action="sync_challenge", extra_data=None):
-    try:
-        payload = {
-            "action": action, 
-            "nama": user.name,
-            "whatsapp": user.phone_number,
-            "challenge_id": challenge_id if challenge_id else user.challenge_id,
-            "kategori": user.group or "Sehat",
-            "hari": user.challenge_day or 1
-        }
-        if extra_data: payload.update(extra_data)
-        threading.Thread(target=_sync_sheet_background, args=(APPSCRIPT_URL, payload)).start()
-    except: pass
+  const fetchDailyContent = async () => {
+      try {
+          const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() });
+          setDailyData(res.data);
+          
+          // [LOGIKA BARU] Set status checkin berdasarkan data dari backend
+          // Backend sekarang mengirimkan field 'today_status'
+          if (res.data.today_status) {
+            setCheckinStatus(res.data.today_status);
+          } else {
+            setCheckinStatus(null); // Reset ke null (belum ada interaksi hari ini)
+          }
+      } catch (err) { console.error("Gagal load konten harian"); }
+  };
 
-def generate_unique_code(db):
-    while True:
-        chars = string.ascii_uppercase + string.digits
-        code = ''.join(random.choices(chars, k=6))
-        exists = db.query(models.User).filter(models.User.referral_code == code).first()
-        if not exists: return code
+  const fetchFriendsList = async () => {
+    try {
+        const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() });
+        setMyFriends(res.data.friends);
+    } catch (err) { console.error("Gagal load teman"); }
+  };
 
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = None
-        if 'token' in request.args: token = request.args.get('token')
-        if 'Authorization' in request.headers:
-            auth = request.headers['Authorization']
-            if "Bearer " in auth: token = auth.split(" ")[1]
-        if not token: return jsonify({'message': 'Token missing'}), 401
-        try:
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-            db = get_db()
-            user = db.query(models.User).filter(models.User.id == data['user_id']).first()
-            if not user: return jsonify({'message': 'User invalid'}), 401
-        except: return jsonify({'message': 'Token invalid'}), 401
-        return f(user, *args, **kwargs)
-    return decorated
+  const generateDailyTip = (group) => {
+    const tips = {
+      'A': "💡 Info Tipe A (Sembelit): Fokus perbanyak air hangat 2 gelas saat bangun tidur dan konsumsi serat tinggi hari ini.",
+      'B': "💡 Info Tipe B (Kembung): Hindari makanan bersantan dan pedas hari ini. Jaga pola makan teratur.",
+      'C': "💡 Info Tipe C (GERD): Jangan terlambat makan siang. Hindari kopi dan teh pekat agar asam lambung aman.",
+      'Sehat': "💡 Info Sehat: Kondisi stabil. Pertahankan dengan olahraga ringan 15 menit dan tidur cukup."
+    };
+    return tips[group] || tips['Sehat'];
+  };
 
-# ==========================================
-# 3. AUTH ROUTES
-# ==========================================
+  // --- ACTIONS ---
+  const handleScrollToChat = () => {
+    setActiveTab('dashboard');
+    setSidebarOpen(false); 
+    setTimeout(() => {
+        chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
 
-@app.route('/backend_api/api/auth/request-otp', methods=['POST'])
-@app.route('/api/auth/request-otp', methods=['POST'])
-def request_otp():
-    try:
-        data = request.get_json(); phone = data.get('phone_number')
-        if not phone: return jsonify({'message': 'Nomor WA wajib diisi'}), 400
-        
-        if get_db().query(models.User).filter(models.User.phone_number == phone).first(): 
-            return jsonify({'message': 'Nomor sudah terdaftar'}), 409
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    if (!chatMessage.trim()) return;
+    const userMsg = chatMessage;
+    setChatHistory(prev => [...prev, { role: "user", content: userMsg }]);
+    setChatMessage("");
+    setChatLoading(true);
+    try {
+      const res = await axios.post(`${BACKEND_URL}/api/chat/send`, { message: userMsg }, { headers: getAuthHeader() });
+      setChatHistory(prev => [...prev, { role: "assistant", content: res.data.response }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: "assistant", content: "Maaf, koneksi terganggu. Silakan coba lagi." }]);
+    } finally { setChatLoading(false); }
+  };
+
+  const copyReferral = () => {
+    navigator.clipboard.writeText(overview?.user?.referral_code || "");
+    alert("Kode Referral disalin!");
+  };
+
+  // --- FUNGSI CHECKIN (LOGIKA BARU) ---
+  const handleSubmitCheckin = async (forcedStatus = null) => {
+      // forcedStatus bisa 'pending' (jika klik Nanti) atau 'completed' (jika klik Selesai)
+      
+      let statusToSend = 'pending';
+      
+      if (forcedStatus) {
+        statusToSend = forcedStatus;
+      } else {
+        // Fallback (jika dipanggil tanpa argumen)
+        const allChecked = dailyData?.tasks ? dailyData.tasks.every((_, idx) => checkedTasks[idx]) : false;
+        statusToSend = allChecked ? 'completed' : 'pending';
+      }
+
+      // Validasi: Jika ingin 'completed', tugas harus dicentang semua
+      if (statusToSend === 'completed') {
+         const allChecked = dailyData?.tasks ? dailyData.tasks.every((_, idx) => checkedTasks[idx]) : false;
+         if (!allChecked) return alert("Mohon centang semua tugas jika sudah selesai!");
+      }
+
+      try {
+          const res = await axios.post(`${BACKEND_URL}/api/checkin`, { 
+            journal, 
+            status: statusToSend 
+          }, { headers: getAuthHeader() });
+          
+          if (res.data.success) {
+            setCheckinStatus(statusToSend); // Update UI Status
             
-        otp_code = ''.join(random.choices(string.digits, k=6))
-        otp_storage[phone] = { "code": otp_code, "expires": datetime.datetime.now() + datetime.timedelta(minutes=5) }
-        
-        print(f"[DEBUG] OTP Gen: {otp_code} for {phone}", flush=True) 
-        
-        if send_whatsapp_otp_message(phone, otp_code): 
-            return jsonify({'success': True, 'message': 'OTP Terkirim'}), 200
-        else: 
-            return jsonify({'message': 'Gagal kirim WA'}), 500
-    except Exception as e: return jsonify({'message': str(e)}), 500
+            if(statusToSend === 'completed') {
+              alert("✅ Check-in SELESAI! Anda hebat hari ini.");
+              setActiveTab('dashboard');
+              fetchData();
+            } else {
+              alert("🕒 Oke, status PENDING tersimpan. Selesaikan sebelum jam 19:00!");
+            }
+          }
+      } catch (err) { 
+          alert(err.response?.data?.message || "Gagal check-in."); 
+      }
+  };
 
-@app.route('/backend_api/api/auth/verify-otp', methods=['POST'])
-@app.route('/api/auth/verify-otp', methods=['POST'])
-def verify_otp():
-    try:
-        data = request.get_json(); phone = data.get('phone_number'); user_otp = data.get('otp')
-        record = otp_storage.get(phone)
-        if not record: return jsonify({'message': 'Minta OTP dulu'}), 400
-        if datetime.datetime.now() > record['expires']: del otp_storage[phone]; return jsonify({'message': 'OTP Kadaluarsa'}), 400
-        if record['code'] == user_otp: del otp_storage[phone]; return jsonify({'success': True}), 200
-        return jsonify({'message': 'OTP Salah'}), 400
-    except Exception as e: return jsonify({'message': str(e)}), 500
+  const handleSearchFriend = async () => {
+    if(!friendCode.trim()) return alert("Masukkan kode teman!");
+    setSearchLoading(true); setFriendData(null);
+    try {
+        const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: friendCode.toUpperCase() }, { headers: getAuthHeader() });
+        setFriendData(res.data.friend);
+    } catch (err) { alert(err.response?.data?.message || "Teman tidak ditemukan."); } 
+    finally { setSearchLoading(false); }
+  };
 
-@app.route('/backend_api/api/auth/register', methods=['POST'])
-@app.route('/api/auth/register', methods=['POST'])
-def register():
-    try:
-        data = request.get_json(); db = get_db()
-        if db.query(models.User).filter_by(phone_number=data.get('phone_number')).first(): return jsonify({'message': 'Nomor sudah terdaftar'}), 409
-        referred_by_code = None
-        if data.get('referral_code'):
-            upline = db.query(models.User).filter_by(referral_code=data.get('referral_code')).first()
-            if upline: referred_by_code = upline.referral_code
-        new_user = models.User(name=data.get('name'), phone_number=data.get('phone_number'), password=generate_password_hash(data.get('password')), role='user', referral_code=generate_unique_code(db), referred_by=referred_by_code, badge="Pejuang Tangguh")
-        db.add(new_user); db.commit()
-        token = jwt.encode({'user_id': new_user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
-        return jsonify({'message': 'Sukses', 'token': token, 'user': {'id': new_user.id, 'name': new_user.name}}), 201
-    except Exception as e: return jsonify({'message': str(e)}), 500
+  const handleClickFriendFromList = async (code) => {
+      setFriendCode(code); setSearchLoading(true); setShowQRModal(false); 
+      try {
+          const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() });
+          setFriendData(res.data.friend); setShowFriendProfile(true); 
+      } catch (err) { alert("Gagal memuat profil teman."); } 
+      finally { setSearchLoading(false); }
+  };
 
-@app.route('/backend_api/api/auth/login', methods=['POST'])
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    try:
-        data = request.get_json(); db = get_db()
-        user = db.query(models.User).filter_by(phone_number=data.get('phone_number')).first()
-        if not user or not check_password_hash(user.password, data.get('password')): return jsonify({'message': 'Salah WA/Password'}), 401
-        token = jwt.encode({'user_id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)}, app.config['SECRET_KEY'], algorithm="HS256")
-        return jsonify({'token': token, 'user': {'id': user.id, 'name': user.name, 'role': user.role, 'badge': user.badge}})
-    except Exception as e: return jsonify({'message': str(e)}), 500
+  const handleOpenFriendProfile = () => {
+      if(friendData) {
+          setShowQRModal(false);
+          setShowFriendProfile(true);
+      }
+  };
 
-@app.route('/backend_api/api/auth/me', methods=['GET'])
-@app.route('/api/auth/me', methods=['GET'])
-@token_required
-def get_current_user(current_user):
-    return jsonify({'user': {'id': current_user.id, 'name': current_user.name, 'phone': current_user.phone_number, 'role': current_user.role, 'badge': current_user.badge, 'group': current_user.group, 'referral_code': current_user.referral_code, 'challenge_id': current_user.challenge_id}})
+  const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
+  const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
+  const challengeDay = overview?.user?.challenge_day || 1;
 
-# ==========================================
-# 4. ADMIN FEATURES
-# ==========================================
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
-@app.route('/backend_api/api/admin/campaign/matrix/<int:challenge_id>', methods=['GET'])
-@app.route('/api/admin/campaign/matrix/<int:challenge_id>', methods=['GET'])
-@token_required
-def get_campaign_matrix(current_user, challenge_id):
-    if getattr(current_user, 'role', 'user') != 'admin': return jsonify({"message": "Unauthorized"}), 403
-    db = get_db()
-    campaigns = db.query(models.DailyCampaign).filter_by(challenge_id=challenge_id).order_by(models.DailyCampaign.day_sequence.asc()).all()
-    result = []
-    for c in campaigns:
-        result.append({
-            "day_sequence": c.day_sequence,
-            "challenge_a": c.challenge_a, "challenge_b": c.challenge_b, "challenge_c": c.challenge_c,
-            "fact_a": c.fact_a, "fact_b": c.fact_b, "fact_c": c.fact_c,
-            "soft_sell_a": c.soft_sell_a, "soft_sell_b": c.soft_sell_b, "soft_sell_c": c.soft_sell_c
-        })
-    return jsonify(result)
+  return (
+    <div style={{ display: 'flex', background: '#f8fafc', width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
+      
+      {/* CSS Injection */}
+      <style>{`
+        :root {
+          --primary: #8fec78;
+          --primary-dark: #6bd455;
+          --gradient-profile: linear-gradient(135deg, #ffffff 0%, #8fec78 100%);
+        }
+        @keyframes badge-pulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+          70% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+        }
+        .gold-badge {
+          background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%);
+          border: 1px solid #FCD34D;
+          color: white;
+          padding: 0.35rem 1rem;
+          border-radius: 99px;
+          font-size: 0.85rem;
+          font-weight: bold;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          box-shadow: 0 4px 6px -1px rgba(180, 83, 9, 0.4);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+          animation: badge-pulse 2s infinite;
+        }
+        .nav-item.active {
+          background: #dcfce7 !important;
+          color: #166534 !important;
+          font-weight: 600;
+        }
+      `}</style>
 
-@app.route('/backend_api/api/admin/campaign/matrix/save', methods=['POST'])
-@app.route('/api/admin/campaign/matrix/save', methods=['POST'])
-@token_required
-def save_campaign_matrix(current_user):
-    if getattr(current_user, 'role', 'user') != 'admin': return jsonify({"message": "Unauthorized"}), 403
-    try:
-        data = request.get_json(); challenge_id = data.get('challenge_id'); rows = data.get('data', [])
-        db = get_db()
-        for row in rows:
-            day = row.get('day_sequence')
-            campaign = db.query(models.DailyCampaign).filter_by(challenge_id=challenge_id, day_sequence=day).first()
-            if not campaign:
-                campaign = models.DailyCampaign(challenge_id=challenge_id, day_sequence=day); db.add(campaign)
-            campaign.challenge_a = row.get('challenge_a'); campaign.challenge_b = row.get('challenge_b'); campaign.challenge_c = row.get('challenge_c')
-            campaign.fact_a = row.get('fact_a'); campaign.fact_b = row.get('fact_b'); campaign.fact_c = row.get('fact_c')
-            campaign.soft_sell_a = row.get('soft_sell_a'); campaign.soft_sell_b = row.get('soft_sell_b'); campaign.soft_sell_c = row.get('soft_sell_c')
-        db.commit()
-        return jsonify({"success": True})
-    except Exception as e: return jsonify({"message": str(e)}), 500
+      {!isDesktop && isSidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>}
 
-# ==========================================
-# 5. USER FEATURES (DASHBOARD & CHECKIN)
-# ==========================================
+      <aside style={{ width: '260px', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#166534' }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
+          {!isDesktop && <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b' }}><X size={24} /></button>}
+        </div>
+        <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} style={navItemStyle(activeTab === 'dashboard')} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><Home size={20} /> Dashboard</button></li>
+            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} style={navItemStyle(activeTab === 'checkin')} onClick={() => { setActiveTab('checkin'); setSidebarOpen(false); }}><Activity size={20} /> Check-in Harian</button></li>
+            <li><button className={`nav-item ${activeTab==='report'?'active':''}`} style={navItemStyle(activeTab === 'report')} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><TrendingUp size={20} /> Rapor Kesehatan</button></li>
+            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Users size={20} /> Teman Sehat</button></li>
+            <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} style={navItemStyle(activeTab === 'shop')} onClick={() => { setActiveTab('shop'); setSidebarOpen(false); }}><ShoppingBag size={20} /> Produk & Toko</button></li>
+            <li><button className="nav-item" style={navItemStyle(false)} onClick={handleScrollToChat}><MessageCircle size={20} /> Dokter AI</button></li>
+            <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} style={navItemStyle(activeTab === 'settings')} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}><Settings size={20} /> Pengaturan</button></li>
+          </ul>
+        </nav>
+        <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={logout} style={{ ...navItemStyle(false), color: '#ef4444', justifyContent: 'flex-start' }}><LogOut size={20} /> Keluar</button>
+        </div>
+      </aside>
 
-@app.route('/backend_api/api/dashboard/user/overview', methods=['GET'])
-@app.route('/api/dashboard/user/overview', methods=['GET'])
-@token_required
-def dashboard_overview(current_user):
-    try:
-        db = get_db(); total_referrals = 0
-        if current_user.referral_code: total_referrals = db.query(models.User).filter(models.User.referred_by == current_user.referral_code).count()
-        total_comm = db.query(func.sum(models.Commission.amount)).filter_by(user_id=current_user.id, status="approved").scalar() or 0.0
-        total_checks = db.query(models.ChallengeLog).filter_by(user_id=current_user.id).count()
-        return jsonify({
-            "user": { "name": current_user.name, "group": current_user.group, "badge": current_user.badge, "challenge_day": current_user.challenge_day or 1, "referral_code": current_user.referral_code, "challenge_id": current_user.challenge_id },
-            "financial": { "total_referrals": total_referrals, "commission_approved": total_comm, "total_checkins": total_checks }
-        })
-    except Exception as e: return jsonify({"message": str(e)}), 500
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
+        {!isDesktop && (
+          <header style={{ position: 'sticky', top: 0, zIndex: 30, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: '#334155' }}><Home size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#166534' }}>JATES9</span></div>
+            <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}><LogOut size={18} /> Keluar</button>
+          </header>
+        )}
 
-@app.route('/backend_api/api/daily-content', methods=['GET'])
-@app.route('/api/daily-content', methods=['GET'])
-@token_required
-def get_daily_content(current_user):
-    try:
-        day = current_user.challenge_day or 1
-        challenge_id = current_user.challenge_id
-        group = current_user.group or 'Sehat'
-        content = { "task_message": "Tetap semangat!", "fact_message": "Jaga pola makan.", "promo_message": "", "tasks": ["Minum Jates9 Pagi", "Minum Jates9 Malam"] }
+        <main style={{ padding: '2rem', flex: 1 }}>
+          
+          {/* 1. DASHBOARD VIEW */}
+          {activeTab === 'dashboard' && (
+            <>
+              <div style={{ marginBottom: '2rem' }}>
+                <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
+                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
+              </div>
 
-        # --- LOGIKA BARU: CEK STATUS DATABASE HARI INI ---
-        db = get_db()
-        today_log = db.query(models.ChallengeLog).filter(
-            models.ChallengeLog.user_id == current_user.id,
-            models.ChallengeLog.day_number == day,
-            func.date(models.ChallengeLog.timestamp) == datetime.date.today()
-        ).first()
-        
-        # Kirim status (completed/pending/skipped/None) ke frontend
-        today_status = today_log.status if today_log else None 
-        # ------------------------------------------------
+              <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  
+                  <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
+                    <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                      <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
+                          <User size={40} color="#166534" />
+                      </div>
+                      <div>
+                        <h2 className="heading-2" style={{ marginBottom: '0.5rem', color: '#1e293b', fontSize: '1.5rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
+                        <div className="gold-badge">
+                          <Medal size={16} /> {overview?.user?.badge || "Pejuang Tangguh"}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-        if challenge_id:
-            try:
-                # [UPDATE] Menambahkan parameter 'kategori' untuk dikirim ke AppScript
-                response = requests.get(APPSCRIPT_URL, params={
-                    "action": "get_tasks", 
-                    "challenge_id": challenge_id, 
-                    "hari": day,
-                    "kategori": group 
-                }, timeout=5)
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#166534" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} color="#ea580c" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
+                  </div>
+                </div>
                 
-                if response.status_code == 200:
-                    sheet_data = response.json()
-                    if sheet_data.get('found'):
-                        tugas_raw = sheet_data.get('Tugas', [])
-                        if isinstance(tugas_raw, str): tugas_raw = [tugas_raw]
-                        content['tasks'] = tugas_raw
-                        content['fact_message'] = sheet_data.get('Fakta', content['fact_message'])
-                        content['promo_message'] = sheet_data.get('Promo', "")
-                        content['task_message'] = sheet_data.get('Pesan', sheet_data.get('message', content['task_message']))
-                        
-                        # Return dengan today_status
-                        return jsonify({ 
-                            "success": True, 
-                            "day": day, 
-                            "group": group, 
-                            "source": "sheet", 
-                            "message": content['task_message'], 
-                            "fact": content['fact_message'], 
-                            "promo": content['promo_message'], 
-                            "tasks": content['tasks'],
-                            "today_status": today_status 
-                        })
-            except Exception as e: print(f"[Sheet Fail] {e}", flush=True)
+                <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                  <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
+                  <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? '#dcfce7' : '#f1f5f9', color: msg.role === 'user' ? '#14532d' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
+                    {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
+                    <div ref={chatEndRef}></div>
+                  </div>
+                  <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
+                </Card>
+              </div>
 
-            # Fallback ke Database Lokal jika AppScript Gagal
-            db = get_db()
-            campaign = db.query(models.DailyCampaign).filter_by(challenge_id=challenge_id, day_sequence=day).first()
-            if campaign:
-                if group == 'A': 
-                    content['task_message'] = campaign.challenge_a or content['task_message']
-                    content['fact_message'] = campaign.fact_a or content['fact_message']
-                    content['promo_message'] = campaign.soft_sell_a or ""
-                elif group == 'B': 
-                    content['task_message'] = campaign.challenge_b or content['task_message']
-                    content['fact_message'] = campaign.fact_b or content['fact_message']
-                    content['promo_message'] = campaign.soft_sell_b or ""
-                elif group == 'C': 
-                    content['task_message'] = campaign.challenge_c or content['task_message']
-                    content['fact_message'] = campaign.fact_c or content['fact_message']
-                    content['promo_message'] = campaign.soft_sell_c or ""
-                else: 
-                    content['task_message'] = campaign.challenge_a or content['task_message']
-                    content['fact_message'] = campaign.fact_a or content['fact_message']
-        
-        # Return fallback dengan today_status
-        return jsonify({ 
-            "success": True, 
-            "day": day, 
-            "group": group, 
-            "source": "db_or_default", 
-            "message": content['task_message'], 
-            "fact": content['fact_message'], 
-            "promo": content['promo_message'], 
-            "tasks": content['tasks'],
-            "today_status": today_status 
-        })
-    except Exception as e: return jsonify({"message": str(e)}), 500
+              {/* CHALLENGE PROGRESS */}
+              <div style={{marginBottom:'2rem'}}>
+                <Card style={{ background: '#fff', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
+                    <CardContent style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#166534', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
+                        </div>
+                        <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: '#166534', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
+                        </div>
+                        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                            <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
+                                <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: '#8fec78', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
+                            <div><strong>{challengeDay}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
+                        </div>
+                        </div>
+                    </CardContent>
+                </Card>
+              </div>
 
-# [PENTING] LOGIKA CHECKIN TERBARU (STATUS PENDING/COMPLETED/SKIPPED)
-@app.route('/backend_api/api/checkin', methods=['POST'])
-@app.route('/api/checkin', methods=['POST'])
-@token_required
-def daily_checkin(current_user):
-    try:
-        data = request.get_json()
-        journal = data.get('journal', '')
-        status = data.get('status', 'completed') # 'completed', 'pending', 'skipped'
-        db = get_db()
-        
-        if not current_user.challenge_id: return jsonify({"message": "Pilih challenge dulu"}), 400
-        
-        # Cek apakah sudah pernah check-in hari ini?
-        today_log = db.query(models.ChallengeLog).filter(
-            models.ChallengeLog.user_id == current_user.id,
-            models.ChallengeLog.day_number == current_user.challenge_day,
-            func.date(models.ChallengeLog.timestamp) == datetime.date.today()
-        ).first()
+              {/* REFERRAL & ARTIKEL */}
+              <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+                <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
+                    <CardContent style={{ padding: '1.5rem' }}>
+                      <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Users size={20}/> Kode Referral</h3>
+                      <p style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '1rem' }}>Bagikan ke teman untuk dapat komisi.</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '8px' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.2rem', flex: 1 }}>{overview?.user?.referral_code}</span>
+                          <button onClick={copyReferral} style={{ background: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: '#4f46e5' }}><Copy size={16}/></button>
+                      </div>
+                    </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
 
-        # Jika sudah selesai/skip hari ini, tolak request
-        if today_log and today_log.status in ['completed', 'skipped']:
-            return jsonify({"success": False, "message": "Status hari ini sudah final."}), 400
+          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU) */}
+          {activeTab === 'checkin' && (
+            <div>
+              <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                <h1 className="heading-2">Check-in Hari ke-{challengeDay}</h1>
+              </div>
+              
+              <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                <CardHeader>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <CardTitle className="heading-3">Aktivitas Hari Ini</CardTitle>
+                    {/* STATUS BADGE */}
+                    {checkinStatus === 'completed' && <span style={{fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SELESAI</span>}
+                    {checkinStatus === 'pending' && <span style={{fontSize: '0.8rem', background: '#fffbeb', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>PENDING</span>}
+                    {checkinStatus === 'skipped' && <span style={{fontSize: '0.8rem', background: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SKIPPED</span>}
+                  </div>
+                </CardHeader>
+                
+                <CardContent style={{ padding: '1.5rem' }}>
+                  {/* FAKTA HARIAN */}
+                  {dailyData && (
+                    <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
+                      <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
+                        <Lightbulb size={20} /> Fakta Sehat:
+                      </h4>
+                      <p style={{ color: '#334155', fontSize: '0.95rem', lineHeight: '1.5' }}>{dailyData.fact || dailyData.message}</p>
+                    </div>
+                  )}
 
-        # KONDISI 1: PENDING (Belum selesai, tunda)
-        if status == 'pending':
-            if today_log: # Update existing pending log
-                today_log.notes = journal
-                today_log.status = "pending" # Pastikan status tetap pending
-                today_log.timestamp = datetime.datetime.utcnow()
-            else:
-                new_log = models.ChallengeLog(user_id=current_user.id, challenge_id=current_user.challenge_id, day_number=current_user.challenge_day, notes=journal, status="pending", timestamp=datetime.datetime.utcnow())
-                db.add(new_log)
-            db.commit()
-            
-            # PENTING: Jangan sync ke Sheet agar Reminder Malam tetap jalan (karena belum absen resmi)
-            return jsonify({"success": True, "message": "Pending tercatat.", "is_pending": True})
+                  {/* COUNTDOWN TIMER -> HANYA MUNCUL JIKA STATUS PENDING */}
+                  {checkinStatus === 'pending' && countdown && (
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                      <div style={{ color: '#92400e', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Clock size={20} /> Sisa Waktu Check-in:
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b45309', marginTop: '0.5rem' }}>{countdown}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#92400e' }}>Batas waktu: 19:00 WIB</div>
+                    </div>
+                  )}
 
-        # KONDISI 2: COMPLETED (Sudah selesai)
-        elif status == 'completed':
-            if today_log:
-                today_log.status = "completed"
-                today_log.notes = journal
-                today_log.timestamp = datetime.datetime.utcnow()
-            else:
-                new_log = models.ChallengeLog(user_id=current_user.id, challenge_id=current_user.challenge_id, day_number=current_user.challenge_day, notes=journal, status="completed", timestamp=datetime.datetime.utcnow())
-                db.add(new_log)
-            
-            # Naik Hari
-            user = db.query(models.User).filter_by(id=current_user.id).first()
-            user.challenge_day = (user.challenge_day or 1) + 1
-            db.commit()
-            
-            # Sync to AppScript (hanya jika completed)
-            sync_to_sheet(user, action="checkin_user", extra_data={"journal": journal})
-            return jsonify({"success": True, "message": "Check-in Berhasil!"})
+                  {/* ALERT JIKA SKIPPED */}
+                  {checkinStatus === 'skipped' && (
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                       <div style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <AlertCircle size={20} /> Hari Dilewatkan
+                      </div>
+                      <p style={{ fontSize: '0.9rem', color: '#b91c1c', marginTop: '0.5rem' }}>Anda melewatkan check-in kemarin/hari ini.</p>
+                    </div>
+                  )}
 
-        # KONDISI 3: SKIPPED (Dilewatkan oleh sistem/user)
-        elif status == 'skipped':
-            if today_log:
-                today_log.status = "skipped"
-                today_log.timestamp = datetime.datetime.utcnow()
-            else:
-                new_log = models.ChallengeLog(
-                    user_id=current_user.id, 
-                    challenge_id=current_user.challenge_id, 
-                    day_number=current_user.challenge_day, 
-                    notes="Dilewatkan", 
-                    status="skipped", 
-                    timestamp=datetime.datetime.utcnow()
-                )
-                db.add(new_log)
-            
-            # Naik Hari (Meski gagal/skip, hari tetap lanjut)
-            user = db.query(models.User).filter_by(id=current_user.id).first()
-            user.challenge_day = (user.challenge_day or 1) + 1
-            db.commit()
-            
-            return jsonify({"success": True, "message": "Hari dilewatkan."})
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h4 style={{ fontWeight: 'bold', color: '#334155' }}>Pilih tugas yang sudah dilakukan:</h4>
+                    
+                    {/* TASK CARDS */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                      {dailyData?.tasks?.map((task, idx) => (
+                        <div key={idx} 
+                          onClick={() => {
+                            if(checkinStatus === 'completed' || checkinStatus === 'skipped') return; 
+                            setCheckedTasks(prev => ({...prev, [idx]: !prev[idx]}))
+                          }}
+                          style={{ 
+                            padding: '1.25rem', 
+                            borderRadius: '16px', 
+                            cursor: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 'default' : 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            border: checkedTasks[idx] ? '2.5px solid #8fec78' : '1px solid #e2e8f0',
+                            background: checkedTasks[idx] ? '#f0fdf4' : '#ffffff',
+                            opacity: (checkinStatus === 'completed' || checkinStatus === 'skipped') ? 0.7 : 1,
+                            transition: 'all 0.2s ease-in-out',
+                            transform: checkedTasks[idx] ? 'scale(1.02)' : 'scale(1)'
+                          }}>
+                          <span style={{ fontWeight: '700', color: checkedTasks[idx] ? '#166534' : '#475569', fontSize: '1rem' }}>{task}</span>
+                          {checkedTasks[idx] ? (
+                            <CheckCircle size={24} color="#166534" fill="#8fec78" />
+                          ) : (
+                            <div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid #cbd5e1' }} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
 
-    except Exception as e: db.rollback(); return jsonify({"message": str(e)}), 500
+                    {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && (
+                      <div style={{marginTop: '1rem'}}>
+                        <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Jurnal Singkat:</label>
+                        <textarea 
+                            value={journal}
+                            onChange={(e) => setJournal(e.target.value)}
+                            placeholder="Contoh: Perut terasa lebih nyaman hari ini..." 
+                            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
+                        ></textarea>
+                      </div>
+                    )}
 
-@app.route('/backend_api/api/evaluation/submit', methods=['POST'])
-@app.route('/api/evaluation/submit', methods=['POST'])
-@token_required
-def submit_evaluation(current_user):
-    return jsonify({"success": True, "message": "Evaluasi berhasil dikirim."})
+                    {/* --- AREA TOMBOL (LOGIKA 3 FASE) --- */}
+                    
+                    {/* FASE 1: BELUM ADA STATUS (NULL) */}
+                    {checkinStatus === null && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                        <button 
+                          onClick={() => handleSubmitCheckin('pending')} // KLIK NANTI
+                          style={{ 
+                            background: '#f1f5f9', color: '#475569', 
+                            border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '12px', 
+                            fontWeight: 'bold', cursor: 'pointer' 
+                          }}>
+                          Saya Lakukan Nanti
+                        </button>
+                        <button 
+                          onClick={() => handleSubmitCheckin('completed')} // KLIK SELESAI
+                          style={{ 
+                            background: '#8fec78', color: '#064e3b', 
+                            border: 'none', padding: '1rem', borderRadius: '12px', 
+                            fontWeight: 'bold', cursor: 'pointer',
+                            boxShadow: '0 4px 6px -1px rgba(143, 236, 120, 0.4)'
+                          }}>
+                          Sudah Melakukan
+                        </button>
+                      </div>
+                    )}
 
-# ==========================================
-# 6. FRIENDS & CHALLENGES
-# ==========================================
+                    {/* FASE 2: STATUS PENDING (KLIK NANTI) */}
+                    {checkinStatus === 'pending' && (
+                      <button 
+                        onClick={() => handleSubmitCheckin('completed')} 
+                        style={{ 
+                          background: '#8fec78', color: '#064e3b', 
+                          border: 'none', padding: '1.25rem', borderRadius: '16px', 
+                          fontWeight: '800', fontSize: '1.2rem', marginTop: '1rem', 
+                          cursor: 'pointer', width: '100%',
+                          boxShadow: '0 4px 6px -1px rgba(143, 236, 120, 0.4)'
+                        }}>
+                        SELESAIKAN SEKARANG
+                      </button>
+                    )}
 
-@app.route('/backend_api/api/friends/lookup', methods=['POST'])
-@app.route('/api/friends/lookup', methods=['POST'])
-@token_required
-def lookup_friend(current_user):
-    try:
-        data = request.get_json(); ref_code = data.get('referral_code')
-        if not ref_code: return jsonify({'success': False, 'message': 'Kode wajib'}), 400
-        friend = get_db().query(models.User).filter(models.User.referral_code == ref_code).first()
-        if not friend: return jsonify({'success': False, 'message': 'Teman tidak ditemukan'}), 404
-        if friend.id == current_user.id: return jsonify({'success': False, 'message': 'Kode Anda sendiri'}), 400
-        friend_challenge = "Belum ada challenge"
-        if friend.challenge_id:
-            ch = get_db().query(models.Challenge).filter(models.Challenge.id == friend.challenge_id).first()
-            if ch: friend_challenge = ch.title
-        friend_checks = get_db().query(models.ChallengeLog).filter(models.ChallengeLog.user_id == friend.id).count()
-        return jsonify({'success': True, 'friend': {'name': friend.name, 'badge': friend.badge, 'group': friend.group, 'challenge_title': friend_challenge, 'total_checkins': friend_checks, 'challenge_day': friend.challenge_day or 1}})
-    except Exception as e: return jsonify({'message': str(e)}), 500
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-@app.route('/backend_api/api/friends/list', methods=['GET'])
-@app.route('/api/friends/list', methods=['GET'])
-@token_required
-def get_friend_list(current_user):
-    try:
-        db = get_db(); friends_data = []
-        if current_user.referred_by:
-            upline = db.query(models.User).filter(models.User.referral_code == current_user.referred_by).first()
-            if upline: friends_data.append({'name': upline.name, 'badge': upline.badge, 'referral_code': upline.referral_code, 'relation': 'Mentor'})
-        downlines = db.query(models.User).filter(models.User.referred_by == current_user.referral_code).all()
-        for d in downlines: friends_data.append({'name': d.name, 'badge': d.badge, 'referral_code': d.referral_code, 'relation': 'Teman'})
-        return jsonify({'success': True, 'friends': friends_data})
-    except Exception as e: return jsonify({'message': str(e)}), 500
+          {/* 3. HEALTH REPORT PAGE */}
+          {activeTab === 'report' && (
+            <div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <h1 className="heading-2">Rapor Kesehatan</h1>
+               </div>
+               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                            {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
+                               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                  <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#8fec78' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div>
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span>
+                               </div>
+                            ))}
+                         </div>
+                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                            <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
+                            <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
+                         </div>
+                      </CardContent>
+                  </Card>
 
-@app.route('/backend_api/api/challenges', methods=['GET'])
-@app.route('/api/challenges', methods=['GET'])
-def get_all_challenges():
-    db = get_db(); challenges = db.query(models.Challenge).filter(models.Challenge.is_active == True).all()
-    return jsonify([{"id": c.id, "title": c.title, "description": c.description} for c in challenges])
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
+                               <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
+                            </div>
+                            {challengeDay >= 5 ? (
+                               <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
+                                  <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
+                                  <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
+                               </div>
+                            ) : (
+                               <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
+                                  Evaluasi berikutnya di Hari ke-5
+                               </div>
+                            )}
+                         </div>
+                      </CardContent>
+                  </Card>
+               </div>
+            </div>
+          )}
 
-@app.route('/backend_api/api/user/select-challenge', methods=['POST'])
-@app.route('/api/user/select-challenge', methods=['POST'])
-@token_required
-def select_challenge(current_user):
-    try:
-        data = request.get_json(); db = get_db()
-        user = db.query(models.User).filter_by(id=current_user.id).first()
-        user.challenge_id = data.get('challenge_id')
-        user.challenge_day = 1 
-        ch = db.query(models.Challenge).filter_by(id=data.get('challenge_id')).first()
-        db.commit()
-        sync_to_sheet(user, action="sync_challenge")
-        try: send_whatsapp_welcome(user.phone_number, user.name, ch.title if ch else "Challenge")
-        except: pass
-        return jsonify({'success': True})
-    except Exception as e: return jsonify({'message': str(e)}), 500
+          {/* 4. SHOP & PRODUCTS PAGE */}
+          {activeTab === 'shop' && (
+            <div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <h1 className="heading-2">Toko & Produk</h1>
+               </div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                  {[
+                      { name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" },
+                      { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" },
+                      { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }
+                  ].map((prod, idx) => (
+                      <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                         <div style={{ height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                            <Package size={64} color="#94a3b8"/>
+                         </div>
+                         <CardContent style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                               <span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span>
+                               <a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <ShoppingBag size={16}/> Beli di Shopee
+                               </a>
+                            </div>
+                         </CardContent>
+                      </Card>
+                  ))}
+               </div>
+            </div>
+          )}
 
-@app.route('/backend_api/api/admin/quiz/generate-challenge-auto', methods=['POST'])
-@app.route('/api/admin/quiz/generate-challenge-auto', methods=['POST'])
-@token_required
-def admin_generate_challenge_auto(current_user):
-    if getattr(current_user, 'role', 'user') != 'admin': return jsonify({"message": "Unauthorized"}), 403
-    try:
-        data = request.get_json(); title = data.get('title')
-        prompt = f"Buat program '{title}' JSON murni: {{'description':'','categories':{{'A':'','B':'','C':''}},'questions':[{{'text':'','options':[{{'text':'','category':'A'}}]}}]}}"
-        gpt_resp = client.chat.completions.create(model=AI_MODEL, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
-        raw_content = gpt_resp.choices[0].message.content.strip()
-        start_idx = raw_content.find('{'); end_idx = raw_content.rfind('}') + 1
-        ai_data = json.loads(raw_content[start_idx:end_idx])
-        db = get_db()
-        new_c = models.Challenge(title=title, description=ai_data['description'], is_active=True)
-        db.add(new_c); db.flush()
-        for idx, q in enumerate(ai_data['questions']):
-            db.add(models.QuizQuestion(challenge_id=new_c.id, question_text=q['text'], options=q['options'], sequence=idx+1))
-        for d in range(1, 31): db.add(models.DailyCampaign(challenge_id=new_c.id, day_sequence=d))
-        db.commit(); return jsonify({"success": True})
-    except Exception as e: return jsonify({"message": str(e)}), 500
+          {/* 5. SETTINGS PAGE */}
+          {activeTab === 'settings' && (
+            <div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <h1 className="heading-2">Pengaturan Akun</h1>
+               </div>
+               <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">Profil Saya</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nama Lengkap</label><input type="text" value={overview?.user?.name} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nomor WhatsApp</label><input type="text" value={overview?.user?.referral_code} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
+                         </div>
+                      </CardContent>
+                  </Card>
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardContent style={{padding:'1.5rem'}}>
+                        <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', textAlign: 'left', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>Keluar dari Aplikasi</button>
+                      </CardContent>
+                  </Card>
+               </div>
+            </div>
+          )}
 
-@app.route('/backend_api/api/admin/quiz/delete-challenge/<int:challenge_id>', methods=['DELETE'])
-@app.route('/api/admin/quiz/delete-challenge/<int:challenge_id>', methods=['DELETE'])
-@token_required
-def delete_challenge(current_user, challenge_id):
-    if getattr(current_user, 'role', 'user') != 'admin': return jsonify({"message": "Unauthorized"}), 403
-    try:
-        db = get_db(); db.query(models.QuizQuestion).filter_by(challenge_id=challenge_id).delete()
-        db.query(models.Challenge).filter_by(id=challenge_id).delete(); db.commit()
-        return jsonify({"success": True})
-    except Exception as e: db.rollback(); return jsonify({"message": str(e)}), 500
+          {/* 6. FRIENDS LIST PAGE */}
+          {activeTab === 'friends' && (
+            <div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <h1 className="heading-2">Teman Sehat</h1>
+               </div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  <Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}>
+                      <div style={{ textAlign: 'center', color: '#166534' }}>
+                          <div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div>
+                          <h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3>
+                      </div>
+                  </Card>
+                  {myFriends.map((friend, idx) => (
+                      <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}>
+                          <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                              <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div>
+                              <div>
+                                  <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{friend.name}</h4>
+                                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                      <span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span>
+                                      <span style={{ color: '#64748b' }}>• {friend.relation}</span>
+                                  </div>
+                              </div>
+                          </CardContent>
+                      </Card>
+                  ))}
+               </div>
+            </div>
+          )}
 
-@app.route('/backend_api/api/admin/stats', methods=['GET'])
-@app.route('/api/admin/stats', methods=['GET'])
-@token_required
-def admin_stats(current_user):
-    db = get_db(); return jsonify({"total_users": db.query(models.User).count(), "total_revenue": db.query(func.sum(models.ProductPurchase.amount)).filter_by(status="paid").scalar() or 0.0})
+        </main>
+      </div>
 
-@app.route('/backend_api/api/admin/users', methods=['GET'])
-@app.route('/api/admin/users', methods=['GET'])
-@token_required
-def admin_users_list(current_user):
-    if getattr(current_user, 'role', 'user') != 'admin': return jsonify({"message": "Unauthorized"}), 403
-    db = get_db(); users = db.query(models.User).all()
-    return jsonify([{"id": u.id, "name": u.name, "phone": u.phone_number, "role": u.role, "badge": u.badge} for u in users])
+      {showQRModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}>
+           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
+              <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
+              </div>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}>
+                 <h4 style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.8rem', color: '#334155' }}>Cari Teman</h4>
+                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <input type="text" placeholder="Masukkan Kode Teman" value={friendCode} onChange={(e) => setFriendCode(e.target.value.toUpperCase())} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }} />
+                    <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
+                 </div>
+                 {friendData && (
+                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                          <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div>
+                          <div><div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div><div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div></div>
+                       </div>
+                       <div style={{ fontSize: '0.85rem', color: '#4b5563', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Klik untuk lihat profil</span><ChevronRight size={16} /></div>
+                    </div>
+                 )}
+              </div>
+              <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155', width: '100%' }}>Tutup</button>
+           </div>
+        </div>
+      )}
 
-@app.route('/backend_api/api/quiz/questions/<int:challenge_id>', methods=['GET'])
-@app.route('/api/quiz/questions/<int:challenge_id>', methods=['GET'])
-def get_quiz_questions(challenge_id):
-    db = get_db(); questions = db.query(models.QuizQuestion).filter(models.QuizQuestion.challenge_id == challenge_id).order_by(models.QuizQuestion.sequence.asc()).all()
-    return jsonify([{"id": q.id, "question_text": q.question_text, "options": q.options} for q in questions])
+      {showFriendProfile && friendData && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
+           <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: 'var(--gradient-profile)', padding: '2rem 1rem', color: '#1e293b', position: 'relative', overflow: 'hidden' }}>
+                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', position: 'relative', zIndex: 2 }}><User size={40} color="#166534" /></div>
+                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b', position: 'relative', zIndex: 2 }}>{friendData.name}</h2>
+                 <div className="gold-badge" style={{ position: 'relative', zIndex: 2 }}><Medal size={16}/> {friendData.badge}</div>
+              </div>
+              <div style={{ padding: '1.5rem' }}>
+                 <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                       <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.3rem' }}>{friendData.challenge_title}</div>
+                       <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}><span>Tipe {friendData.group || 'Umum'}</span><span>Hari ke-{friendData.challenge_day}</span></div>
+                       <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}><div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: '#8fec78' }}></div></div>
+                    </div>
+                 </div>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ background: '#f0fdf4', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div><div style={{ fontSize: '0.75rem', color: '#166534' }}>Total Check-in</div></div>
+                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div><div style={{ fontSize: '0.75rem', color: '#ea580c' }}>Hari Berjalan</div></div>
+                 </div>
+                 <button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '2rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup Profil</button>
+              </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-@app.route('/backend_api/api/quiz/submit', methods=['POST'])
-@app.route('/api/quiz/submit', methods=['POST'])
-@token_required
-def submit_quiz_result(current_user):
-    try:
-        data = request.get_json(); db = get_db()
-        user = db.query(models.User).filter(models.User.id == current_user.id).first()
-        user.group = data.get('health_type', 'Sehat')
-        score = data.get('score', 0); answers = data.get('answers', [])
-        new_result = models.QuizResult(user_id=current_user.id, score=score, answers=answers, health_type=user.group, created_at=datetime.datetime.utcnow())
-        db.add(new_result); db.commit()
-        return jsonify({"success": True})
-    except Exception as e: db.rollback(); return jsonify({"success": False, "message": str(e)}), 500
+const navItemStyle = (isActive) => ({
+  display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', background: isActive ? '#dcfce7' : 'transparent', color: isActive ? '#14532d' : '#475569', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.95rem', fontWeight: isActive ? '600' : '400', marginBottom: '0.25rem', textAlign: 'left', transition: 'all 0.2s'
+});
 
-@app.route('/backend_api/api/chat/send', methods=['POST'])
-@app.route('/api/chat/send', methods=['POST'])
-@token_required
-def send_chat(current_user):
-    if not client: return jsonify({"success": False, "response": "AI Error"}), 200
-    try:
-        data = request.get_json(); gpt_resp = client.chat.completions.create(model=AI_MODEL, messages=[{"role": "system", "content": "Kamu Dokter AI Jates9."}, {"role": "user", "content": data.get('message')}])
-        return jsonify({"success": True, "response": gpt_resp.choices[0].message.content})
-    except Exception as e: return jsonify({"success": False, "response": str(e)}), 500
-
-@app.route('/uploads/<path:filename>')
-def serve_uploads(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    if path.startswith('api') or path.startswith('backend_api'): return jsonify({"message": "API route not found"}), 404
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)): return send_from_directory(app.static_folder, path)
-    if os.path.exists(os.path.join(app.static_folder, 'index.html')): return send_from_directory(app.static_folder, 'index.html')
-    return "Frontend Build Not Found.", 404
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+export default UserDashboard;
