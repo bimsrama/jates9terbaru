@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle
+  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -23,7 +23,6 @@ const UserDashboard = () => {
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
-  // [REMOVED] checkedTasks
   const [checkinStatus, setCheckinStatus] = useState(null); 
   const [countdown, setCountdown] = useState(null);
 
@@ -56,12 +55,16 @@ const UserDashboard = () => {
         if(desktop) setSidebarOpen(false);
     };
     window.addEventListener('resize', handleResize);
+    
+    // Load semua data di awal
     fetchData();
+    fetchDailyContent(); // Load misi harian langsung untuk dashboard
+    
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Fetch friends only when tab is active
   useEffect(() => {
-      if (activeTab === 'checkin') fetchDailyContent();
       if (activeTab === 'friends') fetchFriendsList();
   }, [activeTab]);
 
@@ -72,7 +75,7 @@ const UserDashboard = () => {
   // --- COUNTDOWN TIMER ---
   useEffect(() => {
     let timer;
-    if (activeTab === 'checkin' && checkinStatus === 'pending') {
+    if (checkinStatus === 'pending') {
       timer = setInterval(() => {
         const now = new Date();
         const target = new Date();
@@ -93,7 +96,7 @@ const UserDashboard = () => {
         setCountdown(null); 
     }
     return () => clearInterval(timer);
-  }, [activeTab, checkinStatus]);
+  }, [checkinStatus]);
 
   const fetchData = async () => {
     try {
@@ -174,7 +177,7 @@ const UserDashboard = () => {
     alert("Kode Referral disalin!");
   };
 
-  // --- FUNGSI CHECKIN (TANPA VALIDASI CENTANG) ---
+  // --- FUNGSI CHECKIN ---
   const handleSubmitCheckin = async (forcedStatus) => {
       try {
           const res = await axios.post(`${BACKEND_URL}/api/checkin`, { 
@@ -187,8 +190,7 @@ const UserDashboard = () => {
             
             if(forcedStatus === 'completed') {
               alert("✅ Check-in SELESAI! Anda hebat hari ini.");
-              setActiveTab('dashboard');
-              fetchData();
+              fetchData(); // Refresh data progress
             } else {
               alert("🕒 Oke, status PENDING tersimpan. Selesaikan sebelum jam 19:00!");
             }
@@ -196,6 +198,15 @@ const UserDashboard = () => {
       } catch (err) { 
           alert(err.response?.data?.message || "Gagal check-in."); 
       }
+  };
+
+  const handleSwitchChallenge = async (chId) => {
+      if(!window.confirm("Ingin pindah ke tantangan ini? Progress saat ini mungkin akan direset.")) return;
+      try {
+          await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: chId }, { headers: getAuthHeader() });
+          alert("Berhasil pindah challenge!");
+          window.location.reload();
+      } catch (e) { alert("Gagal pindah challenge"); }
   };
 
   const handleSearchFriend = async () => {
@@ -225,7 +236,6 @@ const UserDashboard = () => {
   };
 
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
-  const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
   const challengeDay = overview?.user?.challenge_day || 1;
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
@@ -265,6 +275,7 @@ const UserDashboard = () => {
           color: #166534 !important;
           font-weight: 600;
         }
+        .scroll-hide::-webkit-scrollbar { display: none; }
       `}</style>
 
       {!isDesktop && isSidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>}
@@ -277,7 +288,8 @@ const UserDashboard = () => {
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} style={navItemStyle(activeTab === 'dashboard')} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><Home size={20} /> Dashboard</button></li>
-            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} style={navItemStyle(activeTab === 'checkin')} onClick={() => { setActiveTab('checkin'); setSidebarOpen(false); }}><Activity size={20} /> Check-in Harian</button></li>
+            {/* Rename Tab Checkin jadi Riwayat */}
+            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} style={navItemStyle(activeTab === 'checkin')} onClick={() => { setActiveTab('checkin'); setSidebarOpen(false); }}><Calendar size={20} /> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='report'?'active':''}`} style={navItemStyle(activeTab === 'report')} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><TrendingUp size={20} /> Rapor Kesehatan</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Users size={20} /> Teman Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} style={navItemStyle(activeTab === 'shop')} onClick={() => { setActiveTab('shop'); setSidebarOpen(false); }}><ShoppingBag size={20} /> Produk & Toko</button></li>
@@ -300,17 +312,20 @@ const UserDashboard = () => {
 
         <main style={{ padding: '2rem', flex: 1 }}>
           
-          {/* 1. DASHBOARD VIEW */}
+          {/* 1. DASHBOARD VIEW (DIPERBARUI) */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem' }}>
                 <h1 className="heading-2" style={{ marginBottom: '0.5rem' }}>Dashboard</h1>
-                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day}.</p>
+                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{challengeDay}.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
+                
+                {/* KOLOM KIRI: Profil & Misi Harian */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
+                  {/* Profil Card */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
@@ -325,13 +340,98 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
+                  {/* === [NEW] CHECK-IN / MISI HARIAN SECTION === */}
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+                    <CardHeader style={{paddingBottom:'0.5rem'}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                          <Activity size={20} color="#166534"/> Misi Hari Ini (Day {challengeDay}/30)
+                        </CardTitle>
+                        {/* Status Badge */}
+                        {checkinStatus === 'completed' && <span style={{fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'4px'}}><CheckCircle size={14}/> Completed</span>}
+                        {checkinStatus === 'pending' && <span style={{fontSize: '0.8rem', background: '#fffbeb', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'4px'}}><Clock size={14}/> Pending</span>}
+                        {checkinStatus === 'skipped' && <span style={{fontSize: '0.8rem', background: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'4px'}}><AlertCircle size={14}/> Skipped</span>}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {/* Fakta */}
+                      {dailyData && (
+                        <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #3b82f6', marginBottom: '1rem' }}>
+                          <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e40af', marginBottom: '0.2rem' }}><Lightbulb size={16} style={{display:'inline', marginBottom:'-2px'}}/> Info Sehat:</h4>
+                          <p style={{ fontSize: '0.9rem', color: '#334155' }}>{dailyData.fact || dailyData.message}</p>
+                        </div>
+                      )}
+
+                      {/* Konten Checkin */}
+                      {checkinStatus === 'completed' ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                           <CheckCircle size={48} color="#16a34a" style={{margin:'0 auto 0.5rem'}}/>
+                           <h3 style={{fontWeight:'bold', color:'#166534'}}>Misi Selesai!</h3>
+                           <p style={{fontSize:'0.9rem', color:'#16a34a'}}>Sampai jumpa di tantangan besok.</p>
+                        </div>
+                      ) : (
+                        <div>
+                           {/* List Tugas (Read Only) */}
+                           <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              {dailyData?.tasks?.map((task, idx) => (
+                                <div key={idx} style={{ padding: '0.8rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', display:'flex', alignItems:'center', gap:'0.8rem' }}>
+                                   <div style={{ width:'8px', height:'8px', background:'#8fec78', borderRadius:'50%', flexShrink:0 }}></div>
+                                   <span style={{ fontSize:'0.9rem', fontWeight:'500', color:'#334155' }}>{task}</span>
+                                </div>
+                              ))}
+                           </div>
+
+                           {/* Timer Jika Pending */}
+                           {checkinStatus === 'pending' && countdown && (
+                              <div style={{ textAlign: 'center', marginBottom: '1rem', padding: '0.8rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
+                                <div style={{ color: '#92400e', fontWeight: 'bold', fontSize:'0.9rem' }}>Sisa Waktu Check-in:</div>
+                                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#b45309' }}>{countdown}</div>
+                              </div>
+                           )}
+
+                           {/* Tombol Aksi */}
+                           <div style={{ display: 'grid', gridTemplateColumns: checkinStatus === 'pending' ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                              {checkinStatus === null && (
+                                <button onClick={() => handleSubmitCheckin('pending')} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                  Lakukan Nanti
+                                </button>
+                              )}
+                              <button onClick={() => handleSubmitCheckin('completed')} style={{ background: '#8fec78', color: '#064e3b', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(143, 236, 120, 0.4)' }}>
+                                {checkinStatus === 'pending' ? 'SELESAIKAN SEKARANG' : 'Sudah Melakukan'}
+                              </button>
+                           </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Statistik */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><TrendingUp size={20} color="#166534" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}x</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
-                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={20} color="#16a34a" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
-                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><div style={{ margin: '0 auto 0.5rem', width: '40px', height: '40px', borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={20} color="#ea580c" /></div><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
+                    <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
                   </div>
+
+                  {/* === [NEW] REKOMENDASI CHALLENGE === */}
+                  <div>
+                    <h3 className="heading-3" style={{marginBottom:'1rem'}}>Rekomendasi Challenge</h3>
+                    <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
+                       {challenges.map((ch) => (
+                         <div key={ch.id} style={{ minWidth: '220px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                            <div>
+                              <div style={{width:'40px', height:'40px', background:'#f0fdf4', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'0.5rem'}}><Activity size={20} color="#16a34a"/></div>
+                              <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#0f172a', marginBottom:'0.3rem' }}>{ch.title}</h4>
+                              <p style={{ fontSize: '0.8rem', color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.description}</p>
+                            </div>
+                            <button onClick={() => handleSwitchChallenge(ch.id)} style={{ marginTop: '1rem', width: '100%', padding: '0.5rem', border: '1px solid #16a34a', background: 'transparent', color: '#16a34a', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer' }}>Lihat Detail</button>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
+
                 </div>
                 
+                {/* KOLOM KANAN: Chatbot */}
                 <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
                   <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
                   <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -342,163 +442,64 @@ const UserDashboard = () => {
                   <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
                 </Card>
               </div>
-
-              {/* CHALLENGE PROGRESS */}
-              <div style={{marginBottom:'2rem'}}>
-                <Card style={{ background: '#fff', border: '1px solid #e2e8f0', marginBottom: '2rem', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
-                    <CardContent style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                        <div>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#166534', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3>
-                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
-                        </div>
-                        <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: '#166534', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
-                        </div>
-                        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                            <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
-                                <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: '#8fec78', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
-                            </div>
-                        </div>
-                        <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
-                            <div><strong>{overview?.financial?.total_checkins || 0}</strong> <span style={{color: '#94a3b8'}}>Hari Check-in</span></div>
-                            <div><strong>{challengeDay}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
-                        </div>
-                        </div>
-                    </CardContent>
-                </Card>
-              </div>
-
-              {/* REFERRAL & ARTIKEL */}
-              <div style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
-                <Card style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)', color: 'white', border: 'none' }}>
-                    <CardContent style={{ padding: '1.5rem' }}>
-                      <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}><Users size={20}/> Kode Referral</h3>
-                      <p style={{ fontSize: '0.9rem', opacity: 0.9, marginBottom: '1rem' }}>Bagikan ke teman untuk dapat komisi.</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '8px' }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.2rem', flex: 1 }}>{overview?.user?.referral_code}</span>
-                          <button onClick={copyReferral} style={{ background: 'white', border: 'none', borderRadius: '4px', padding: '4px', cursor: 'pointer', color: '#4f46e5' }}><Copy size={16}/></button>
-                      </div>
-                    </CardContent>
-                </Card>
-              </div>
             </>
           )}
 
-          {/* 2. CHECK-IN PAGE (LOGIKA UI BARU - TANPA CHECKBOX, TANPA DAFTAR TUGAS) */}
+          {/* 2. HISTORY CHECK-IN PAGE (GRID VIEW) */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
-                <h1 className="heading-2">Check-in Hari ke-{challengeDay}</h1>
+                <h1 className="heading-2">Riwayat Perjalanan</h1>
               </div>
               
-              <Card style={{ background: 'white', border: '1px solid #e2e8f0', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+              <Card style={{ background: 'white', border: '1px solid #e2e8f0', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                 <CardHeader>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <CardTitle className="heading-3">Aktivitas Hari Ini</CardTitle>
-                    {/* STATUS BADGE */}
-                    {checkinStatus === 'completed' && <span style={{fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SELESAI</span>}
-                    {checkinStatus === 'pending' && <span style={{fontSize: '0.8rem', background: '#fffbeb', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>PENDING</span>}
-                    {checkinStatus === 'skipped' && <span style={{fontSize: '0.8rem', background: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold'}}>SKIPPED</span>}
-                  </div>
+                  <CardTitle className="heading-3">Kalender Check-in</CardTitle>
+                  <p style={{fontSize:'0.9rem', color:'#64748b'}}>Hijau = Selesai, Abu = Belum</p>
                 </CardHeader>
-                
                 <CardContent style={{ padding: '1.5rem' }}>
-                  {/* FAKTA HARIAN */}
-                  {dailyData && (
-                    <div style={{ background: '#f0f9ff', padding: '1.2rem', borderRadius: '12px', borderLeft: '5px solid #0ea5e9', marginBottom: '1.5rem' }}>
-                      <h4 style={{ fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369a1' }}>
-                        <Lightbulb size={20} /> Fakta Sehat:
-                      </h4>
-                      <p style={{ color: '#334155', fontSize: '0.95rem', lineHeight: '1.5' }}>{dailyData.fact || dailyData.message}</p>
-                    </div>
-                  )}
+                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.8rem' }}>
+                      {Array.from({length: 30}, (_, i) => i + 1).map(day => {
+                         let statusColor = '#f1f5f9'; // Default Abu
+                         let textColor = '#94a3b8';
+                         
+                         // Logika Sederhana Visualisasi History
+                         // Hari < Hari Sekarang -> Anggap Selesai (Hijau)
+                         // Hari == Hari Sekarang -> Cek Status (Hijau jika completed, Kuning jika pending)
+                         
+                         if (day < challengeDay) {
+                            statusColor = '#dcfce7'; 
+                            textColor = '#166534';
+                         } else if (day === challengeDay) {
+                            if (checkinStatus === 'completed') {
+                                statusColor = '#dcfce7'; textColor = '#166534';
+                            } else if (checkinStatus === 'pending') {
+                                statusColor = '#fef3c7'; textColor = '#d97706';
+                            } else {
+                                statusColor = '#fff'; textColor = '#334155'; // Active day but untouched
+                            }
+                         }
 
-                  {/* COUNTDOWN TIMER -> HANYA MUNCUL JIKA STATUS PENDING */}
-                  {checkinStatus === 'pending' && countdown && (
-                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
-                      <div style={{ color: '#92400e', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                        <Clock size={20} /> Sisa Waktu Check-in:
-                      </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b45309', marginTop: '0.5rem' }}>{countdown}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#92400e' }}>Batas waktu: 19:00 WIB</div>
-                    </div>
-                  )}
+                         const isToday = day === challengeDay;
 
-                  {/* ALERT JIKA SKIPPED */}
-                  {checkinStatus === 'skipped' && (
-                    <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                       <div style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                        <AlertCircle size={20} /> Hari Dilewatkan
-                      </div>
-                      <p style={{ fontSize: '0.9rem', color: '#b91c1c', marginTop: '0.5rem' }}>Anda melewatkan check-in kemarin/hari ini.</p>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    
-                    {/* [DAFTAR TUGAS DIHILANGKAN] */}
-
-                    {checkinStatus !== 'completed' && checkinStatus !== 'skipped' && (
-                      <div style={{marginTop: '1rem'}}>
-                        <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem'}}>Jurnal Singkat:</label>
-                        <textarea 
-                            value={journal}
-                            onChange={(e) => setJournal(e.target.value)}
-                            placeholder="Bagaimana perasaanmu setelah melakukan tugas hari ini?" 
-                            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '80px', outline: 'none', resize: 'none' }}
-                        ></textarea>
-                      </div>
-                    )}
-
-                    {/* --- AREA TOMBOL (LOGIKA 3 FASE) --- */}
-                    
-                    {/* FASE 1: BELUM ADA STATUS (NULL) */}
-                    {checkinStatus === null && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                        <button 
-                          onClick={() => handleSubmitCheckin('pending')} // KLIK NANTI
-                          style={{ 
-                            background: '#f1f5f9', color: '#475569', 
-                            border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '12px', 
-                            fontWeight: 'bold', cursor: 'pointer' 
-                          }}>
-                          Saya Lakukan Nanti
-                        </button>
-                        <button 
-                          onClick={() => handleSubmitCheckin('completed')} // KLIK SELESAI
-                          style={{ 
-                            background: '#8fec78', color: '#064e3b', 
-                            border: 'none', padding: '1rem', borderRadius: '12px', 
-                            fontWeight: 'bold', cursor: 'pointer',
-                            boxShadow: '0 4px 6px -1px rgba(143, 236, 120, 0.4)'
-                          }}>
-                          Sudah Melakukan
-                        </button>
-                      </div>
-                    )}
-
-                    {/* FASE 2: STATUS PENDING (KLIK NANTI) */}
-                    {checkinStatus === 'pending' && (
-                      <button 
-                        onClick={() => handleSubmitCheckin('completed')} 
-                        style={{ 
-                          background: '#8fec78', color: '#064e3b', 
-                          border: 'none', padding: '1.25rem', borderRadius: '16px', 
-                          fontWeight: '800', fontSize: '1.2rem', marginTop: '1rem', 
-                          cursor: 'pointer', width: '100%',
-                          boxShadow: '0 4px 6px -1px rgba(143, 236, 120, 0.4)'
-                        }}>
-                        SELESAIKAN SEKARANG
-                      </button>
-                    )}
-
-                  </div>
+                         return (
+                           <div key={day} style={{ 
+                              aspectRatio: '1/1', 
+                              background: statusColor, 
+                              borderRadius: '12px', 
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              border: isToday ? '2px solid #16a34a' : '1px solid transparent',
+                              fontWeight: 'bold',
+                              color: textColor
+                           }}>
+                              <span style={{fontSize:'0.7rem', fontWeight:'normal'}}>Day</span>
+                              <span style={{fontSize:'1.2rem'}}>{day}</span>
+                              {day < challengeDay && <CheckCircle size={12} style={{marginTop:'4px'}}/>}
+                           </div>
+                         )
+                      })}
+                   </div>
                 </CardContent>
               </Card>
             </div>
