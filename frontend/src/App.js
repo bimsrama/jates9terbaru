@@ -21,15 +21,14 @@ import HealthReport from "./pages/dashboard/HealthReport";
 import DailyCheckin from "./pages/dashboard/DailyCheckin";
 import Affiliate from "./pages/dashboard/Affiliate";
 import Withdrawal from "./pages/dashboard/Withdrawal";
+import ArticlePage from "./pages/ArticlePage"; // [BARU] Import Article Page
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
 import PurchaseVerification from "./pages/admin/PurchaseVerification";
 import WithdrawalManagement from "./pages/admin/WithdrawalManagement";
-import Broadcast from "./pages/admin/Broadcast"; // <--- IMPORT BARU
-import ArticlePage from './pages/ArticlePage'; // Pastikan path import benar
-
+import Broadcast from "./pages/admin/Broadcast"; 
 
 function App() {
   return (
@@ -45,9 +44,9 @@ function App() {
             <Route path="/chat" element={<><Navigation /><AIChat /></>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-
-<Route path="/article/:id" element={<ArticlePage />} />
-
+            
+            {/* [BARU] Route untuk Artikel (Bisa diakses publik atau user login) */}
+            <Route path="/article/:id" element={<ArticlePage />} />
 
             {/* User Dashboard Routes */}
             <Route path="/dashboard" element={
@@ -116,7 +115,6 @@ function App() {
               </ProtectedRoute>
             } />
             
-            {/* ROUTE BARU UNTUK BROADCAST */}
             <Route path="/admin/broadcast" element={
               <ProtectedRoute adminOnly>
                 <DashboardLayout>
