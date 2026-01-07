@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -42,17 +42,17 @@ const AdminDashboard = () => {
   const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
 
-  // EDIT CHALLENGE STATE
+  // EDIT & VIEW CHALLENGE STATE
   const [editingChallenge, setEditingChallenge] = useState(null); 
+  const [challengeParticipants, setChallengeParticipants] = useState([]);
+  const [viewMode, setViewMode] = useState('info'); // 'info' atau 'participants'
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   // ARTICLE STATE
   const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
 
   // GENERATOR WA STATE
   const [genChallengeName, setGenChallengeName] = useState("");
-  const [genTypeA, setGenTypeA] = useState("");
-  const [genTypeB, setGenTypeB] = useState("");
-  const [genTypeC, setGenTypeC] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
   useEffect(() => {
@@ -78,11 +78,23 @@ const AdminDashboard = () => {
   const fetchSales = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/sales`, { headers: getAuthHeader() }); setSalesData(res.data); } catch(e){} };
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
 
+  // FETCH PARTICIPANTS
+  const fetchParticipants = async (challengeId) => {
+    setLoadingParticipants(true);
+    try {
+        const res = await axios.get(`${BACKEND_URL}/api/admin/challenge/${challengeId}/participants`, { headers: getAuthHeader() });
+        setChallengeParticipants(res.data);
+    } catch (e) {
+        console.error("Gagal load peserta");
+    } finally {
+        setLoadingParticipants(false);
+    }
+  };
+
   // --- HANDLERS ---
   const handleApproveWD = async (id) => {
       if(!wdRefInput) return alert("Masukkan Nomor ID/Bukti Transfer dulu!");
       if(!window.confirm("Setujui penarikan ini?")) return;
-      
       setBtnLoading(true);
       try {
           await axios.post(`${BACKEND_URL}/api/admin/finance/withdrawals/approve`, { id, transaction_ref: wdRefInput }, { headers: getAuthHeader() });
@@ -103,13 +115,11 @@ const AdminDashboard = () => {
   const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
   const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
   
-  // Hapus Challenge
   const handleDeleteChallenge = async (id, e) => { 
       e.stopPropagation(); 
       if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} 
   };
   
-  // Update Challenge
   const handleUpdateChallenge = async () => {
     if(!editingChallenge) return;
     setBtnLoading(true);
@@ -125,50 +135,42 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleOpenChallengeModal = (challenge) => {
+    setEditingChallenge(challenge);
+    setViewMode('info'); 
+    fetchParticipants(challenge.id);
+  };
+
   const handleUpdateUser = async (uid, type, val) => { try { await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, {user_id:uid, [type]:val}, {headers:getAuthHeader()}); fetchUsers(); } catch(e){} };
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
   // --- LOGIC GENERATOR WA ---
   const generatePrompt = () => {
-    if (!genChallengeName || !genTypeA || !genTypeB || !genTypeC) {
-      alert("Mohon isi Nama Challenge dan Ketiga Tipe Target!");
-      return;
-    }
-    const codeA = genTypeA.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
-    const codeB = genTypeB.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
-    const codeC = genTypeC.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
+    if (!genChallengeName) { alert("Mohon isi Nama Program Challenge!"); return; }
     const template = `
-Topik Challenge: ${genChallengeName}
-Target Tipe A: ${genTypeA}
-Target Tipe B: ${genTypeB}
-Target Tipe C: ${genTypeC}
+Topik Challenge: "${genChallengeName}"
+TUGAS ANDA:
+1. Analisa topik di atas.
+2. Tentukan 3 Tipe/Kategori Peserta (Tipe A, Tipe B, Tipe C) yang paling relevan.
+3. Buatkan konten WhatsApp Broadcast 30 Hari.
 
-Tolong buatkan konten WhatsApp Broadcast 30 Hari dengan struktur berikut untuk ketiga tipe target di atas.
+STRUKTUR OUTPUT (Format Tabel/List):
+[JUDUL: Daftar Tipe]
+- Tipe A: [Nama]
+- Tipe B: [Nama]
+- Tipe C: [Nama]
 
+[KONTEN HARIAN]
 1. BAGIAN 1: 30 HARI CHALLENGE (Action)
-   - Buatkan full dari Hari 1 s/d 30.
-   - Kode: CH_[TIPE]_[HARI] (Contoh: CH_${codeA}_01)
-   - Isi: Tantangan harian simpel untuk mengubah kebiasaan buruk terkait masalah tersebut.
-   - Format: Subject menarik, Isi singkat, Call to Action.
-
-2. BAGIAN 2: 30 HARI FAKTA & TIPS (Edukasi)
-   - Buatkan full dari Hari 1 s/d 30.
-   - Kode: FT_[TIPE]_[HARI] (Contoh: FT_${codeA}_01)
-   - Isi: Fakta mengejutkan atau tips kesehatan terkait masalah tersebut.
-   - Format: "Sadar nggak?", Fakta, Tips singkat.
-
-3. BAGIAN 3: SOFT SELLING JATES9
-   - HANYA buatkan untuk hari-hari berikut: Hari ke-1, 3, 6, 9, 12, 15, 18, 21, 24, 27, dan 30.
-   - Kode: SS_[TIPE]_[HARI] (Contoh: SS_${codeA}_03)
-   - Isi: Hubungkan masalah si Tipe tersebut dengan solusi Jates9. Gunakan angle yang bervariasi (rasa sakit, kepraktisan, keamanan herbal, testimoni, hemat/promo).
-   - Tone: Persuasif tapi seperti teman (Soft selling), akhiri dengan ajakan chat/order.
-
-STYLE PENULISAN:
-- Gaya bahasa: Casual, akrab, cocok untuk Broadcast WhatsApp.
-- Gunakan emoji yang sesuai.
-- To the point, jangan bertele-tele.
-
-Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah saya copy ke Excel.
+   - Kode: CH_[KODE_TIPE]_[HARI]
+   - Isi: Tantangan harian.
+2. BAGIAN 2: 30 HARI FAKTA (Edukasi)
+   - Kode: FT_[KODE_TIPE]_[HARI]
+   - Isi: Fakta.
+3. BAGIAN 3: SOFT SELLING JATES9 (Hari 1,3,6,9...)
+   - Kode: SS_[KODE_TIPE]_[HARI]
+   - Isi: Jualan soft.
+STYLE: Casual, akrab, emoji.
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -176,18 +178,12 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
   const handleOpenGemini = () => {
     if (!generatedPrompt) return alert("Generate prompt dulu!");
     navigator.clipboard.writeText(generatedPrompt).then(() => {
-        alert("Prompt berhasil disalin! Paste (Ctrl+V) di kolom chat Gemini.");
+        alert("Prompt disalin! Paste di Gemini.");
         window.open("https://gemini.google.com/app", "_blank");
     }).catch(err => { alert("Gagal menyalin: " + err); });
   };
 
-  const handleResetGenerator = () => {
-    setGenChallengeName("");
-    setGenTypeA("");
-    setGenTypeB("");
-    setGenTypeC("");
-    setGeneratedPrompt("");
-  };
+  const handleResetGenerator = () => { setGenChallengeName(""); setGeneratedPrompt(""); };
 
   const SidebarItem = ({ id, icon: Icon, label }) => (
     <button onClick={() => { setActiveTab(id); if(window.innerWidth<=1024) setSidebarOpen(false); }}
@@ -202,8 +198,7 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
       <aside style={{ width: isSidebarOpen ? '260px' : '0px', transition: 'all 0.3s', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}><h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}> <Bot size={20} /> Jates Admin</h2></div>
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-          <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
-          <SidebarItem id="challenge_cards" icon={Award} label="Card Challenge AI" />
+          <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard & Challenge" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
           <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
@@ -221,124 +216,33 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
           
-          {/* --- TAB OVERVIEW --- */}
+          {/* TAB OVERVIEW & CHALLENGE MANAGER (DIGABUNG) */}
           {activeTab === 'overview' && (
             <div>
-              <h1 className="heading-2" style={{marginBottom:'1.5rem'}}>Overview</h1>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+              {/* Statistik */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                 <StatCard label="Total User" val={stats.total_users} icon={<Users/>} color="#3b82f6" />
                 <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
                 <StatCard label="Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
               </div>
-            </div>
-          )}
 
-          {/* --- TAB FINANCE (SALES & WD) --- */}
-          {activeTab === 'finance' && (
-            <div style={{display:'flex', flexDirection:'column', gap:'2rem'}}>
-                {/* 1. SECTION WITHDRAWAL */}
-                <Card style={{padding:'1.5rem', background:'white'}}>
-                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan</h3>
-                    <div style={{overflowX:'auto'}}>
-                        <table style={{width:'100%', borderCollapse:'collapse'}}>
-                            <thead style={{background:'#fefce8'}}>
-                                <tr>
-                                    <th style={thStyle}>Tanggal</th>
-                                    <th style={thStyle}>User</th>
-                                    <th style={thStyle}>Jumlah</th>
-                                    <th style={thStyle}>Bank Info</th>
-                                    <th style={thStyle}>Status</th>
-                                    <th style={thStyle}>Aksi / ID Transaksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {withdrawals.map(w => (
-                                    <tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                                        <td style={tdStyle}>{w.date}</td>
-                                        <td style={tdStyle}><b>{w.user_name}</b></td>
-                                        <td style={tdStyle}>Rp {w.amount.toLocaleString()}</td>
-                                        <td style={tdStyle}>{w.bank_info}</td>
-                                        <td style={tdStyle}>
-                                            <span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>
-                                                {w.status.toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td style={tdStyle}>
-                                            {w.status === 'pending' ? (
-                                                <div style={{display:'flex', gap:'0.5rem'}}>
-                                                    <input 
-                                                        placeholder="No. Bukti Transfer..." 
-                                                        style={{...selectStyle, width:'150px'}} 
-                                                        value={wdProcessingId === w.id ? wdRefInput : ''}
-                                                        onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }}
-                                                    />
-                                                    <button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}>
-                                                        <CheckCircle size={16}/>
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-
-                {/* 2. SECTION SALES HISTORY */}
-                <Card style={{padding:'1.5rem', background:'white'}}>
-                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><ShoppingCart size={20}/> Riwayat Penjualan & Referral</h3>
-                    <div style={{overflowX:'auto'}}>
-                        <table style={{width:'100%', borderCollapse:'collapse'}}>
-                            <thead style={{background:'#f0fdf4'}}>
-                                <tr>
-                                    <th style={thStyle}>Tanggal</th>
-                                    <th style={thStyle}>Produk</th>
-                                    <th style={thStyle}>Pembeli</th>
-                                    <th style={thStyle}>Harga</th>
-                                    <th style={thStyle}>Referral (Upline)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {salesData.map(s => (
-                                    <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                                        <td style={tdStyle}>{s.date}</td>
-                                        <td style={tdStyle}>{s.product}</td>
-                                        <td style={tdStyle}><b>{s.buyer_name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{s.buyer_phone}</span></td>
-                                        <td style={tdStyle}>Rp {s.amount.toLocaleString()}</td>
-                                        <td style={tdStyle}>
-                                            {s.referrer_name !== '-' ? (
-                                                <div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}>
-                                                    <span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span>
-                                                    <br/>
-                                                    <span style={{fontSize:'0.75rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</span>
-                                                </div>
-                                            ) : <span style={{color:'#cbd5e1'}}>-</span>}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-            </div>
-          )}
-
-          {/* --- TAB CHALLENGE CARDS (AI GENERATOR) --- */}
-          {activeTab === 'challenge_cards' && (
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
+              {/* Manajemen Challenge (Dipindah ke Sini) */}
+              <h2 className="heading-2" style={{marginBottom:'1rem'}}>Manajemen Challenge</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
+                
+                {/* Form Buat Baru */}
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Buat Challenge Baru</h3>
                   <input placeholder="Judul Tantangan..." style={{ ...inputStyle, marginBottom: '1rem' }} value={newChallengeTitle} onChange={(e) => setNewChallengeTitle(e.target.value)} />
                   <button onClick={handleGenerateAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Generate via AI'}</button>
                 </Card>
+
+                {/* List Challenge Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
                         <Card 
                             key={c.id} 
-                            onClick={() => setEditingChallenge(c)}
+                            onClick={() => handleOpenChallengeModal(c)}
                             style={{ padding: '1rem', background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'transform 0.1s' }}
                         >
                             <div style={{display:'flex', justifyContent:'space-between'}}>
@@ -348,14 +252,61 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
                                 </button>
                             </div>
                             <p style={{fontSize:'0.8rem', color:'#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{c.description}</p>
-                            <div style={{fontSize:'0.7rem', color:'var(--primary)', marginTop:'0.5rem', fontStyle:'italic'}}>Klik untuk edit deskripsi & tipe</div>
+                            <div style={{fontSize:'0.7rem', color:'var(--primary)', marginTop:'0.5rem', fontStyle:'italic', display:'flex', alignItems:'center', gap:'0.3rem'}}><Eye size={12}/> Lihat Peserta & Edit</div>
                         </Card>
                     ))}
                 </div>
+              </div>
             </div>
           )}
 
-          {/* --- TAB CHALLENGE CONTENT (MATRIX) --- */}
+          {/* TAB GENERATOR WA */}
+          {activeTab === 'wa_generator' && (
+             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                   <h2 className="heading-2">Generator Konten WA</h2>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                   <a 
+                      href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?usp=sharing" 
+                      target="_blank" rel="noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.7rem 1.2rem', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+                   >
+                      <FileSpreadsheet size={18} /> Buka Sheet Broadcast
+                   </a>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                               <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label>
+                               <input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                               <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
+                               <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
+                            </div>
+                         </div>
+                      </CardContent>
+                   </Card>
+                   {generatedPrompt && (
+                      <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                         <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
+                         <CardContent>
+                            <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
+                               <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   )}
+                </div>
+             </div>
+          )}
+
+          {/* TAB CHALLENGE CONTENT (MATRIX) */}
           {activeTab === 'challenge_content' && (
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
@@ -416,194 +367,80 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
             </div>
           )}
 
-          {/* TAB 5: USERS */}
-          {activeTab === 'users' && (
-             <Card style={{ overflowX: 'auto', background: 'white' }}>
-                 <CardHeader><CardTitle className="heading-3">Daftar Pengguna</CardTitle></CardHeader>
-                 <CardContent>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                       <thead>
-                          <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
-                             <th style={thStyle}>User</th>
-                             <th style={thStyle}>Statistik</th>
-                             <th style={thStyle}>Challenge</th>
-                             <th style={thStyle}>Badge</th>
-                             <th style={thStyle}>Aksi</th>
-                          </tr>
-                       </thead>
-                       <tbody>
-                          {users.map(u => (
-                             <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td>
-                                <td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td>
-                                <td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td>
-                                <td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td>
-                                <td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td>
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                 </CardContent>
-             </Card>
-          )}
-
-          {/* TAB 6: ARTICLES */}
-          {activeTab === 'articles' && (
-              <div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}>
-                  <Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}>
-                     <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3>
-                     <form onSubmit={handlePostArticle}>
-                         <div style={{marginBottom:'1rem'}}>
-                             <label style={labelStyle}>Judul Artikel</label>
-                             <input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." />
-                         </div>
-                         <div style={{marginBottom:'1rem'}}>
-                             <label style={labelStyle}>Gambar (Otomatis Kompres)</label>
-                             <input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" />
-                         </div>
-                         <div style={{marginBottom:'1rem'}}>
-                             <label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label>
-                             <textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." />
-                         </div>
-                         <button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>
-                              {btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}
-                         </button>
-                     </form>
-                  </Card>
-                  <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-                      {articles.map(a => (
-                          <Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>
-                              {a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}
-                              <div>
-                                  <h4 style={{fontWeight:'bold'}}>{a.title}</h4>
-                                  <p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p>
-                              </div>
-                          </Card>
-                      ))}
-                  </div>
-              </div>
-          )}
-
-          {/* --- TAB WA GENERATOR [BARU] --- */}
-          {activeTab === 'wa_generator' && (
-             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <div style={{ marginBottom: '2rem' }}>
-                   <h2 className="heading-2">Generator Konten WA</h2>
-                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
-                   
-                   {/* Tombol Link Sheet */}
-                   <a 
-                      href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?usp=sharing" 
-                      target="_blank" 
-                      rel="noreferrer"
-                      style={{ 
-                          display: 'inline-flex', alignItems: 'center', gap: '0.5rem', 
-                          background: '#10b981', color: 'white', padding: '0.7rem 1.2rem', 
-                          borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem',
-                          boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                      }}
-                   >
-                      <FileSpreadsheet size={18} /> Buka Sheet Broadcast
-                   </a>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                   {/* CARD INPUT */}
-                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
-                      <CardContent>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                               <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label>
-                               <input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} />
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                               <div>
-                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe A (Masalah)</label>
-                                  <input type="text" placeholder="Cth: GERD Anxiety" value={genTypeA} onChange={(e) => setGenTypeA(e.target.value)} style={inputStyle} />
-                               </div>
-                               <div>
-                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe B (Masalah)</label>
-                                  <input type="text" placeholder="Cth: Gastritis Kronis" value={genTypeB} onChange={(e) => setGenTypeB(e.target.value)} style={inputStyle} />
-                               </div>
-                               <div>
-                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe C (Masalah)</label>
-                                  <input type="text" placeholder="Cth: Dyspepsia" value={genTypeC} onChange={(e) => setGenTypeC(e.target.value)} style={inputStyle} />
-                               </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                               <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                  <Sparkles size={18} /> Buat Prompt
-                               </button>
-                               <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <Trash2 size={18} /> Reset
-                               </button>
-                            </div>
-                         </div>
-                      </CardContent>
-                   </Card>
-
-                   {/* CARD OUTPUT */}
-                   {generatedPrompt && (
-                      <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
-                         <CardHeader>
-                            <CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                               <Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)
-                            </CardTitle>
-                         </CardHeader>
-                         <CardContent>
-                            <textarea 
-                               readOnly 
-                               value={generatedPrompt} 
-                               style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}
-                            ></textarea>
-                            
-                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
-                               <button 
-                                  onClick={handleOpenGemini}
-                                  style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}
-                               >
-                                  <Bot size={24} /> BUKA GEMINI AI & PASTE
-                               </button>
-                            </div>
-                         </CardContent>
-                      </Card>
-                   )}
-                </div>
-             </div>
-          )}
+          {/* TAB USERS, FINANCE, ARTICLES (SAMA SEPERTI SEBELUMNYA) */}
+          {activeTab === 'users' && (<Card style={{ overflowX: 'auto', background: 'white' }}><CardHeader><CardTitle className="heading-3">Daftar Pengguna</CardTitle></CardHeader><CardContent><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr style={{ borderBottom: '2px solid #f1f5f9' }}><th style={thStyle}>User</th><th style={thStyle}>Statistik</th><th style={thStyle}>Challenge</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}><td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td><td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td><td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td><td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td><td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td></tr>))}</tbody></table></CardContent></Card>)}
+          {activeTab === 'articles' && (<div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}><Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3><form onSubmit={handlePostArticle}><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Judul Artikel</label><input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Gambar (Otomatis Kompres)</label><input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label><textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." /></div><button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>{btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}</button></form></Card><div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>{articles.map(a => (<Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>{a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}<div><h4 style={{fontWeight:'bold'}}>{a.title}</h4><p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p></div></Card>))}</div></div>)}
+          {activeTab === 'finance' && (<div style={{display:'flex', flexDirection:'column', gap:'2rem'}}><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#fefce8'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>User</th><th style={thStyle}>Jumlah</th><th style={thStyle}>Bank Info</th><th style={thStyle}>Status</th><th style={thStyle}>Aksi / ID Transaksi</th></tr></thead><tbody>{withdrawals.map(w => (<tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{w.date}</td><td style={tdStyle}><b>{w.user_name}</b></td><td style={tdStyle}>Rp {w.amount.toLocaleString()}</td><td style={tdStyle}>{w.bank_info}</td><td style={tdStyle}><span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>{w.status.toUpperCase()}</span></td><td style={tdStyle}>{w.status === 'pending' ? (<div style={{display:'flex', gap:'0.5rem'}}><input placeholder="No. Bukti Transfer..." style={{...selectStyle, width:'150px'}} value={wdProcessingId === w.id ? wdRefInput : ''} onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }} /><button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}><CheckCircle size={16}/></button></div>) : (<span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>)}</td></tr>))}</tbody></table></div></Card><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><ShoppingCart size={20}/> Riwayat Penjualan & Referral</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#f0fdf4'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>Produk</th><th style={thStyle}>Pembeli</th><th style={thStyle}>Harga</th><th style={thStyle}>Referral (Upline)</th></tr></thead><tbody>{salesData.map(s => (<tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{s.date}</td><td style={tdStyle}>{s.product}</td><td style={tdStyle}><b>{s.buyer_name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{s.buyer_phone}</span></td><td style={tdStyle}>Rp {s.amount.toLocaleString()}</td><td style={tdStyle}>{s.referrer_name !== '-' ? (<div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}><span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span><br/><span style={{fontSize:'0.75rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</span></div>) : <span style={{color:'#cbd5e1'}}>-</span>}</td></tr>))}</tbody></table></div></Card></div>)}
 
         </main>
       </div>
 
-      {/* [BARU] MODAL EDIT CHALLENGE */}
+      {/* MODAL DETAIL CHALLENGE & PESERTA */}
       {editingChallenge && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }} onClick={() => setEditingChallenge(null)}>
-           <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
-              <h3 style={{ marginBottom: '1rem', fontWeight: 'bold', fontSize: '1.2rem' }}>Edit Challenge</h3>
-              <div style={{ marginBottom: '1rem' }}>
-                  <label style={labelStyle}>Judul Challenge</label>
-                  <input 
-                      style={inputStyle} 
-                      value={editingChallenge.title} 
-                      onChange={(e) => setEditingChallenge({...editingChallenge, title: e.target.value})}
-                  />
+           <div style={{ background: 'white', padding: '0', borderRadius: '12px', width: '90%', maxWidth: '800px', height:'85vh', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
+              
+              {/* Header Modal */}
+              <div style={{padding:'1.5rem', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Detail Challenge</h3>
+                  <button onClick={() => setEditingChallenge(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20}/></button>
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={labelStyle}>Deskripsi & Tipe (A/B/C)</label>
-                  <textarea 
-                      style={{ ...inputStyle, minHeight: '150px' }} 
-                      value={editingChallenge.description} 
-                      onChange={(e) => setEditingChallenge({...editingChallenge, description: e.target.value})}
-                      placeholder="Jelaskan tantangan ini dan sebutkan tipe targetnya (Misal: Tipe A = Sembelit...)"
-                  />
+
+              {/* Tabs */}
+              <div style={{display:'flex', padding:'0 1.5rem', borderBottom:'1px solid #e2e8f0'}}>
+                  <button onClick={() => setViewMode('info')} style={{padding:'1rem', borderBottom: viewMode==='info'?'2px solid var(--primary)':'none', color: viewMode==='info'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Edit Info</button>
+                  <button onClick={() => setViewMode('participants')} style={{padding:'1rem', borderBottom: viewMode==='participants'?'2px solid var(--primary)':'none', color: viewMode==='participants'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Peserta & Laporan ({challengeParticipants.length})</button>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setEditingChallenge(null)} style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer' }}>Batal</button>
-                  <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>
-                      {btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
-                  </button>
+
+              {/* Content */}
+              <div style={{padding:'1.5rem', overflowY:'auto', flex:1}}>
+                  {viewMode === 'info' ? (
+                      <>
+                          <div style={{ marginBottom: '1rem' }}>
+                              <label style={labelStyle}>Judul Challenge</label>
+                              <input style={inputStyle} value={editingChallenge.title} onChange={(e) => setEditingChallenge({...editingChallenge, title: e.target.value})} />
+                          </div>
+                          <div style={{ marginBottom: '1.5rem' }}>
+                              <label style={labelStyle}>Deskripsi & Tipe (A/B/C)</label>
+                              <textarea style={{ ...inputStyle, minHeight: '200px' }} value={editingChallenge.description} onChange={(e) => setEditingChallenge({...editingChallenge, description: e.target.value})} placeholder="Jelaskan tantangan ini..." />
+                          </div>
+                          <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ width:'100%', padding: '0.8rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>{btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+                      </>
+                  ) : (
+                      // TABEL PESERTA
+                      <div style={{overflowX:'auto'}}>
+                          {loadingParticipants ? <div style={{textAlign:'center', padding:'2rem'}}>Loading data peserta...</div> : (
+                            <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
+                                <thead style={{background:'#f8fafc'}}>
+                                    <tr>
+                                        <th style={thStyle}>Nama User</th>
+                                        <th style={thStyle}>Tipe</th>
+                                        <th style={thStyle}>Hari Ke</th>
+                                        <th style={thStyle}>Status Hari Ini</th>
+                                        <th style={thStyle}>Total Check-in</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {challengeParticipants.length > 0 ? challengeParticipants.map(p => (
+                                        <tr key={p.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                            <td style={tdStyle}><b>{p.name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{p.phone}</span></td>
+                                            <td style={tdStyle}><span style={{background:'#eff6ff', color:'#1e40af', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>{p.group}</span></td>
+                                            <td style={tdStyle}>{p.day}</td>
+                                            <td style={tdStyle}>
+                                                {p.today_status === 'completed' && <span style={{color:'#16a34a', fontWeight:'bold', display:'flex', alignItems:'center', gap:'4px'}}><CheckCircle size={14}/> Selesai</span>}
+                                                {p.today_status === 'skipped' && <span style={{color:'#dc2626', fontWeight:'bold'}}>Skip</span>}
+                                                {p.today_status === 'pending' && <span style={{color:'#d97706', fontWeight:'bold'}}>Belum</span>}
+                                            </td>
+                                            <td style={tdStyle}>{p.total_completed}x</td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="5" style={{padding:'2rem', textAlign:'center', color:'#64748b'}}>Belum ada peserta di challenge ini.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                          )}
+                      </div>
+                  )}
               </div>
            </div>
         </div>
