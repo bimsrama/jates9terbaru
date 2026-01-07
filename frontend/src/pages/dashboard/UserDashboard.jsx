@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar
+  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -25,12 +25,14 @@ const UserDashboard = () => {
   const [journal, setJournal] = useState("");
   const [checkinStatus, setCheckinStatus] = useState(null); 
   const [countdown, setCountdown] = useState(null);
+  const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
 
   // --- STATE UI & NAVIGATION ---
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // --- STATE FEATURES ---
   const [showQRModal, setShowQRModal] = useState(false); 
@@ -56,9 +58,10 @@ const UserDashboard = () => {
     };
     window.addEventListener('resize', handleResize);
     
-    // Load semua data di awal
+    // Load Data Awal
     fetchData();
-    fetchDailyContent(); // Load misi harian langsung untuk dashboard
+    fetchDailyContent();
+    setQuote(getRandomQuote());
     
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -139,6 +142,24 @@ const UserDashboard = () => {
     } catch (err) { console.error("Gagal load teman"); }
   };
 
+  const getRandomQuote = () => {
+    const quotes = [
+      "Kesehatan adalah kekayaan sejati.",
+      "Satu langkah kecil hari ini, dampak besar di masa depan.",
+      "Tubuhmu adalah satu-satunya tempatmu tinggal.",
+      "Konsistensi mengalahkan intensitas.",
+      "Jangan menunggu sakit untuk memulai hidup sehat."
+    ];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchData(), fetchDailyContent()]);
+    setQuote(getRandomQuote());
+    setIsRefreshing(false);
+  };
+
   const generateDailyTip = (group) => {
     const tips = {
       'A': "💡 Info Tipe A (Sembelit): Fokus perbanyak air hangat 2 gelas saat bangun tidur dan konsumsi serat tinggi hari ini.",
@@ -190,7 +211,7 @@ const UserDashboard = () => {
             
             if(forcedStatus === 'completed') {
               alert("✅ Check-in SELESAI! Anda hebat hari ini.");
-              fetchData(); // Refresh data progress
+              fetchData(); 
             } else {
               alert("🕒 Oke, status PENDING tersimpan. Selesaikan sebelum jam 19:00!");
             }
@@ -236,6 +257,7 @@ const UserDashboard = () => {
   };
 
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
+  const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
   const challengeDay = overview?.user?.challenge_day || 1;
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
@@ -288,7 +310,6 @@ const UserDashboard = () => {
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} style={navItemStyle(activeTab === 'dashboard')} onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}><Home size={20} /> Dashboard</button></li>
-            {/* Rename Tab Checkin jadi Riwayat */}
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} style={navItemStyle(activeTab === 'checkin')} onClick={() => { setActiveTab('checkin'); setSidebarOpen(false); }}><Calendar size={20} /> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='report'?'active':''}`} style={navItemStyle(activeTab === 'report')} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><TrendingUp size={20} /> Rapor Kesehatan</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} style={navItemStyle(activeTab === 'friends')} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Users size={20} /> Teman Sehat</button></li>
@@ -340,12 +361,40 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* === [NEW] CHECK-IN / MISI HARIAN SECTION === */}
+                  {/* === [RESTORED] CARD TANTANGAN AKTIF === */}
+                  <Card style={{ background: '#fff', border: '1px solid #e2e8f0', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
+                    <CardContent style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <div>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#166534', display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={20} /> Tantangan Aktif</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Pantau progres kesehatan Anda di sini.</p>
+                        </div>
+                        <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: '#166534', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={16} /></button>
+                        </div>
+                        <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.25rem', border: '1px solid #e2e8f0', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                            <div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{currentChallenge.title}</h4><span style={{ fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span></div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(progressPercent)}%</span></div>
+                                <div style={{ height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${progressPercent}%`, height: '100%', background: '#8fec78', borderRadius: '4px', transition: 'width 0.5s ease' }}></div></div>
+                            </div>
+                        </div>
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', fontSize: '0.85rem', color: '#475569' }}>
+                            <div><strong>{overview?.financial?.total_checkins || 0}/30</strong> <span style={{color: '#94a3b8'}}>Hari Selesai</span></div>
+                            <div><strong>{challengeDay}</strong> <span style={{color: '#94a3b8'}}>Hari Berjalan</span></div>
+                        </div>
+                        </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* === CHECK-IN / MISI HARIAN SECTION === */}
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                          <Activity size={20} color="#166534"/> Misi Hari Ini (Day {challengeDay}/30)
+                          <Activity size={20} color="#166534"/> Misi Hari Ini
                         </CardTitle>
                         {/* Status Badge */}
                         {checkinStatus === 'completed' && <span style={{fontSize: '0.8rem', background: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontWeight: 'bold', display:'flex', alignItems:'center', gap:'4px'}}><CheckCircle size={14}/> Completed</span>}
@@ -362,12 +411,12 @@ const UserDashboard = () => {
                         </div>
                       )}
 
-                      {/* Konten Checkin */}
-                      {checkinStatus === 'completed' ? (
-                        <div style={{ textAlign: 'center', padding: '1.5rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                           <CheckCircle size={48} color="#16a34a" style={{margin:'0 auto 0.5rem'}}/>
-                           <h3 style={{fontWeight:'bold', color:'#166534'}}>Misi Selesai!</h3>
-                           <p style={{fontSize:'0.9rem', color:'#16a34a'}}>Sampai jumpa di tantangan besok.</p>
+                      {/* LOGIKA TAMPILAN CHECKIN */}
+                      {(checkinStatus === 'completed' || checkinStatus === 'skipped') ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', background: checkinStatus === 'completed' ? '#f0fdf4' : '#fef2f2', borderRadius: '12px', border: checkinStatus === 'completed' ? '1px solid #bbf7d0' : '1px solid #fecaca' }}>
+                           {checkinStatus === 'completed' ? <CheckCircle size={48} color="#16a34a" style={{margin:'0 auto 0.5rem'}}/> : <AlertCircle size={48} color="#ef4444" style={{margin:'0 auto 0.5rem'}}/>}
+                           <h3 style={{fontWeight:'bold', color: checkinStatus === 'completed' ? '#166534' : '#991b1b'}}>{checkinStatus === 'completed' ? "Misi Selesai!" : "Hari Dilewatkan"}</h3>
+                           <p style={{fontSize:'0.9rem', color: checkinStatus === 'completed' ? '#16a34a' : '#ef4444'}}>{checkinStatus === 'completed' ? "Sampai jumpa di tantangan besok." : "Tetap semangat untuk besok!"}</p>
                         </div>
                       ) : (
                         <div>
@@ -379,6 +428,17 @@ const UserDashboard = () => {
                                    <span style={{ fontSize:'0.9rem', fontWeight:'500', color:'#334155' }}>{task}</span>
                                 </div>
                               ))}
+                           </div>
+
+                           {/* Input Jurnal */}
+                           <div style={{marginTop: '1rem', marginBottom:'1rem'}}>
+                              <label style={{fontWeight:'bold', color:'#334155', display:'block', marginBottom:'0.5rem', fontSize:'0.9rem'}}>Jurnal Singkat:</label>
+                              <textarea 
+                                  value={journal}
+                                  onChange={(e) => setJournal(e.target.value)}
+                                  placeholder="Bagaimana perasaanmu setelah melakukan tugas hari ini?" 
+                                  style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '60px', outline: 'none', resize: 'none', fontSize:'0.9rem' }}
+                              ></textarea>
                            </div>
 
                            {/* Timer Jika Pending */}
@@ -412,7 +472,7 @@ const UserDashboard = () => {
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
                   </div>
 
-                  {/* === [NEW] REKOMENDASI CHALLENGE === */}
+                  {/* === REKOMENDASI CHALLENGE === */}
                   <div>
                     <h3 className="heading-3" style={{marginBottom:'1rem'}}>Rekomendasi Challenge</h3>
                     <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
@@ -427,6 +487,31 @@ const UserDashboard = () => {
                          </div>
                        ))}
                     </div>
+                  </div>
+
+                  {/* === [RESTORED] ARTIKEL KESEHATAN === */}
+                  <div>
+                    <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Artikel Kesehatan</h3>
+                    <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
+                      <ul style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s' }}>
+                          <div style={{ width: '50px', height: '50px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center' }}><Activity size={24} color="#166534"/></div>
+                          <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div>
+                        </li>
+                        <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                          <div style={{ width: '50px', height: '50px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center' }}><Lightbulb size={24} color="#166534"/></div>
+                          <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Yoga untuk Pencernaan</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 5 menit</span></div>
+                        </li>
+                      </ul>
+                    </Card>
+                  </div>
+
+                  {/* === FOOTER QUOTE & REFRESH === */}
+                  <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
+                    <p style={{ fontStyle: 'italic', color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>"{quote}"</p>
+                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
+                      <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    </button>
                   </div>
 
                 </div>
@@ -464,10 +549,7 @@ const UserDashboard = () => {
                          let statusColor = '#f1f5f9'; // Default Abu
                          let textColor = '#94a3b8';
                          
-                         // Logika Sederhana Visualisasi History
-                         // Hari < Hari Sekarang -> Anggap Selesai (Hijau)
-                         // Hari == Hari Sekarang -> Cek Status (Hijau jika completed, Kuning jika pending)
-                         
+                         // Logika Visualisasi History
                          if (day < challengeDay) {
                             statusColor = '#dcfce7'; 
                             textColor = '#166534';
