@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw
+  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -19,6 +19,7 @@ const UserDashboard = () => {
   const [challenges, setChallenges] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
+  const [articles, setArticles] = useState([]); // [BARU] State Artikel
   
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
@@ -33,7 +34,7 @@ const UserDashboard = () => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // [NEW] Loading state for button
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // --- STATE FEATURES ---
   const [showQRModal, setShowQRModal] = useState(false); 
@@ -59,8 +60,10 @@ const UserDashboard = () => {
     };
     window.addEventListener('resize', handleResize);
     
+    // Load Data Awal
     fetchData();
     fetchDailyContent();
+    fetchArticles(); // [BARU] Load Artikel
     setQuote(getRandomQuote());
     
     return () => window.removeEventListener('resize', handleResize);
@@ -121,6 +124,17 @@ const UserDashboard = () => {
     }
   };
 
+  // [BARU] FETCH ARTICLES
+  const fetchArticles = async () => {
+    try {
+        // Menggunakan endpoint admin/articles (public GET)
+        const res = await axios.get(`${BACKEND_URL}/api/admin/articles`);
+        setArticles(res.data);
+    } catch (error) {
+        console.error("Gagal load artikel:", error);
+    }
+  };
+
   const fetchDailyContent = async () => {
       try {
           const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() });
@@ -154,7 +168,7 @@ const UserDashboard = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchData(), fetchDailyContent()]);
+    await Promise.all([fetchData(), fetchDailyContent(), fetchArticles()]);
     setQuote(getRandomQuote());
     setIsRefreshing(false);
   };
@@ -199,7 +213,7 @@ const UserDashboard = () => {
 
   // --- FUNGSI CHECKIN ---
   const handleSubmitCheckin = async (forcedStatus) => {
-      if (isSubmitting) return; // Prevent double submit
+      if (isSubmitting) return; 
       setIsSubmitting(true);
       
       try {
@@ -267,7 +281,6 @@ const UserDashboard = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
   return (
-    // [FIX] Menggunakan width: 100% dan overflowX: hidden untuk mencegah scroll samping
     <div style={{ display: 'flex', background: '#f8fafc', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
       {/* CSS Injection */}
@@ -298,7 +311,6 @@ const UserDashboard = () => {
         }
         .scroll-hide::-webkit-scrollbar { display: none; }
         
-        /* [FIX] Memastikan tidak ada horizontal scroll */
         body { overflow-x: hidden; }
       `}</style>
 
@@ -327,7 +339,6 @@ const UserDashboard = () => {
         </div>
       </aside>
 
-      {/* KONTEN UTAMA */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
         
         {/* Header Mobile */}
@@ -340,7 +351,7 @@ const UserDashboard = () => {
 
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1, maxWidth: '100%', boxSizing: 'border-box' }}>
           
-          {/* 1. DASHBOARD VIEW (GRID RESPONSIVE) */}
+          {/* 1. DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '1.5rem' }}>
@@ -348,14 +359,14 @@ const UserDashboard = () => {
                 <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{challengeDay}.</p>
               </div>
 
-              {/* Grid Container: 1 Kolom di HP, 2 Kolom di Desktop */}
+              {/* Grid Container */}
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
                 
                 {/* === KOLOM KIRI (UTAMA) === */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
-                  {/* Profil Card */}
-                  <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', overflow: 'hidden' }}>
+                  {/* 1. Profil Card */}
+                  <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <User size={35} color="#166534" />
@@ -369,7 +380,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Kartu Tantangan Aktif */}
+                  {/* 2. Kartu Tantangan Aktif */}
                   <Card style={{ background: '#fff', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -397,7 +408,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* === CHECK-IN / MISI HARIAN SECTION === */}
+                  {/* 3. Check-in Box */}
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -428,7 +439,7 @@ const UserDashboard = () => {
                         </div>
                       ) : (
                         <div>
-                           {/* List Tugas (Hanya Baca) */}
+                           {/* List Tugas */}
                            <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                               {dailyData?.tasks?.map((task, idx) => (
                                 <div key={idx} style={{ padding: '0.8rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', display:'flex', alignItems:'center', gap:'0.8rem' }}>
@@ -449,7 +460,7 @@ const UserDashboard = () => {
                               ></textarea>
                            </div>
 
-                           {/* Timer (Jika Status Pending) */}
+                           {/* Timer */}
                            {checkinStatus === 'pending' && countdown && (
                               <div style={{ textAlign: 'center', marginBottom: '1rem', padding: '0.8rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
                                 <div style={{ color: '#92400e', fontWeight: 'bold', fontSize:'0.9rem' }}>Sisa Waktu Check-in:</div>
@@ -473,14 +484,14 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Statistik */}
+                  {/* 4. Statistik */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.8rem' }}>
                     <Card style={{ textAlign: 'center', padding: '0.8rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}</h3><p style={{ fontSize: '0.7rem', color: '#64748b' }}>Check-in</p></Card>
                     <Card style={{ textAlign: 'center', padding: '0.8rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.7rem', color: '#64748b' }}>Referral</p></Card>
                     <Card style={{ textAlign: 'center', padding: '0.8rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.7rem', color: '#64748b' }}>Komisi</p></Card>
                   </div>
 
-                  {/* Rekomendasi Challenge */}
+                  {/* 5. Rekomendasi Challenge */}
                   <div>
                     <h3 className="heading-3" style={{marginBottom:'0.8rem', fontSize:'1rem'}}>Rekomendasi Challenge</h3>
                     <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', width: '100%' }}>
@@ -499,7 +510,7 @@ const UserDashboard = () => {
 
                 </div>
                 
-                {/* === KOLOM KANAN (DOKTER AI + ARTIKEL + FOOTER) === */}
+                {/* === KOLOM KANAN === */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
                   {/* 1. Chatbot Card */}
@@ -513,24 +524,35 @@ const UserDashboard = () => {
                     <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
                   </Card>
 
-                  {/* 2. Artikel Kesehatan */}
+                  {/* 2. [UPDATED] Artikel Kesehatan (Dinamis dari DB) */}
                   <div>
                     <h3 className="heading-3" style={{ marginBottom: '1rem', fontSize:'1rem' }}>Artikel Kesehatan</h3>
                     <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
-                      <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                        <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s' }}>
-                          <div style={{ width: '45px', height: '45px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}><Activity size={20} color="#166534"/></div>
-                          <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Makanan Pereda Asam Lambung</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</span></div>
-                        </li>
-                        <li style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                          <div style={{ width: '45px', height: '45px', background: '#dcfce7', borderRadius: '8px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}><Lightbulb size={20} color="#166534"/></div>
-                          <div><h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155' }}>Yoga untuk Pencernaan</h4><span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 5 menit</span></div>
-                        </li>
-                      </ul>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                        {articles.length > 0 ? articles.map(article => (
+                            <div key={article.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center', cursor: 'pointer', background: 'white', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0', transition:'transform 0.2s' }}>
+                                {/* Gambar Artikel */}
+                                <div style={{ width: '50px', height: '50px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    {article.image_url ? (
+                                        <img src={`${BACKEND_URL}${article.image_url}`} alt={article.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                        <FileText size={24} color="#94a3b8" />
+                                    )}
+                                </div>
+                                {/* Konten Teks */}
+                                <div style={{flex: 1}}>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155', marginBottom: '0.2rem', lineHeight: '1.2' }}>{article.title}</h4>
+                                    <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Baca 3 menit</p>
+                                </div>
+                            </div>
+                        )) : (
+                            <div style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8', fontSize: '0.9rem' }}>Belum ada artikel.</div>
+                        )}
+                      </div>
                     </Card>
                   </div>
 
-                  {/* 3. Footer (Quote + Refresh) */}
+                  {/* 3. Footer */}
                   <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '1rem' }}>
                     <p style={{ fontStyle: 'italic', color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem', padding: '0 1rem' }}>"{quote}"</p>
                     <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
@@ -550,46 +572,22 @@ const UserDashboard = () => {
                 <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
                 <h1 className="heading-2">Riwayat Perjalanan</h1>
               </div>
-              
               <Card style={{ background: 'white', border: '1px solid #e2e8f0', margin: '0 auto', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <CardHeader>
-                  <CardTitle className="heading-3">Kalender Check-in</CardTitle>
-                  <p style={{fontSize:'0.9rem', color:'#64748b'}}>Hijau = Selesai, Abu = Belum</p>
-                </CardHeader>
+                <CardHeader><CardTitle className="heading-3">Kalender Check-in</CardTitle><p style={{fontSize:'0.9rem', color:'#64748b'}}>Hijau = Selesai, Abu = Belum</p></CardHeader>
                 <CardContent style={{ padding: '1.5rem' }}>
                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.8rem' }}>
                       {Array.from({length: 30}, (_, i) => i + 1).map(day => {
-                         let statusColor = '#f1f5f9'; 
-                         let textColor = '#94a3b8';
-                         
-                         if (day < challengeDay) {
-                            statusColor = '#dcfce7'; 
-                            textColor = '#166534';
-                         } else if (day === challengeDay) {
-                            if (checkinStatus === 'completed') {
-                                statusColor = '#dcfce7'; textColor = '#166534';
-                            } else if (checkinStatus === 'pending') {
-                                statusColor = '#fef3c7'; textColor = '#d97706';
-                            } else {
-                                statusColor = '#fff'; textColor = '#334155';
-                            }
+                         let statusColor = '#f1f5f9'; let textColor = '#94a3b8';
+                         if (day < challengeDay) { statusColor = '#dcfce7'; textColor = '#166534'; }
+                         else if (day === challengeDay) {
+                            if (checkinStatus === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; }
+                            else if (checkinStatus === 'pending') { statusColor = '#fef3c7'; textColor = '#d97706'; }
+                            else { statusColor = '#fff'; textColor = '#334155'; }
                          }
-
                          const isToday = day === challengeDay;
-
                          return (
-                           <div key={day} style={{ 
-                              aspectRatio: '1/1', 
-                              background: statusColor, 
-                              borderRadius: '12px', 
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                              border: isToday ? '2px solid #16a34a' : '1px solid transparent',
-                              fontWeight: 'bold',
-                              color: textColor
-                           }}>
-                              <span style={{fontSize:'0.7rem', fontWeight:'normal'}}>Day</span>
-                              <span style={{fontSize:'1.2rem'}}>{day}</span>
-                              {day < challengeDay && <CheckCircle size={12} style={{marginTop:'4px'}}/>}
+                           <div key={day} style={{ aspectRatio: '1/1', background: statusColor, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: isToday ? '2px solid #16a34a' : '1px solid transparent', fontWeight: 'bold', color: textColor }}>
+                              <span style={{fontSize:'0.7rem', fontWeight:'normal'}}>Day</span><span style={{fontSize:'1.2rem'}}>{day}</span>{day < challengeDay && <CheckCircle size={12} style={{marginTop:'4px'}}/>}
                            </div>
                          )
                       })}
@@ -607,137 +605,33 @@ const UserDashboard = () => {
                   <h1 className="heading-2">Rapor Kesehatan</h1>
                </div>
                <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
-                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader>
-                      <CardContent>
-                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-                            {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
-                               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                                  <div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#8fec78' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div>
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span>
-                               </div>
-                            ))}
-                         </div>
-                         <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                            <span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span>
-                            <span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span>
-                         </div>
-                      </CardContent>
-                  </Card>
-
-                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader>
-                      <CardContent>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}>
-                               <div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div>
-                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p>
-                            </div>
-                            {challengeDay >= 5 ? (
-                               <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}>
-                                  <div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div>
-                                  <p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p>
-                               </div>
-                            ) : (
-                               <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>
-                                  Evaluasi berikutnya di Hari ke-5
-                               </div>
-                            )}
-                         </div>
-                      </CardContent>
-                  </Card>
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}><CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader><CardContent><div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>{[40, 60, 30, 80, 50, 90, 70].map((h, i) => (<div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '100%', height: `${h}%`, background: h > 50 ? '#8fec78' : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div><span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span></div>))}</div><div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}><span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span><span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span></div></CardContent></Card>
+                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}><CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader><CardContent><div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}><div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #16a34a' }}><div style={{ fontWeight: 'bold', color: '#0f172a' }}>Evaluasi Awal (Hari 1)</div><p style={{ fontSize: '0.9rem', color: '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p></div>{challengeDay >= 5 ? (<div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '8px', borderLeft: '4px solid #16a34a', cursor: 'pointer' }} onClick={() => alert("Membuka detail evaluasi...")}><div style={{ fontWeight: 'bold', color: '#166534', display: 'flex', justifyContent: 'space-between' }}>Evaluasi 5 Hari <span>Lihat &rarr;</span></div><p style={{ fontSize: '0.9rem', color: '#166534' }}>Klik untuk melihat hasil analisis AI.</p></div>) : (<div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#94a3b8', textAlign: 'center' }}>Evaluasi berikutnya di Hari ke-5</div>)}</div></CardContent></Card>
                </div>
             </div>
           )}
 
-          {/* 4. SHOP & PRODUCTS PAGE */}
+          {/* 4. SHOP PAGE */}
           {activeTab === 'shop' && (
             <div>
-               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
-                  <h1 className="heading-2">Toko & Produk</h1>
-               </div>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                  {[
-                      { name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" },
-                      { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" },
-                      { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }
-                  ].map((prod, idx) => (
-                      <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                         <div style={{ height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                            <Package size={64} color="#94a3b8"/>
-                         </div>
-                         <CardContent style={{ padding: '1.5rem' }}>
-                            <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3>
-                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                               <span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span>
-                               <a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <ShoppingBag size={16}/> Beli di Shopee
-                               </a>
-                            </div>
-                         </CardContent>
-                      </Card>
-                  ))}
-               </div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2">Toko & Produk</h1></div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>{[{ name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" }, { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" }, { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }].map((prod, idx) => (<Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0' }}><div style={{ height: '180px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}><Package size={64} color="#94a3b8"/></div><CardContent style={{ padding: '1.5rem' }}><h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>{prod.name}</h3><p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span><a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingBag size={16}/> Beli di Shopee</a></div></CardContent></Card>))}</div>
             </div>
           )}
 
           {/* 5. SETTINGS PAGE */}
           {activeTab === 'settings' && (
             <div>
-               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
-                  <h1 className="heading-2">Pengaturan Akun</h1>
-               </div>
-               <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardHeader><CardTitle className="heading-3">Profil Saya</CardTitle></CardHeader>
-                      <CardContent>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nama Lengkap</label><input type="text" value={overview?.user?.name} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-                            <div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nomor WhatsApp</label><input type="text" value={overview?.user?.referral_code} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div>
-                         </div>
-                      </CardContent>
-                  </Card>
-                  <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardContent style={{padding:'1.5rem'}}>
-                        <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', textAlign: 'left', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>Keluar dari Aplikasi</button>
-                      </CardContent>
-                  </Card>
-               </div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2">Pengaturan Akun</h1></div>
+               <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}><Card style={{ background: 'white', border: '1px solid #e2e8f0' }}><CardHeader><CardTitle className="heading-3">Profil Saya</CardTitle></CardHeader><CardContent><div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}><div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nama Lengkap</label><input type="text" value={overview?.user?.name} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div><div><label style={{ fontSize: '0.9rem', color: '#64748b' }}>Nomor WhatsApp</label><input type="text" value={overview?.user?.referral_code} disabled style={{ width: '100%', padding: '0.8rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }} /></div></div></CardContent></Card><Card style={{ background: 'white', border: '1px solid #e2e8f0' }}><CardContent style={{padding:'1.5rem'}}><button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', textAlign: 'left', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}>Keluar dari Aplikasi</button></CardContent></Card></div>
             </div>
           )}
 
           {/* 6. FRIENDS LIST PAGE */}
           {activeTab === 'friends' && (
             <div>
-               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
-                  <h1 className="heading-2">Teman Sehat</h1>
-               </div>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                  <Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}>
-                      <div style={{ textAlign: 'center', color: '#166534' }}>
-                          <div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div>
-                          <h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3>
-                      </div>
-                  </Card>
-                  {myFriends.map((friend, idx) => (
-                      <Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}>
-                          <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div>
-                              <div>
-                                  <h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{friend.name}</h4>
-                                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-                                      <span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span>
-                                      <span style={{ color: '#64748b' }}>• {friend.relation}</span>
-                                  </div>
-                              </div>
-                          </CardContent>
-                      </Card>
-                  ))}
-               </div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2">Teman Sehat</h1></div>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}><Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}><div style={{ textAlign: 'center', color: '#166534' }}><div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div><h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3></div></Card>{myFriends.map((friend, idx) => (<Card key={idx} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}><CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div><div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>{friend.name}</h4><div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}><span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span><span style={{ color: '#64748b' }}>• {friend.relation}</span></div></div></CardContent></Card>))}</div>
             </div>
           )}
 
@@ -748,26 +642,8 @@ const UserDashboard = () => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}>
            <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}>
               <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
-              <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p>
-              </div>
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}>
-                 <h4 style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.8rem', color: '#334155' }}>Cari Teman</h4>
-                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <input type="text" placeholder="Masukkan Kode Teman" value={friendCode} onChange={(e) => setFriendCode(e.target.value.toUpperCase())} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }} />
-                    <button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button>
-                 </div>
-                 {friendData && (
-                    <div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s' }}>
-                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
-                          <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div>
-                          <div><div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div><div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div></div>
-                       </div>
-                       <div style={{ fontSize: '0.85rem', color: '#4b5563', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Klik untuk lihat profil</span><ChevronRight size={16} /></div>
-                    </div>
-                 )}
-              </div>
+              <div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div><p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tunjukkan ini ke teman Anda.</p></div>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '1rem' }}><h4 style={{ fontWeight: 'bold', fontSize: '1rem', marginBottom: '0.8rem', color: '#334155' }}>Cari Teman</h4><div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}><input type="text" placeholder="Masukkan Kode Teman" value={friendCode} onChange={(e) => setFriendCode(e.target.value.toUpperCase())} style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textTransform: 'uppercase' }} /><button onClick={handleSearchFriend} disabled={searchLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', padding: '0 1rem', borderRadius: '8px', cursor: 'pointer' }}>{searchLoading ? '...' : <Search size={18} />}</button></div>{friendData && (<div onClick={handleOpenFriendProfile} style={{ background: '#f0fdf4', padding: '1rem', borderRadius: '8px', textAlign: 'left', border: '1px solid #bbf7d0', cursor: 'pointer', transition: 'transform 0.2s' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}><div style={{ width: '35px', height: '35px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} color="#16a34a"/></div><div><div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{friendData.name}</div><div style={{ fontSize: '0.8rem', color: '#166534' }}>{friendData.badge}</div></div></div><div style={{ fontSize: '0.85rem', color: '#4b5563', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>Klik untuk lihat profil</span><ChevronRight size={16} /></div></div>)}</div>
               <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1.5rem', background: '#f1f5f9', border: 'none', padding: '0.5rem 2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155', width: '100%' }}>Tutup</button>
            </div>
         </div>
@@ -776,26 +652,8 @@ const UserDashboard = () => {
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowFriendProfile(false)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-              <div style={{ background: 'var(--gradient-profile)', padding: '2rem 1rem', color: '#1e293b', position: 'relative', overflow: 'hidden' }}>
-                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', position: 'relative', zIndex: 2 }}><User size={40} color="#166534" /></div>
-                 <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b', position: 'relative', zIndex: 2 }}>{friendData.name}</h2>
-                 <div className="gold-badge" style={{ position: 'relative', zIndex: 2 }}><Medal size={16}/> {friendData.badge}</div>
-              </div>
-              <div style={{ padding: '1.5rem' }}>
-                 <div style={{ textAlign: 'left', marginBottom: '1.5rem' }}>
-                    <h4 style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                       <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.3rem' }}>{friendData.challenge_title}</div>
-                       <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}><span>Tipe {friendData.group || 'Umum'}</span><span>Hari ke-{friendData.challenge_day}</span></div>
-                       <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}><div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: '#8fec78' }}></div></div>
-                    </div>
-                 </div>
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div style={{ background: '#f0fdf4', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div><div style={{ fontSize: '0.75rem', color: '#166534' }}>Total Check-in</div></div>
-                    <div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div><div style={{ fontSize: '0.75rem', color: '#ea580c' }}>Hari Berjalan</div></div>
-                 </div>
-                 <button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '2rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup Profil</button>
-              </div>
+              <div style={{ background: 'var(--gradient-profile)', padding: '2rem 1rem', color: '#1e293b', position: 'relative', overflow: 'hidden' }}><div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', position: 'relative', zIndex: 2 }}><User size={40} color="#166534" /></div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b', position: 'relative', zIndex: 2 }}>{friendData.name}</h2><div className="gold-badge" style={{ position: 'relative', zIndex: 2 }}><Medal size={16}/> {friendData.badge}</div></div>
+              <div style={{ padding: '1.5rem' }}><div style={{ textAlign: 'left', marginBottom: '1.5rem' }}><h4 style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4><div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}><div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '0.3rem' }}>{friendData.challenge_title}</div><div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}><span>Tipe {friendData.group || 'Umum'}</span><span>Hari ke-{friendData.challenge_day}</span></div><div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', marginTop: '0.8rem', overflow: 'hidden' }}><div style={{ width: `${Math.min(((friendData.total_checkins || 0)/30)*100, 100)}%`, height: '100%', background: '#8fec78' }}></div></div></div></div><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}><div style={{ background: '#f0fdf4', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div><div style={{ fontSize: '0.75rem', color: '#166534' }}>Total Check-in</div></div><div style={{ background: '#fff7ed', padding: '0.8rem', borderRadius: '8px' }}><div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div><div style={{ fontSize: '0.75rem', color: '#ea580c' }}>Hari Berjalan</div></div></div><button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '2rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', color: '#334155' }}>Tutup Profil</button></div>
            </div>
         </div>
       )}
