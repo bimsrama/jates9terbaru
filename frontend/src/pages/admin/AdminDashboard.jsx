@@ -484,6 +484,81 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
               </div>
           )}
 
+          {/* TAB 4: GENERATOR WA CHALLENGE */}
+          {activeTab === 'wa_generator' && (
+             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                   <h2 className="heading-2">Generator Konten WA</h2>
+                   <p style={{ color: '#64748b' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                   {/* CARD INPUT */}
+                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                               <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label>
+                               <input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                               <div>
+                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe A (Masalah)</label>
+                                  <input type="text" placeholder="Cth: GERD Anxiety" value={genTypeA} onChange={(e) => setGenTypeA(e.target.value)} style={inputStyle} />
+                               </div>
+                               <div>
+                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe B (Masalah)</label>
+                                  <input type="text" placeholder="Cth: Gastritis Kronis" value={genTypeB} onChange={(e) => setGenTypeB(e.target.value)} style={inputStyle} />
+                               </div>
+                               <div>
+                                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Tipe C (Masalah)</label>
+                                  <input type="text" placeholder="Cth: Dyspepsia" value={genTypeC} onChange={(e) => setGenTypeC(e.target.value)} style={inputStyle} />
+                               </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                               <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                  <Sparkles size={18} /> Buat Prompt
+                               </button>
+                               <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Trash2 size={18} /> Reset
+                               </button>
+                            </div>
+                         </div>
+                      </CardContent>
+                   </Card>
+
+                   {/* CARD OUTPUT */}
+                   {generatedPrompt && (
+                      <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                         <CardHeader>
+                            <CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                               <Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)
+                            </CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                            <textarea 
+                               readOnly 
+                               value={generatedPrompt} 
+                               style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}
+                            ></textarea>
+                            
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
+                               <button 
+                                  onClick={handleOpenGemini}
+                                  style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}
+                               >
+                                  <Bot size={24} /> BUKA GEMINI AI & PASTE
+                               </button>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   )}
+                </div>
+             </div>
+          )}
+
         </main>
       </div>
 
