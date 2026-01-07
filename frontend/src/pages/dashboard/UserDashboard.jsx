@@ -195,20 +195,19 @@ const UserDashboard = () => {
     try { const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: friendCode.toUpperCase() }, { headers: getAuthHeader() }); setFriendData(res.data.friend); } catch (err) { alert("Teman tidak ditemukan."); } finally { setSearchLoading(false); }
   };
 
-  // [PERBAIKAN] FUNGSI KLIK TEMAN
   const handleClickFriendFromList = async (code) => { 
-    setFriendCode(code); 
-    setSearchLoading(true); 
-    setShowQRModal(false); 
-    try { 
-        const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() }); 
-        setFriendData(res.data.friend); 
-        setShowFriendProfile(true); 
-    } catch (err) { 
-        alert("Gagal memuat profil teman."); 
-    } finally { 
-        setSearchLoading(false); 
-    } 
+      setFriendCode(code); 
+      setSearchLoading(true); 
+      setShowQRModal(false); 
+      try { 
+          const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() }); 
+          setFriendData(res.data.friend); 
+          setShowFriendProfile(true); 
+      } catch (err) { 
+          alert("Gagal memuat profil teman."); 
+      } finally { 
+          setSearchLoading(false); 
+      } 
   };
 
   const handleOpenFriendProfile = () => { if(friendData) { setShowQRModal(false); setShowFriendProfile(true); } };
@@ -406,10 +405,11 @@ const UserDashboard = () => {
                              </div>
                            ))}
                            <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
-                           {/* [PERBAIKAN] TOMBOL PENDING DIKEMBALIKAN */}
+                           
+                           {/* [KEMBALIKAN TOMBOL] SAYA SUDAH LAKUKAN & NANTI SAJA */}
                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                               <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
-                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
+                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Saya Sudah Lakukan</button>
                            </div>
                         </div>
                       )}
@@ -484,7 +484,26 @@ const UserDashboard = () => {
                       ))}
                   </Card>
 
-                  {/* QUOTE & REFRESH (Paling Bawah) */}
+                  {/* REKOMENDASI CHALLENGE (DIKEMBALIKAN) */}
+                  <div>
+                    <h3 className="heading-3" style={{marginBottom:'0.8rem', fontSize:'1rem'}}>Rekomendasi Challenge</h3>
+                    <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', width: '100%' }}>
+                      {challenges.map((ch) => (
+                        <div key={ch.id} style={{ minWidth: '200px', maxWidth: '200px', background: darkMode ? '#334155' : 'white', border: darkMode ? 'none' : '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display:'flex', flexDirection:'column', justifyContent:'space-between', flexShrink: 0 }}>
+                          <div>
+                            <div style={{width:'36px', height:'36px', background: currentTheme.light, borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'0.5rem'}}>
+                                <Activity size={18} color={currentTheme.text}/>
+                            </div>
+                            <h4 style={{ fontWeight: 'bold', fontSize: '0.9rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'0.3rem' }}>{ch.title}</h4>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.description}</p>
+                          </div>
+                          <button onClick={() => handleSwitchChallenge(ch.id)} style={{ marginTop: '0.8rem', width: '100%', padding: '0.4rem', border: `1px solid ${currentTheme.text}`, background: 'transparent', color: currentTheme.text, borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>Detail</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* QUOTE & REFRESH */}
                   <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
                     <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
                         "{quote}"
@@ -515,7 +534,7 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* TAB LAIN (LENGKAP SEPERTI SEBELUMNYA) */}
+          {/* TAB LAIN (LENGKAP) */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1></div>
@@ -661,7 +680,7 @@ const UserDashboard = () => {
       {/* MODAL QR */}
       {showQRModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}><div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}><h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3><div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div></div><button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button></div></div>)}
       
-      {/* MODAL PROFIL TEMAN */}
+      {/* MODAL PROFIL TEMAN (SUDAH DIPERBAIKI) */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowFriendProfile(false)}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
