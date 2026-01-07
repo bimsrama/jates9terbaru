@@ -6,7 +6,7 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check
+  Moon, Sun, Shield, Smartphone, Check, Palette
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -339,7 +339,7 @@ const UserDashboard = () => {
                       ) : (
                         <div>
                            {dailyData?.tasks?.map((task, idx) => (
-                             <div key={idx} style={{ padding: '0.8rem', background: darkMode ? '#334155' : '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom:'0.5rem', display:'flex', gap:'0.5rem', alignItems:'center' }}>
+                             <div key={idx} style={{ padding: '0.8rem', background: darkMode ? '#334155' : '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom:'0.5rem', display:'flex', gap:'0.5rem', alignItems:'center', color: darkMode ? 'white' : 'black' }}>
                                <div style={{width:'8px', height:'8px', borderRadius:'50%', background: currentTheme.primary}}></div>
                                {task}
                              </div>
@@ -354,20 +354,69 @@ const UserDashboard = () => {
                 
                 {/* KOLOM KANAN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                  
+                  {/* [FIX] CHAT DOKTER AI - HEADER KEMBALI */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
-                     <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
-                         {chatHistory.map((msg, i) => <div key={i} style={{ padding:'0.5rem', background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), borderRadius:'8px', marginBottom:'0.5rem', color: msg.role==='user' ? currentTheme.text : (darkMode?'white':'black') }}>{msg.content}</div>)}
+                     
+                     {/* Header Dokter AI */}
+                     <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
+                        <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
+                            <MessageCircle size={24} color={currentTheme.text} />
+                        </div>
+                        <div>
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px' }}>Dokter AI Jates9</h3>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dokter AI</p>
+                        </div>
                      </div>
-                     <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop:'1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}><input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.5rem', borderRadius:'6px', border:'1px solid #ccc'}} placeholder="Tanya..." /><button style={{background: currentTheme.primary, border:'none', padding:'0 1rem', borderRadius:'6px', cursor:'pointer'}}><Send size={18}/></button></form>
+
+                     {/* Chat Area */}
+                     <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
+                         {chatHistory.map((msg, i) => (
+                           <div key={i} style={{ 
+                             padding:'0.6rem 1rem', 
+                             background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), 
+                             borderRadius:'12px', 
+                             borderBottomRightRadius: msg.role==='user' ? '2px' : '12px',
+                             borderTopLeftRadius: msg.role==='assistant' ? '2px' : '12px',
+                             marginBottom:'0.8rem', 
+                             maxWidth:'85%',
+                             alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start',
+                             marginLeft: msg.role==='user' ? 'auto' : '0',
+                             color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'),
+                             fontSize: '0.9rem',
+                             lineHeight: '1.5'
+                           }}>
+                             {msg.content}
+                           </div>
+                         ))}
+                         {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Sedang mengetik...</div>}
+                         <div ref={chatEndRef}></div>
+                     </div>
+                     <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}>
+                        <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." />
+                        <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button>
+                     </form>
                   </Card>
 
-                  {/* ARTIKEL */}
+                  {/* ARTIKEL - [FIX] GAMBAR HILANG, JADI IKON */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
-                          <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'8px', marginBottom:'0.8rem', cursor:'pointer' }}>
-                              <div style={{width:'60px', height:'60px', background:'#eee', borderRadius:'8px', overflow:'hidden'}}><img src={`${BACKEND_URL}${article.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/></div>
-                              <div><h4 style={{fontWeight:'bold', fontSize:'0.9rem'}}>{article.title}</h4></div>
+                          <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
+                              
+                              {/* Ikon FileText (Pengganti Gambar) */}
+                              <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                                  <FileText size={24} color={currentTheme.text}/>
+                              </div>
+                              
+                              <div style={{flex:1}}>
+                                 <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
+                                 {/* Reading Time */}
+                                 <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
+                                    <Clock size={12}/> {article.reading_time || "3 min"} baca
+                                 </p>
+                              </div>
+                              <ChevronRight size={18} color="#94a3b8"/>
                           </div>
                       ))}
                   </Card>
@@ -386,7 +435,7 @@ const UserDashboard = () => {
                
                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* UBAH TEMA (FITUR BARU) */}
+                  {/* UBAH TEMA */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader><CardTitle className="heading-3">Ubah Tema Aplikasi</CardTitle></CardHeader>
                     <CardContent>
