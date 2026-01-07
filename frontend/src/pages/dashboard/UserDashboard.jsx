@@ -6,7 +6,7 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check
+  Moon, Sun, Shield, Smartphone, Check, Palette
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -81,7 +81,6 @@ const UserDashboard = () => {
     window.addEventListener('resize', handleResize);
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); setInstallPrompt(e); });
 
-    // Apply Dark Mode Class
     if (darkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
     
@@ -112,7 +111,7 @@ const UserDashboard = () => {
 
   const handleInstallApp = async () => {
     if (!installPrompt) {
-      alert("Aplikasi mungkin sudah terinstall atau browser tidak mendukung fitur ini. Coba buka menu browser -> 'Tambahkan ke Layar Utama'.");
+      alert("Aplikasi mungkin sudah terinstall. Coba buka menu browser -> 'Tambahkan ke Layar Utama'.");
       return;
     }
     installPrompt.prompt();
@@ -120,7 +119,6 @@ const UserDashboard = () => {
     if (outcome === 'accepted') setInstallPrompt(null);
   };
 
-  // --- COUNTDOWN TIMER ---
   useEffect(() => {
     let timer;
     if (checkinStatus === 'pending') {
@@ -140,7 +138,6 @@ const UserDashboard = () => {
     return () => clearInterval(timer);
   }, [checkinStatus]);
 
-  // --- DATA FETCHING ---
   const fetchData = async () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
@@ -270,6 +267,7 @@ const UserDashboard = () => {
           {/* DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (
             <>
+              {/* [HAPUS JUDUL DASHBOARD] */}
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{challengeDay}.</p>
               </div>
@@ -355,7 +353,7 @@ const UserDashboard = () => {
                 {/* KOLOM KANAN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
-                  {/* CHAT DOKTER AI (Header Kembali & Rapi) */}
+                  {/* CHAT DOKTER AI */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
                      {/* Header Dokter AI */}
                      <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
@@ -396,7 +394,7 @@ const UserDashboard = () => {
                      </form>
                   </Card>
 
-                  {/* ARTIKEL KESEHATAN (Icon FileText) */}
+                  {/* ARTIKEL KESEHATAN */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
@@ -409,6 +407,7 @@ const UserDashboard = () => {
                               
                               <div style={{flex:1}}>
                                  <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
+                                 {/* Reading Time */}
                                  <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
                                     <Clock size={12}/> {article.reading_time || "3 min"} baca
                                  </p>
@@ -449,11 +448,19 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* TAB LAIN (DISEDERHANAKAN, BISA DIKEMBALIKAN KE FULL KODE SEPERTI SEBELUMNYA JIKA PERLU) */}
-          {activeTab === 'checkin' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Riwayat</h1><p>Halaman Riwayat Check-in</p></div>)}
-          {activeTab === 'friends' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Teman Sehat</h1><p>Daftar teman Anda.</p></div>)}
-          {activeTab === 'shop' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Toko</h1><p>Katalog Produk.</p></div>)}
-          {activeTab === 'report' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Rapor</h1><p>Statistik Kesehatan.</p></div>)}
+          {/* TAB LAIN (LENGKAP SEPERTI SEBELUMNYA) */}
+          {activeTab === 'checkin' && (
+            <div>
+              <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1></div>
+              <Card style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', margin: '0 auto' }}><CardHeader><CardTitle className="heading-3">Kalender Check-in</CardTitle><p style={{fontSize:'0.9rem', color:'#64748b'}}>Hijau = Selesai, Abu = Belum</p></CardHeader><CardContent style={{ padding: '1.5rem' }}><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.8rem' }}>{Array.from({length: 30}, (_, i) => i + 1).map(day => { let statusColor = darkMode ? '#334155' : '#f1f5f9'; let textColor = '#94a3b8'; if (day < challengeDay) { statusColor = '#dcfce7'; textColor = '#166534'; } else if (day === challengeDay) { if (checkinStatus === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; } else if (checkinStatus === 'pending') { statusColor = '#fef3c7'; textColor = '#d97706'; } else { statusColor = darkMode ? '#1e293b' : '#fff'; textColor = darkMode ? '#fff' : '#334155'; } } const isToday = day === challengeDay; return (<div key={day} style={{ aspectRatio: '1/1', background: statusColor, borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: isToday ? `2px solid ${currentTheme.primary}` : '1px solid transparent', fontWeight: 'bold', color: textColor }}><span style={{fontSize:'0.7rem', fontWeight:'normal'}}>Day</span><span style={{fontSize:'1.2rem'}}>{day}</span>{day < challengeDay && <CheckCircle size={12} style={{marginTop:'4px'}}/>}</div>) })}</div></CardContent></Card>
+            </div>
+          )}
+
+          {activeTab === 'report' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Rapor Kesehatan</h1></div><div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1fr 1fr' : '1fr', gap: '1.5rem' }}><Card style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0' }}><CardHeader><CardTitle className="heading-3">Statistik Konsistensi</CardTitle></CardHeader><CardContent><div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', height: '200px', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>{[40, 60, 30, 80, 50, 90, 70].map((h, i) => (<div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}><div style={{ width: '100%', height: `${h}%`, background: h > 50 ? currentTheme.primary : '#e2e8f0', borderRadius: '4px 4px 0 0' }}></div><span style={{ fontSize: '0.75rem', color: '#64748b' }}>H-{7-i}</span></div>))}</div><div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}><span>Total Check-in: <strong>{overview?.financial?.total_checkins}</strong></span><span>Skor Kesehatan: <strong style={{ color: '#16a34a' }}>85/100</strong></span></div></CardContent></Card><Card style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0' }}><CardHeader><CardTitle className="heading-3">Riwayat Evaluasi</CardTitle></CardHeader><CardContent><div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}><div style={{ padding: '1rem', background: darkMode ? '#334155' : '#f8fafc', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}` }}><div style={{ fontWeight: 'bold', color: darkMode ? 'white' : '#0f172a' }}>Evaluasi Awal (Hari 1)</div><p style={{ fontSize: '0.9rem', color: darkMode ? '#cbd5e1' : '#64748b' }}>Kondisi awal: Sering kembung dan tidak nyaman.</p></div></div></CardContent></Card></div></div>)}
+          
+          {activeTab === 'friends' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}><Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}><div style={{ textAlign: 'center', color: '#166534' }}><div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div><h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3></div></Card>{myFriends.map((friend, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}><CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div><div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a' }}>{friend.name}</h4><div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}><span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span><span style={{ color: '#64748b' }}>• {friend.relation}</span></div></div></CardContent></Card>))}</div></div>)}
+          
+          {activeTab === 'shop' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Toko & Produk</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>{[{ name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" }, { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" }, { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }].map((prod, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0' }}><div style={{ height: '180px', background: darkMode ? '#334155' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}><Package size={64} color="#94a3b8"/></div><CardContent style={{ padding: '1.5rem' }}><h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem', color: darkMode ? 'white' : 'black' }}>{prod.name}</h3><p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span><a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingBag size={16}/> Beli di Shopee</a></div></CardContent></Card>))}</div></div>)}
 
           {/* SETTINGS PAGE */}
           {activeTab === 'settings' && (
