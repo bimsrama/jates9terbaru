@@ -58,7 +58,7 @@ const UserDashboard = () => {
     };
     window.addEventListener('resize', handleResize);
     
-    // Load Data Awal
+    // Load Data
     fetchData();
     fetchDailyContent();
     setQuote(getRandomQuote());
@@ -66,7 +66,6 @@ const UserDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch friends only when tab is active
   useEffect(() => {
       if (activeTab === 'friends') fetchFriendsList();
   }, [activeTab]);
@@ -211,6 +210,7 @@ const UserDashboard = () => {
             
             if(forcedStatus === 'completed') {
               alert("✅ Check-in SELESAI! Anda hebat hari ini.");
+              // Refresh data agar card challenge terupdate
               fetchData(); 
             } else {
               alert("🕒 Oke, status PENDING tersimpan. Selesaikan sebelum jam 19:00!");
@@ -333,7 +333,7 @@ const UserDashboard = () => {
 
         <main style={{ padding: '2rem', flex: 1 }}>
           
-          {/* 1. DASHBOARD VIEW (DIPERBARUI) */}
+          {/* 1. DASHBOARD VIEW (GRID RESPONSIVE 2 KOLOM DI PC, 1 DI HP) */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem' }}>
@@ -343,10 +343,10 @@ const UserDashboard = () => {
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', marginBottom: '2rem', minHeight: isDesktop ? '500px' : 'auto' }}>
                 
-                {/* KOLOM KIRI: Profil & Misi Harian */}
+                {/* === KOLOM KIRI (UTAMA) === */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* Profil Card */}
+                  {/* 1. Profil Card */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--gradient-profile)', color: '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', flexShrink: 0 }}>
@@ -361,7 +361,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* === [RESTORED] CARD TANTANGAN AKTIF === */}
+                  {/* 2. Kartu Tantangan Aktif (Progress Bar) */}
                   <Card style={{ background: '#fff', border: '1px solid #e2e8f0', position: 'relative', overflow: 'visible', transition: 'all 0.3s' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -389,7 +389,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* === CHECK-IN / MISI HARIAN SECTION === */}
+                  {/* 3. Check-in / Misi Harian Box */}
                   <Card style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -403,7 +403,7 @@ const UserDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {/* Fakta */}
+                      {/* Fakta Harian */}
                       {dailyData && (
                         <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid #3b82f6', marginBottom: '1rem' }}>
                           <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e40af', marginBottom: '0.2rem' }}><Lightbulb size={16} style={{display:'inline', marginBottom:'-2px'}}/> Info Sehat:</h4>
@@ -411,7 +411,7 @@ const UserDashboard = () => {
                         </div>
                       )}
 
-                      {/* LOGIKA TAMPILAN CHECKIN */}
+                      {/* LOGIKA TAMPILAN: Jika Selesai/Skipped, Tampilkan Pesan. Jika Belum, Tampilkan Form. */}
                       {(checkinStatus === 'completed' || checkinStatus === 'skipped') ? (
                         <div style={{ textAlign: 'center', padding: '1.5rem', background: checkinStatus === 'completed' ? '#f0fdf4' : '#fef2f2', borderRadius: '12px', border: checkinStatus === 'completed' ? '1px solid #bbf7d0' : '1px solid #fecaca' }}>
                            {checkinStatus === 'completed' ? <CheckCircle size={48} color="#16a34a" style={{margin:'0 auto 0.5rem'}}/> : <AlertCircle size={48} color="#ef4444" style={{margin:'0 auto 0.5rem'}}/>}
@@ -420,7 +420,7 @@ const UserDashboard = () => {
                         </div>
                       ) : (
                         <div>
-                           {/* List Tugas (Read Only) */}
+                           {/* List Tugas (Hanya Baca) */}
                            <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                               {dailyData?.tasks?.map((task, idx) => (
                                 <div key={idx} style={{ padding: '0.8rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', display:'flex', alignItems:'center', gap:'0.8rem' }}>
@@ -441,7 +441,7 @@ const UserDashboard = () => {
                               ></textarea>
                            </div>
 
-                           {/* Timer Jika Pending */}
+                           {/* Timer (Jika Status Pending) */}
                            {checkinStatus === 'pending' && countdown && (
                               <div style={{ textAlign: 'center', marginBottom: '1rem', padding: '0.8rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fcd34d' }}>
                                 <div style={{ color: '#92400e', fontWeight: 'bold', fontSize:'0.9rem' }}>Sisa Waktu Check-in:</div>
@@ -465,14 +465,14 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Statistik */}
+                  {/* 4. Statistik */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_checkins || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Check-in</p></Card>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{overview?.financial?.total_referrals || 0}</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Referral</p></Card>
                     <Card style={{ textAlign: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0' }}><h3 style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{(overview?.financial?.commission_approved || 0) / 1000}k</h3><p style={{ fontSize: '0.75rem', color: '#64748b' }}>Komisi</p></Card>
                   </div>
 
-                  {/* === REKOMENDASI CHALLENGE === */}
+                  {/* 5. Rekomendasi Challenge */}
                   <div>
                     <h3 className="heading-3" style={{marginBottom:'1rem'}}>Rekomendasi Challenge</h3>
                     <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem' }}>
@@ -489,7 +489,23 @@ const UserDashboard = () => {
                     </div>
                   </div>
 
-                  {/* === [RESTORED] ARTIKEL KESEHATAN === */}
+                </div>
+                
+                {/* === KOLOM KANAN (DOKTER AI + ARTIKEL + FOOTER) === */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  
+                  {/* 1. Chatbot Card */}
+                  <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
+                    <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? '#dcfce7' : '#f1f5f9', color: msg.role === 'user' ? '#14532d' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
+                      {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
+                      <div ref={chatEndRef}></div>
+                    </div>
+                    <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
+                  </Card>
+
+                  {/* 2. Artikel Kesehatan */}
                   <div>
                     <h3 className="heading-3" style={{ marginBottom: '1rem' }}>Artikel Kesehatan</h3>
                     <Card style={{ border: 'none', boxShadow: 'none', background: 'transparent' }}>
@@ -506,7 +522,7 @@ const UserDashboard = () => {
                     </Card>
                   </div>
 
-                  {/* === FOOTER QUOTE & REFRESH === */}
+                  {/* 3. Footer (Quote + Refresh) */}
                   <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
                     <p style={{ fontStyle: 'italic', color: '#64748b', fontSize: '0.9rem', marginBottom: '1rem' }}>"{quote}"</p>
                     <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
@@ -515,17 +531,6 @@ const UserDashboard = () => {
                   </div>
 
                 </div>
-                
-                {/* KOLOM KANAN: Chatbot */}
-                <Card ref={chatSectionRef} style={{ background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', height: isDesktop ? '100%' : '500px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                  <div style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc' }}><div style={{ width: '40px', height: '40px', background: '#dcfce7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MessageCircle size={24} color="#166534" /></div><div><h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: '#0f172a' }}>Dokter AI Jates9</h3><p style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><span style={{ width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%' }}></span> Online</p></div></div>
-                  <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: 'white', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {chatHistory.map((msg, idx) => (<div key={idx} style={msg.role === 'system_tip' ? { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.8rem', fontSize: '0.9rem', color: '#1e40af', display: 'flex', gap: '0.5rem' } : { alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', background: msg.role === 'user' ? '#dcfce7' : '#f1f5f9', color: msg.role === 'user' ? '#14532d' : '#334155', padding: '0.75rem 1rem', borderRadius: '16px', borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px', borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px', maxWidth: '85%', fontSize: '0.95rem', lineHeight: '1.5' }}>{msg.role === 'system_tip' ? <><Lightbulb size={20} style={{ flexShrink: 0 }} /><div>{msg.content}</div></> : msg.content}</div>))}
-                    {chatLoading && <div style={{ alignSelf: 'flex-start', color: '#94a3b8', fontSize: '0.8rem', marginLeft: '0.5rem' }}>Dokter sedang mengetik...</div>}
-                    <div ref={chatEndRef}></div>
-                  </div>
-                  <form onSubmit={handleSendChat} style={{ padding: '1rem', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.5rem' }}><input type="text" value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Tanya keluhan kesehatan..." style={{ flex: 1, padding: '0.75rem', borderRadius: '25px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }} /><button type="submit" disabled={chatLoading} style={{ background: '#8fec78', color: '#064e3b', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'transform 0.2s' }}><Send size={20} /></button></form>
-                </Card>
               </div>
             </>
           )}
@@ -546,10 +551,9 @@ const UserDashboard = () => {
                 <CardContent style={{ padding: '1.5rem' }}>
                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.8rem' }}>
                       {Array.from({length: 30}, (_, i) => i + 1).map(day => {
-                         let statusColor = '#f1f5f9'; // Default Abu
+                         let statusColor = '#f1f5f9'; 
                          let textColor = '#94a3b8';
                          
-                         // Logika Visualisasi History
                          if (day < challengeDay) {
                             statusColor = '#dcfce7'; 
                             textColor = '#166534';
@@ -559,7 +563,7 @@ const UserDashboard = () => {
                             } else if (checkinStatus === 'pending') {
                                 statusColor = '#fef3c7'; textColor = '#d97706';
                             } else {
-                                statusColor = '#fff'; textColor = '#334155'; // Active day but untouched
+                                statusColor = '#fff'; textColor = '#334155';
                             }
                          }
 
