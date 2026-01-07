@@ -6,7 +6,7 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check, Palette
+  Moon, Sun, Shield, Smartphone, Check
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -33,11 +33,20 @@ const UserDashboard = () => {
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]); 
   
-  // --- STATE UI & SETTINGS ---
+  // --- STATE DAILY CONTENT & CHECKIN ---
+  const [dailyData, setDailyData] = useState(null);
+  const [journal, setJournal] = useState("");
+  const [checkinStatus, setCheckinStatus] = useState(null); 
+  const [countdown, setCountdown] = useState(null);
+  const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
+
+  // --- STATE UI & NAVIGATION ---
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Theme & Dark Mode
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
@@ -46,15 +55,6 @@ const UserDashboard = () => {
   const currentTheme = THEMES[themeColor] || THEMES['green'];
 
   // --- STATE FEATURES ---
-  const [dailyData, setDailyData] = useState(null);
-  const [journal, setJournal] = useState("");
-  const [checkinStatus, setCheckinStatus] = useState(null); 
-  const [countdown, setCountdown] = useState(null);
-  const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Modals
   const [showQRModal, setShowQRModal] = useState(false); 
   const [friendCode, setFriendCode] = useState(""); 
   const [friendData, setFriendData] = useState(null); 
@@ -63,10 +63,11 @@ const UserDashboard = () => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false); 
   const [installPrompt, setInstallPrompt] = useState(null); 
 
-  // Chat
+  // --- STATE CHAT AI ---
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]); 
   const [chatLoading, setChatLoading] = useState(false);
+  
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
 
@@ -111,7 +112,7 @@ const UserDashboard = () => {
 
   const handleInstallApp = async () => {
     if (!installPrompt) {
-      alert("Aplikasi mungkin sudah terinstall atau browser tidak mendukung fitur ini (Gunakan Chrome/Safari). Coba buka menu browser -> 'Tambahkan ke Layar Utama'.");
+      alert("Aplikasi mungkin sudah terinstall atau browser tidak mendukung fitur ini. Coba buka menu browser -> 'Tambahkan ke Layar Utama'.");
       return;
     }
     installPrompt.prompt();
@@ -269,7 +270,6 @@ const UserDashboard = () => {
           {/* DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (
             <>
-              {/* [HAPUS JUDUL DASHBOARD] */}
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{challengeDay}.</p>
               </div>
@@ -355,9 +355,8 @@ const UserDashboard = () => {
                 {/* KOLOM KANAN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
-                  {/* [FIX] CHAT DOKTER AI - HEADER KEMBALI */}
+                  {/* CHAT DOKTER AI (Header Kembali & Rapi) */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
-                     
                      {/* Header Dokter AI */}
                      <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
                         <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
@@ -369,7 +368,6 @@ const UserDashboard = () => {
                         </div>
                      </div>
 
-                     {/* Chat Area */}
                      <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
                          {chatHistory.map((msg, i) => (
                            <div key={i} style={{ 
@@ -398,20 +396,19 @@ const UserDashboard = () => {
                      </form>
                   </Card>
 
-                  {/* ARTIKEL - [FIX] GAMBAR HILANG, JADI IKON */}
+                  {/* ARTIKEL KESEHATAN (Icon FileText) */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
                           <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
                               
-                              {/* Ikon FileText (Pengganti Gambar) */}
+                              {/* Ikon FileText sebagai pengganti gambar */}
                               <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
                                   <FileText size={24} color={currentTheme.text}/>
                               </div>
                               
                               <div style={{flex:1}}>
                                  <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
-                                 {/* Reading Time */}
                                  <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
                                     <Clock size={12}/> {article.reading_time || "3 min"} baca
                                  </p>
@@ -420,12 +417,45 @@ const UserDashboard = () => {
                           </div>
                       ))}
                   </Card>
+
+                  {/* QUOTE & REFRESH (Paling Bawah) */}
+                  <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
+                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                        "{quote}"
+                    </p>
+                    <button 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing} 
+                        style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: darkMode ? '#cbd5e1' : '#475569', 
+                            fontSize: '0.85rem', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '0.5rem', 
+                            margin: '0 auto', 
+                            cursor: 'pointer' 
+                        }}
+                    >
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> 
+                        {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    </button>
+                  </div>
+
                 </div>
               </div>
             </>
           )}
 
-          {/* 5. SETTINGS PAGE (DENGAN TEMA WARNA) */}
+          {/* TAB LAIN (DISEDERHANAKAN, BISA DIKEMBALIKAN KE FULL KODE SEPERTI SEBELUMNYA JIKA PERLU) */}
+          {activeTab === 'checkin' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Riwayat</h1><p>Halaman Riwayat Check-in</p></div>)}
+          {activeTab === 'friends' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Teman Sehat</h1><p>Daftar teman Anda.</p></div>)}
+          {activeTab === 'shop' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Toko</h1><p>Katalog Produk.</p></div>)}
+          {activeTab === 'report' && (<div style={{color: darkMode ? 'white' : 'black'}}><h1 className="heading-2">Rapor</h1><p>Statistik Kesehatan.</p></div>)}
+
+          {/* SETTINGS PAGE */}
           {activeTab === 'settings' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -502,10 +532,6 @@ const UserDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'checkin' && <div><h1 className="heading-2">Riwayat</h1><p>Halaman Riwayat Check-in</p></div>}
-          {activeTab === 'friends' && <div><h1 className="heading-2">Teman Sehat</h1><p>Daftar teman Anda.</p></div>}
-          {activeTab === 'shop' && <div><h1 className="heading-2">Toko</h1><p>Katalog Produk.</p></div>}
-          {activeTab === 'report' && <div><h1 className="heading-2">Rapor</h1><p>Statistik Kesehatan.</p></div>}
         </main>
       </div>
 
