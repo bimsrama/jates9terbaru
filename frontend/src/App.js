@@ -28,6 +28,8 @@ import UserManagement from "./pages/admin/UserManagement";
 import PurchaseVerification from "./pages/admin/PurchaseVerification";
 import WithdrawalManagement from "./pages/admin/WithdrawalManagement";
 import Broadcast from "./pages/admin/Broadcast"; // <--- IMPORT BARU
+import ArticlePage from './pages/ArticlePage'; // Pastikan path import benar
+
 
 function App() {
   return (
@@ -43,6 +45,9 @@ function App() {
             <Route path="/chat" element={<><Navigation /><AIChat /></>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+
+<Route path="/article/:id" element={<ArticlePage />} />
+
 
             {/* User Dashboard Routes */}
             <Route path="/dashboard" element={
