@@ -6,7 +6,7 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check, Camera, Edit2
+  Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -25,7 +25,7 @@ const THEMES = {
 const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate(); 
-  const fileInputRef = useRef(null); // Ref untuk input file
+  const fileInputRef = useRef(null); 
   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
@@ -48,7 +48,7 @@ const UserDashboard = () => {
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false); // State upload foto
+  const [uploadingImage, setUploadingImage] = useState(false); 
   
   // Theme & Dark Mode
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
@@ -195,12 +195,26 @@ const UserDashboard = () => {
     try { const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: friendCode.toUpperCase() }, { headers: getAuthHeader() }); setFriendData(res.data.friend); } catch (err) { alert("Teman tidak ditemukan."); } finally { setSearchLoading(false); }
   };
 
-  const handleClickFriendFromList = async (code) => { setFriendCode(code); setSearchLoading(true); setShowQRModal(false); try { const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() }); setFriendData(res.data.friend); setShowFriendProfile(true); } catch (err) { alert("Gagal memuat profil."); } finally { setSearchLoading(false); } };
+  // [PERBAIKAN] FUNGSI KLIK TEMAN
+  const handleClickFriendFromList = async (code) => { 
+    setFriendCode(code); 
+    setSearchLoading(true); 
+    setShowQRModal(false); 
+    try { 
+        const res = await axios.post(`${BACKEND_URL}/api/friends/lookup`, { referral_code: code }, { headers: getAuthHeader() }); 
+        setFriendData(res.data.friend); 
+        setShowFriendProfile(true); 
+    } catch (err) { 
+        alert("Gagal memuat profil teman."); 
+    } finally { 
+        setSearchLoading(false); 
+    } 
+  };
 
   const handleOpenFriendProfile = () => { if(friendData) { setShowQRModal(false); setShowFriendProfile(true); } };
   const handleArticleClick = (articleId) => { navigate(`/article/${articleId}`); };
 
-  // [BARU] FUNGSI UPLOAD FOTO PROFILE
+  // FUNGSI UPLOAD FOTO PROFILE
   const handleProfilePictureUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -218,7 +232,6 @@ const UserDashboard = () => {
         });
 
         if (res.data.success) {
-            // Update state overview agar foto langsung berubah
             setOverview(prev => ({
                 ...prev,
                 user: { ...prev.user, profile_picture: res.data.image_url }
@@ -232,7 +245,6 @@ const UserDashboard = () => {
     }
   };
 
-  // Trigger klik input file
   const triggerFileInput = () => {
     fileInputRef.current.click();
   };
@@ -319,7 +331,7 @@ const UserDashboard = () => {
                   {/* Profil Card */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--theme-gradient)', color: darkMode ? 'white' : '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      {/* [UPDATE] FOTO PROFIL */}
+                      {/* FOTO PROFIL */}
                       <div style={{ position: 'relative' }}>
                           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '2px solid white' }}>
                               {overview?.user?.profile_picture ? (
@@ -328,7 +340,7 @@ const UserDashboard = () => {
                                   <User size={35} color={currentTheme.text} />
                               )}
                           </div>
-                          {/* Tombol Edit Foto Kecil (Hanya shortcut ke Settings) */}
+                          {/* Tombol Edit Foto Kecil */}
                           <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: 'white', borderRadius: '50%', padding: '4px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}>
                               <Edit2 size={12} color="#475569" />
                           </button>
@@ -394,7 +406,11 @@ const UserDashboard = () => {
                              </div>
                            ))}
                            <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
-                           <button onClick={() => handleSubmitCheckin('completed')} style={{ background: currentTheme.primary, width:'100%', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', marginTop:'1rem', border:'none', cursor:'pointer' }}>SELESAIKAN</button>
+                           {/* [PERBAIKAN] TOMBOL PENDING DIKEMBALIKAN */}
+                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                              <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
+                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
+                           </div>
                         </div>
                       )}
                     </CardContent>
@@ -450,11 +466,15 @@ const UserDashboard = () => {
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
                           <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
+                              
+                              {/* Ikon FileText sebagai pengganti gambar */}
                               <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
                                   <FileText size={24} color={currentTheme.text}/>
                               </div>
+                              
                               <div style={{flex:1}}>
                                  <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
+                                 {/* Reading Time */}
                                  <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
                                     <Clock size={12}/> {article.reading_time || "3 min"} baca
                                  </p>
@@ -464,19 +484,38 @@ const UserDashboard = () => {
                       ))}
                   </Card>
 
-                  {/* QUOTE & REFRESH */}
+                  {/* QUOTE & REFRESH (Paling Bawah) */}
                   <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
-                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>"{quote}"</p>
-                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
-                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                        "{quote}"
+                    </p>
+                    <button 
+                        onClick={handleRefresh} 
+                        disabled={isRefreshing} 
+                        style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: darkMode ? '#cbd5e1' : '#475569', 
+                            fontSize: '0.85rem', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            gap: '0.5rem', 
+                            margin: '0 auto', 
+                            cursor: 'pointer' 
+                        }}
+                    >
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> 
+                        {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
                     </button>
                   </div>
+
                 </div>
               </div>
             </>
           )}
 
-          {/* TAB LAIN */}
+          {/* TAB LAIN (LENGKAP SEPERTI SEBELUMNYA) */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1></div>
@@ -500,7 +539,7 @@ const UserDashboard = () => {
                
                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
-                  {/* CARD PROFILE PICTURE UPDATE [BARU] */}
+                  {/* CARD PROFILE PICTURE UPDATE */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader>
                     <CardContent>
@@ -603,6 +642,7 @@ const UserDashboard = () => {
         </main>
       </div>
 
+      {/* MODAL PRIVASI */}
       {showPrivacyModal && (
          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
             <div style={{ background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'80vh', overflowY:'auto' }}>
@@ -618,7 +658,41 @@ const UserDashboard = () => {
          </div>
       )}
 
+      {/* MODAL QR */}
       {showQRModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}><div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}><h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3><div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div></div><button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button></div></div>)}
+      
+      {/* MODAL PROFIL TEMAN */}
+      {showFriendProfile && friendData && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowFriendProfile(false)}>
+            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                <div style={{ background: `linear-gradient(135deg, ${currentTheme.light} 0%, ${currentTheme.primary} 100%)`, padding: '2rem 1rem', textAlign: 'center' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        <User size={40} color={currentTheme.text} />
+                    </div>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '0.2rem' }}>{friendData.name}</h2>
+                    <div className="gold-badge" style={{ display: 'inline-flex', marginTop: '0.5rem' }}><Medal size={14}/> {friendData.badge}</div>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                        <h4 style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1rem' }}>{friendData.challenge_title}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} • Hari ke-{friendData.challenge_day}</div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ textAlign: 'center', padding: '0.8rem', background: '#f0fdf4', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#166534' }}>Check-in</div>
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '0.8rem', background: '#fff7ed', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#ea580c' }}>Hari Jalan</div>
+                        </div>
+                    </div>
+                    <button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '1.5rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Tutup</button>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 };
