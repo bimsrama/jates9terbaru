@@ -484,12 +484,27 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
               </div>
           )}
 
-          {/* TAB 4: GENERATOR WA CHALLENGE */}
+          {/* --- TAB WA GENERATOR [BARU] --- */}
           {activeTab === 'wa_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                    <h2 className="heading-2">Generator Konten WA</h2>
-                   <p style={{ color: '#64748b' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                   
+                   {/* Tombol Link Sheet */}
+                   <a 
+                      href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?usp=sharing" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      style={{ 
+                          display: 'inline-flex', alignItems: 'center', gap: '0.5rem', 
+                          background: '#10b981', color: 'white', padding: '0.7rem 1.2rem', 
+                          borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem',
+                          boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                      }}
+                   >
+                      <FileSpreadsheet size={18} /> Buka Sheet Broadcast
+                   </a>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
