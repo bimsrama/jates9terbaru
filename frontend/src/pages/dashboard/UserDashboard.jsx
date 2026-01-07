@@ -6,7 +6,7 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check, Palette
+  Moon, Sun, Shield, Smartphone, Check, Camera, Edit2
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -25,6 +25,7 @@ const THEMES = {
 const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate(); 
+  const fileInputRef = useRef(null); // Ref untuk input file
   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
@@ -47,6 +48,7 @@ const UserDashboard = () => {
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false); // State upload foto
   
   // Theme & Dark Mode
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
@@ -198,6 +200,43 @@ const UserDashboard = () => {
   const handleOpenFriendProfile = () => { if(friendData) { setShowQRModal(false); setShowFriendProfile(true); } };
   const handleArticleClick = (articleId) => { navigate(`/article/${articleId}`); };
 
+  // [BARU] FUNGSI UPLOAD FOTO PROFILE
+  const handleProfilePictureUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, {
+            headers: {
+                ...getAuthHeader(),
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        if (res.data.success) {
+            // Update state overview agar foto langsung berubah
+            setOverview(prev => ({
+                ...prev,
+                user: { ...prev.user, profile_picture: res.data.image_url }
+            }));
+            alert("Foto profil berhasil diperbarui!");
+        }
+    } catch (error) {
+        alert("Gagal mengupload foto. Coba lagi.");
+    } finally {
+        setUploadingImage(false);
+    }
+  };
+
+  // Trigger klik input file
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
   const challengeDay = overview?.user?.challenge_day || 1;
   const progressPercent = Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100);
@@ -280,9 +319,21 @@ const UserDashboard = () => {
                   {/* Profil Card */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--theme-gradient)', color: darkMode ? 'white' : '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <User size={35} color={currentTheme.text} />
+                      {/* [UPDATE] FOTO PROFIL */}
+                      <div style={{ position: 'relative' }}>
+                          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '2px solid white' }}>
+                              {overview?.user?.profile_picture ? (
+                                  <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                  <User size={35} color={currentTheme.text} />
+                              )}
+                          </div>
+                          {/* Tombol Edit Foto Kecil (Hanya shortcut ke Settings) */}
+                          <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: 'white', borderRadius: '50%', padding: '4px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}>
+                              <Edit2 size={12} color="#475569" />
+                          </button>
                       </div>
+
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div className="gold-badge"><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
@@ -399,15 +450,11 @@ const UserDashboard = () => {
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
                           <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
-                              
-                              {/* Ikon FileText sebagai pengganti gambar */}
                               <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
                                   <FileText size={24} color={currentTheme.text}/>
                               </div>
-                              
                               <div style={{flex:1}}>
                                  <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
-                                 {/* Reading Time */}
                                  <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
                                     <Clock size={12}/> {article.reading_time || "3 min"} baca
                                  </p>
@@ -417,38 +464,19 @@ const UserDashboard = () => {
                       ))}
                   </Card>
 
-                  {/* QUOTE & REFRESH (Paling Bawah) */}
+                  {/* QUOTE & REFRESH */}
                   <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
-                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
-                        "{quote}"
-                    </p>
-                    <button 
-                        onClick={handleRefresh} 
-                        disabled={isRefreshing} 
-                        style={{ 
-                            background: 'transparent', 
-                            border: 'none', 
-                            color: darkMode ? '#cbd5e1' : '#475569', 
-                            fontSize: '0.85rem', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            gap: '0.5rem', 
-                            margin: '0 auto', 
-                            cursor: 'pointer' 
-                        }}
-                    >
-                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> 
-                        {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>"{quote}"</p>
+                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
                     </button>
                   </div>
-
                 </div>
               </div>
             </>
           )}
 
-          {/* TAB LAIN (LENGKAP SEPERTI SEBELUMNYA) */}
+          {/* TAB LAIN */}
           {activeTab === 'checkin' && (
             <div>
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1></div>
@@ -472,6 +500,39 @@ const UserDashboard = () => {
                
                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   
+                  {/* CARD PROFILE PICTURE UPDATE [BARU] */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader>
+                    <CardContent>
+                       <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}>
+                           <div style={{ position: 'relative', width:'80px', height:'80px' }}>
+                              <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
+                                 {overview?.user?.profile_picture ? (
+                                    <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                 ) : (
+                                    <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>
+                                 )}
+                              </div>
+                              {/* INPUT FILE HIDDEN */}
+                              <input 
+                                 type="file" 
+                                 ref={fileInputRef} 
+                                 style={{ display: 'none' }} 
+                                 accept="image/*" 
+                                 onChange={handleProfilePictureUpload} 
+                              />
+                           </div>
+                           <div>
+                              <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                                 {uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>}
+                                 {uploadingImage ? "Mengupload..." : "Ganti Foto"}
+                              </button>
+                              <p style={{fontSize:'0.75rem', color:'#64748b', marginTop:'0.5rem'}}>Max 2MB (JPG/PNG)</p>
+                           </div>
+                       </div>
+                    </CardContent>
+                  </Card>
+
                   {/* UBAH TEMA */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader><CardTitle className="heading-3">Ubah Tema Aplikasi</CardTitle></CardHeader>
