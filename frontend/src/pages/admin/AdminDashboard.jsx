@@ -29,8 +29,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [articles, setArticles] = useState([]);
-  
-  // --- STATE GENERATOR WA (BARU) ---
+
+  // --- [BARU] STATE GENERATOR WA ---
   const [genChallengeName, setGenChallengeName] = useState("");
   const [genTypeA, setGenTypeA] = useState("");
   const [genTypeB, setGenTypeB] = useState("");
@@ -53,14 +53,14 @@ const AdminDashboard = () => {
       try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); } catch (e) {}
   };
 
-  // --- LOGIC GENERATOR WA ---
+  // --- [BARU] LOGIC GENERATOR WA ---
   const generatePrompt = () => {
     if (!genChallengeName || !genTypeA || !genTypeB || !genTypeC) {
       alert("Mohon isi Nama Challenge dan Ketiga Tipe Target!");
       return;
     }
 
-    // Ambil kata pertama untuk kode (misal: GERD dari 'GERD Anxiety')
+    // Ambil kata pertama atau kode singkat dari input (opsional, untuk kerapihan kode)
     const codeA = genTypeA.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
     const codeB = genTypeB.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
     const codeC = genTypeC.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
@@ -96,7 +96,7 @@ STYLE PENULISAN:
 - Gunakan emoji yang sesuai.
 - To the point, jangan bertele-tele.
 
-Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah saya copy ke Excel.
+Saat saya berikan perintah tipe target (misal: "Buatkan untuk tipe ${genTypeA}"), langsung kerjakan sesuai format di atas.
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -140,7 +140,7 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
             <li><button onClick={() => { setActiveTab('users'); setSidebarOpen(window.innerWidth > 1024); }} style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'users' ? '#dcfce7' : 'transparent', color: activeTab === 'users' ? '#166534' : '#64748b', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: activeTab === 'users' ? '600' : '400' }}><Users size={20} /> Users</button></li>
             <li><button onClick={() => { setActiveTab('challenges'); setSidebarOpen(window.innerWidth > 1024); }} style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: activeTab === 'challenges' ? '#dcfce7' : 'transparent', color: activeTab === 'challenges' ? '#166534' : '#64748b', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: activeTab === 'challenges' ? '600' : '400' }}><Award size={20} /> Challenges</button></li>
             
-            {/* MENU BARU: GENERATOR WA */}
+            {/* [MENU BARU] GENERATOR WA */}
             <li>
               <button 
                 onClick={() => { setActiveTab('wa_generator'); setSidebarOpen(window.innerWidth > 1024); }} 
@@ -222,7 +222,7 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
              </div>
           )}
 
-          {/* TAB 4: GENERATOR WA CHALLENGE */}
+          {/* TAB 4: [BARU] GENERATOR WA CHALLENGE */}
           {activeTab === 'wa_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
@@ -305,7 +305,10 @@ Langsung kerjakan outputnya dalam format tabel atau list yang rapi agar mudah sa
 
 const StatCard = ({ label, val, icon, color }) => (<Card style={{ border: 'none', background: 'white', padding: '1.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}><div><p style={{color:'#64748b'}}>{label}</p><h3>{val}</h3></div><div style={{color:color}}>{icon}</div></Card>);
 const inputStyle = { width: '100%', padding: '0.65rem', borderRadius: '8px', border: '1px solid #cbd5e1' };
+const tableInputStyle = { width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #e2e8f0', minHeight:'50px', fontSize:'0.8rem' };
+const selectStyle = { padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1' };
 const thStyle = { padding: '1rem', textAlign: 'left', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase' };
 const tdStyle = { padding: '0.75rem', fontSize: '0.85rem' };
+const subThStyle = { padding: '0.75rem', textAlign: 'left', color: '#64748b', fontSize: '0.7rem' };
 
 export default AdminDashboard;
