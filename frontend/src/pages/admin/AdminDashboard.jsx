@@ -13,7 +13,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat
 
 const GEN_Z_BADGES = [
   "Pejuang Tangguh", "Si Paling Sehat", "Usus Glowing", "Lord of Fiber", 
-  "Anti Kembung Club", "King of Metabolism", "Sepuh Jates9", "Healing Master"
+  "Anti Kembung Club", "King of Metabolism", "Sepuh Jates9", "Healing Master", "Jates9 Champion 🏆"
 ];
 
 const AdminDashboard = () => {
@@ -141,7 +141,21 @@ const AdminDashboard = () => {
     fetchParticipants(challenge.id);
   };
 
-  const handleUpdateUser = async (uid, type, val) => { try { await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, {user_id:uid, [type]:val}, {headers:getAuthHeader()}); fetchUsers(); } catch(e){} };
+  // [PERBAIKAN] UPDATE USER ROLE / BADGE
+  const handleUpdateUser = async (uid, type, val) => {
+    try {
+        const payload = { user_id: uid };
+        if (type === 'role') payload.role = val;
+        if (type === 'badge') payload.badge = val;
+
+        await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() });
+        fetchUsers(); // Refresh data
+        alert(`User ${type} berhasil diubah!`);
+    } catch(e) {
+        alert("Gagal update user.");
+    }
+  };
+  
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
   // --- LOGIC GENERATOR WA ---
@@ -367,9 +381,13 @@ STYLE: Casual, akrab, emoji.
             </div>
           )}
 
-          {/* TAB USERS, FINANCE, ARTICLES (SAMA SEPERTI SEBELUMNYA) */}
+          {/* TAB USERS */}
           {activeTab === 'users' && (<Card style={{ overflowX: 'auto', background: 'white' }}><CardHeader><CardTitle className="heading-3">Daftar Pengguna</CardTitle></CardHeader><CardContent><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr style={{ borderBottom: '2px solid #f1f5f9' }}><th style={thStyle}>User</th><th style={thStyle}>Statistik</th><th style={thStyle}>Challenge</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}><td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td><td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td><td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td><td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td><td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td></tr>))}</tbody></table></CardContent></Card>)}
+          
+          {/* TAB ARTICLES */}
           {activeTab === 'articles' && (<div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}><Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3><form onSubmit={handlePostArticle}><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Judul Artikel</label><input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Gambar (Otomatis Kompres)</label><input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label><textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." /></div><button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>{btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}</button></form></Card><div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>{articles.map(a => (<Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>{a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}<div><h4 style={{fontWeight:'bold'}}>{a.title}</h4><p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p></div></Card>))}</div></div>)}
+          
+          {/* TAB FINANCE */}
           {activeTab === 'finance' && (<div style={{display:'flex', flexDirection:'column', gap:'2rem'}}><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#fefce8'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>User</th><th style={thStyle}>Jumlah</th><th style={thStyle}>Bank Info</th><th style={thStyle}>Status</th><th style={thStyle}>Aksi / ID Transaksi</th></tr></thead><tbody>{withdrawals.map(w => (<tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{w.date}</td><td style={tdStyle}><b>{w.user_name}</b></td><td style={tdStyle}>Rp {w.amount.toLocaleString()}</td><td style={tdStyle}>{w.bank_info}</td><td style={tdStyle}><span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>{w.status.toUpperCase()}</span></td><td style={tdStyle}>{w.status === 'pending' ? (<div style={{display:'flex', gap:'0.5rem'}}><input placeholder="No. Bukti Transfer..." style={{...selectStyle, width:'150px'}} value={wdProcessingId === w.id ? wdRefInput : ''} onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }} /><button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}><CheckCircle size={16}/></button></div>) : (<span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>)}</td></tr>))}</tbody></table></div></Card><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><ShoppingCart size={20}/> Riwayat Penjualan & Referral</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#f0fdf4'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>Produk</th><th style={thStyle}>Pembeli</th><th style={thStyle}>Harga</th><th style={thStyle}>Referral (Upline)</th></tr></thead><tbody>{salesData.map(s => (<tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{s.date}</td><td style={tdStyle}>{s.product}</td><td style={tdStyle}><b>{s.buyer_name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{s.buyer_phone}</span></td><td style={tdStyle}>Rp {s.amount.toLocaleString()}</td><td style={tdStyle}>{s.referrer_name !== '-' ? (<div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}><span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span><br/><span style={{fontSize:'0.75rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</span></div>) : <span style={{color:'#cbd5e1'}}>-</span>}</td></tr>))}</tbody></table></div></Card></div>)}
 
         </main>
