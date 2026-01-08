@@ -29,8 +29,12 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [products, setProducts] = useState([]); // [BARU]
+  const [products, setProducts] = useState([]); // State Produk
   
+  // FORM STATES
+  const [productForm, setProductForm] = useState({ name: '', price: '', description: '', fake_sales: 0, image: null });
+  const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
+
   // FINANCE STATES
   const [salesData, setSalesData] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -49,12 +53,6 @@ const AdminDashboard = () => {
   const [viewMode, setViewMode] = useState('info'); 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // ARTICLE STATE
-  const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
-
-  // [BARU] PRODUCT STATE
-  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', image: null });
-
   // GENERATOR WA STATE
   const [genChallengeName, setGenChallengeName] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
@@ -68,7 +66,7 @@ const AdminDashboard = () => {
     if (activeTab === 'challenge_content' && selectedChallengeId) fetchContentMatrix(selectedChallengeId);
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
-    if (activeTab === 'products') fetchProducts(); // [BARU]
+    if (activeTab === 'products') fetchProducts(); // Fetch Produk
     if (activeTab === 'finance') { fetchSales(); fetchWithdrawals(); }
   }, [activeTab, selectedChallengeId]);
 
@@ -78,10 +76,8 @@ const AdminDashboard = () => {
   const fetchChallengeCards = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); if(res.data.length && !selectedChallengeId) setSelectedChallengeId(res.data[0].id); } catch (e) {} };
   const fetchContentMatrix = async (id) => { setLoadingMatrix(true); try { const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/matrix/${id}`, { headers: getAuthHeader() }); const m={}; res.data.forEach(x=>{m[x.day_sequence]=x}); setContentMatrix(m); } catch(e){} setLoadingMatrix(false); };
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() }); setArticles(res.data); } catch(e){} };
-  
-  // [BARU] FETCH PRODUCTS
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/products`, { headers: getAuthHeader() }); setProducts(res.data); } catch(e){} };
-
+  
   // FINANCE FETCH
   const fetchSales = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/sales`, { headers: getAuthHeader() }); setSalesData(res.data); } catch(e){} };
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
@@ -120,32 +116,27 @@ const AdminDashboard = () => {
       try { const res = await axios.post(`${BACKEND_URL}/api/admin/articles`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); if(res.data.success){ alert(`Posted! Time: ${res.data.reading_time}`); setArticleForm({title:'',content:'',image:null}); fetchArticles(); } } catch(e){ alert("Error"); } setBtnLoading(false);
   };
 
-  // [BARU] HANDLE CREATE PRODUCT
-  const handleCreateProduct = async (e) => {
+  const handleAddProduct = async (e) => {
       e.preventDefault(); setBtnLoading(true);
       const fd = new FormData(); 
       fd.append('name', productForm.name); 
+      fd.append('price', productForm.price); 
       fd.append('description', productForm.description); 
-      fd.append('price', productForm.price);
+      fd.append('fake_sales', productForm.fake_sales);
       if(productForm.image) fd.append('image', productForm.image);
       
       try { 
-          const res = await axios.post(`${BACKEND_URL}/api/admin/products`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); 
-          if(res.data.success){ 
-              alert("Produk berhasil ditambahkan!"); 
-              setProductForm({name:'',description:'',price:'',image:null}); 
-              fetchProducts(); 
-          } 
-      } catch(e){ alert("Gagal tambah produk"); } 
+        await axios.post(`${BACKEND_URL}/api/admin/products`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); 
+        alert("Produk Ditambahkan!"); 
+        setProductForm({name:'', price:'', description:'', fake_sales:0, image:null}); 
+        fetchProducts(); 
+      } catch(e){ alert("Error"); } 
       setBtnLoading(false);
   };
 
   const handleDeleteProduct = async (id) => {
       if(!window.confirm("Hapus produk ini?")) return;
-      try {
-          await axios.delete(`${BACKEND_URL}/api/admin/products/${id}`, { headers: getAuthHeader() });
-          fetchProducts();
-      } catch(e) { alert("Gagal hapus"); }
+      try { await axios.delete(`${BACKEND_URL}/api/admin/products/${id}`, { headers: getAuthHeader() }); fetchProducts(); } catch(e){ alert("Gagal hapus"); }
   };
 
   const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
@@ -196,7 +187,31 @@ const AdminDashboard = () => {
   // --- LOGIC GENERATOR WA ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Nama Program Challenge!"); return; }
-    const template = `Topik Challenge: "${genChallengeName}"... (Prompt Template) ...`; // Singkat agar muat
+    const template = `
+Topik Challenge: "${genChallengeName}"
+TUGAS ANDA:
+1. Analisa topik di atas.
+2. Tentukan 3 Tipe/Kategori Peserta (Tipe A, Tipe B, Tipe C) yang paling relevan.
+3. Buatkan konten WhatsApp Broadcast 30 Hari.
+
+STRUKTUR OUTPUT (Format Tabel/List):
+[JUDUL: Daftar Tipe]
+- Tipe A: [Nama]
+- Tipe B: [Nama]
+- Tipe C: [Nama]
+
+[KONTEN HARIAN]
+1. BAGIAN 1: 30 HARI CHALLENGE (Action)
+   - Kode: CH_[KODE_TIPE]_[HARI]
+   - Isi: Tantangan harian.
+2. BAGIAN 2: 30 HARI FAKTA (Edukasi)
+   - Kode: FT_[KODE_TIPE]_[HARI]
+   - Isi: Fakta.
+3. BAGIAN 3: SOFT SELLING JATES9 (Hari 1,3,6,9...)
+   - Kode: SS_[KODE_TIPE]_[HARI]
+   - Isi: Jualan soft.
+STYLE: Casual, akrab, emoji.
+    `;
     setGeneratedPrompt(template.trim());
   };
 
@@ -224,10 +239,10 @@ const AdminDashboard = () => {
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}><h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}> <Bot size={20} /> Jates Admin</h2></div>
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard & Challenge" />
+          <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
           <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
-          <SidebarItem id="products" icon={Package} label="Kelola Produk" />
           <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
         </nav>
@@ -242,7 +257,7 @@ const AdminDashboard = () => {
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
           
-          {/* TAB OVERVIEW */}
+          {/* TAB OVERVIEW & CHALLENGE MANAGER */}
           {activeTab === 'overview' && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -259,9 +274,10 @@ const AdminDashboard = () => {
                 </Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
-                        <Card key={c.id} onClick={() => handleOpenChallengeModal(c)} style={{ padding: '1rem', background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                        <Card key={c.id} onClick={() => handleOpenChallengeModal(c)} style={{ padding: '1rem', background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'transform 0.1s' }}>
                             <div style={{display:'flex', justifyContent:'space-between'}}><b>{c.title}</b><button onClick={(e) => handleDeleteChallenge(c.id, e)} style={{color:'red', background:'none', border:'none', cursor:'pointer'}}><Trash2 size={16}/></button></div>
-                            <p style={{fontSize:'0.8rem', color:'#64748b'}}>{c.description}</p>
+                            <p style={{fontSize:'0.8rem', color:'#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{c.description}</p>
+                            <div style={{fontSize:'0.7rem', color:'var(--primary)', marginTop:'0.5rem', fontStyle:'italic', display:'flex', alignItems:'center', gap:'0.3rem'}}><Eye size={12}/> Lihat Peserta & Edit</div>
                         </Card>
                     ))}
                 </div>
@@ -269,51 +285,135 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* TAB PRODUCTS (NEW) */}
+          {/* TAB MANAJEMEN PRODUK [BARU] */}
           {activeTab === 'products' && (
-            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
-               <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Tambah Produk</h3>
-                  <form onSubmit={handleCreateProduct}>
-                      <div style={{ marginBottom: '1rem' }}>
-                          <label style={labelStyle}>Nama Produk</label>
-                          <input style={inputStyle} value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} required />
-                      </div>
-                      <div style={{ marginBottom: '1rem' }}>
-                          <label style={labelStyle}>Harga (Rp)</label>
-                          <input type="number" style={inputStyle} value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} required />
-                      </div>
-                      <div style={{ marginBottom: '1rem' }}>
-                          <label style={labelStyle}>Deskripsi</label>
-                          <textarea style={inputStyle} value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
-                      </div>
-                      <div style={{ marginBottom: '1rem' }}>
-                          <label style={labelStyle}>Gambar</label>
-                          <input type="file" style={inputStyle} onChange={e => setProductForm({...productForm, image: e.target.files[0]})} accept="image/*" />
-                      </div>
-                      <button type="submit" disabled={btnLoading} style={{ width: '100%', padding: '0.8rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-                          {btnLoading ? 'Menyimpan...' : 'Simpan Produk'}
-                      </button>
-                  </form>
-               </Card>
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                   {products.map(p => (
-                       <Card key={p.id} style={{ padding: '1rem', background: 'white', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                           <div style={{ width: '60px', height: '60px', borderRadius: '8px', background: '#f1f5f9', overflow: 'hidden' }}>
-                               {p.image_url ? <img src={`${BACKEND_URL}${p.image_url}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={30} style={{ margin: '15px' }} color="#cbd5e1" />}
-                           </div>
-                           <div style={{ flex: 1 }}>
-                               <h4 style={{ fontWeight: 'bold' }}>{p.name}</h4>
-                               <p style={{ fontSize: '0.85rem', color: '#16a34a', fontWeight: 'bold' }}>Rp {p.price.toLocaleString()}</p>
-                           </div>
-                           <button onClick={() => handleDeleteProduct(p.id)} style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={18} /></button>
-                       </Card>
-                   ))}
-               </div>
+             <div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}>
+                <Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Input Produk Baru</h3>
+                    <form onSubmit={handleAddProduct}>
+                        <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Nama Produk</label><input style={inputStyle} value={productForm.name} onChange={e=>setProductForm({...productForm, name: e.target.value})} required /></div>
+                        <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Harga (Rp)</label><input type="number" style={inputStyle} value={productForm.price} onChange={e=>setProductForm({...productForm, price: e.target.value})} required /></div>
+                        <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Dummy Terjual</label><input type="number" style={inputStyle} value={productForm.fake_sales} onChange={e=>setProductForm({...productForm, fake_sales: e.target.value})} /></div>
+                        <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Gambar</label><input type="file" style={inputStyle} onChange={e=>setProductForm({...productForm, image: e.target.files[0]})} accept="image/*" /></div>
+                        <div style={{marginBottom:'1rem'}}><label style={labelStyle}>Deskripsi</label><textarea style={{...inputStyle, minHeight:'100px'}} value={productForm.description} onChange={e=>setProductForm({...productForm, description: e.target.value})} /></div>
+                        <button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px'}}>{btnLoading ? 'Saving...' : 'Simpan Produk'}</button>
+                    </form>
+                </Card>
+                <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                    {products.map(p => (
+                        <Card key={p.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>
+                            {p.image_url ? <img src={`${BACKEND_URL}${p.image_url}`} alt={p.name} style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} /> : <div style={{width:'80px', height:'80px', background:'#eee', borderRadius:'8px', display:'flex', justifyContent:'center', alignItems:'center'}}><Package color="#ccc"/></div>}
+                            <div style={{flex:1}}>
+                                <h4 style={{fontWeight:'bold'}}>{p.name}</h4>
+                                <div style={{color:'#16a34a', fontWeight:'bold'}}>Rp {p.price.toLocaleString()}</div>
+                                <div style={{fontSize:'0.8rem', color:'#64748b'}}>Terjual (Dummy): {p.fake_sales}</div>
+                                <p style={{fontSize:'0.8rem', color:'#64748b', marginTop:'0.5rem'}}>{p.description}</p>
+                            </div>
+                            <button onClick={() => handleDeleteProduct(p.id)} style={{color:'red', border:'none', background:'none', cursor:'pointer'}}><Trash2 size={18}/></button>
+                        </Card>
+                    ))}
+                </div>
+             </div>
+          )}
+
+          {/* TAB WA GENERATOR */}
+          {activeTab === 'wa_generator' && (
+             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                   <h2 className="heading-2">Generator Konten WA</h2>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                   <a href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?usp=sharing" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.7rem 1.2rem', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}> <FileSpreadsheet size={18} /> Buka Sheet Broadcast </a>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                      <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
+                      <CardContent>
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                               <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
+                               <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
+                            </div>
+                         </div>
+                      </CardContent>
+                   </Card>
+                   {generatedPrompt && (
+                      <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+                         <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
+                         <CardContent>
+                            <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
+                               <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   )}
+                </div>
+             </div>
+          )}
+
+          {/* TAB CHALLENGE CONTENT */}
+          {activeTab === 'challenge_content' && (
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                  <h1 className="heading-2">Broadcast Manager (30 Hari)</h1>
+                  <div style={{display:'flex', gap:'1rem'}}>
+                     <select value={selectedChallengeId || ""} onChange={(e) => setSelectedChallengeId(e.target.value)} style={selectStyle}>
+                        <option value="" disabled>Pilih Challenge...</option>
+                        {challenges.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                     </select>
+                     <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
+                        {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan
+                     </button>
+                  </div>
+              </div>
+              
+              {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading matrix...</div> : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
+                    <table style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
+                        <tr>
+                            <th style={{...thStyle, width: '50px', background: '#f1f5f9'}}></th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af', borderRight:'2px solid white'}}>GROUP A (Misal: Sembelit)</th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534', borderRight:'2px solid white'}}>GROUP B (Misal: Kembung)</th>
+                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>GROUP C (Misal: GERD)</th>
+                        </tr>
+                        <tr>
+                          <th style={{...thStyle, textAlign:'center'}}>Hari</th>
+                          <th style={subThStyle}>Tugas A</th><th style={subThStyle}>Fakta A</th><th style={subThStyle}>Soft Sell A</th>
+                          <th style={subThStyle}>Tugas B</th><th style={subThStyle}>Fakta B</th><th style={subThStyle}>Soft Sell B</th>
+                          <th style={subThStyle}>Tugas C</th><th style={subThStyle}>Fakta C</th><th style={subThStyle}>Soft Sell C</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
+                            const row = contentMatrix[day] || {};
+                            return (
+                                <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
+                                    {/* GROUP A */}
+                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.fact_a||""} onChange={e=>handleMatrixChange(day,'fact_a',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#eff6ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#93c5fd'}} value={row.soft_sell_a||""} onChange={e=>handleMatrixChange(day,'soft_sell_a',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                    {/* GROUP B */}
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.fact_b||""} onChange={e=>handleMatrixChange(day,'fact_b',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#f0fdf4'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#86efac'}} value={row.soft_sell_b||""} onChange={e=>handleMatrixChange(day,'soft_sell_b',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                    {/* GROUP C */}
+                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.fact_c||""} onChange={e=>handleMatrixChange(day,'fact_c',e.target.value)} /></td>
+                                    <td style={{...tdStyle, background: '#faf5ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#d8b4fe'}} value={row.soft_sell_c||""} onChange={e=>handleMatrixChange(day,'soft_sell_c',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                </tr>
+                            )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+              )}
             </div>
           )}
 
-          {/* ... SISA TAB LAIN (Users, Finance, Articles, etc.) TETAP SAMA ... */}
           {/* TAB USERS */}
           {activeTab === 'users' && (<Card style={{ overflowX: 'auto', background: 'white' }}><CardHeader><CardTitle className="heading-3">Daftar Pengguna</CardTitle></CardHeader><CardContent><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr style={{ borderBottom: '2px solid #f1f5f9' }}><th style={thStyle}>User</th><th style={thStyle}>Statistik</th><th style={thStyle}>Challenge</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}><td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td><td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td><td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td><td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td><td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td></tr>))}</tbody></table></CardContent></Card>)}
           
@@ -331,19 +431,16 @@ const AdminDashboard = () => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }} onClick={() => setEditingChallenge(null)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '12px', width: '90%', maxWidth: '800px', height:'85vh', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
               
-              {/* Header Modal */}
               <div style={{padding:'1.5rem', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                   <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Detail Challenge</h3>
                   <button onClick={() => setEditingChallenge(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20}/></button>
               </div>
 
-              {/* Tabs */}
               <div style={{display:'flex', padding:'0 1.5rem', borderBottom:'1px solid #e2e8f0'}}>
                   <button onClick={() => setViewMode('info')} style={{padding:'1rem', borderBottom: viewMode==='info'?'2px solid var(--primary)':'none', color: viewMode==='info'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Edit Info</button>
                   <button onClick={() => setViewMode('participants')} style={{padding:'1rem', borderBottom: viewMode==='participants'?'2px solid var(--primary)':'none', color: viewMode==='participants'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Peserta & Laporan ({challengeParticipants.length})</button>
               </div>
 
-              {/* Content */}
               <div style={{padding:'1.5rem', overflowY:'auto', flex:1}}>
                   {viewMode === 'info' ? (
                       <>
@@ -358,7 +455,6 @@ const AdminDashboard = () => {
                           <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ width:'100%', padding: '0.8rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>{btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
                       </>
                   ) : (
-                      // TABEL PESERTA
                       <div style={{overflowX:'auto'}}>
                           {loadingParticipants ? <div style={{textAlign:'center', padding:'2rem'}}>Loading data peserta...</div> : (
                             <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
