@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -35,8 +35,8 @@ const AdminDashboard = () => {
   const [productForm, setProductForm] = useState({ name: '', price: '', description: '', fake_sales: 0, image: null });
   const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
 
-  // FINANCE STATES
-  const [salesData, setSalesData] = useState([]);
+  // FINANCE & TRANSACTION STATES
+  const [salesData, setSalesData] = useState([]); // Data Transaksi Penjualan
   const [withdrawals, setWithdrawals] = useState([]);
   const [wdRefInput, setWdRefInput] = useState(""); 
   const [wdProcessingId, setWdProcessingId] = useState(null);
@@ -66,8 +66,9 @@ const AdminDashboard = () => {
     if (activeTab === 'challenge_content' && selectedChallengeId) fetchContentMatrix(selectedChallengeId);
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
-    if (activeTab === 'products') fetchProducts(); // Fetch Produk
-    if (activeTab === 'finance') { fetchSales(); fetchWithdrawals(); }
+    if (activeTab === 'products') fetchProducts(); 
+    if (activeTab === 'finance') fetchWithdrawals(); // Halaman Keuangan Khusus WD
+    if (activeTab === 'transactions') fetchSales(); // Halaman Transaksi Produk
   }, [activeTab, selectedChallengeId]);
 
   // --- API FETCH ---
@@ -238,12 +239,13 @@ STYLE: Casual, akrab, emoji.
       <aside style={{ width: isSidebarOpen ? '260px' : '0px', transition: 'all 0.3s', background: 'white', borderRight: '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', visibility: isSidebarOpen ? 'visible' : 'hidden' }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}><h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}> <Bot size={20} /> Jates Admin</h2></div>
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-          <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard & Challenge" />
+          <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
+          <SidebarItem id="transactions" icon={ShoppingCart} label="Riwayat Transaksi" />
           <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
           <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
-          <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
+          <SidebarItem id="finance" icon={Wallet} label="Keuangan WD" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
@@ -252,12 +254,12 @@ STYLE: Casual, akrab, emoji.
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
         <header style={{ height: '64px', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 1.5rem', justifyContent: 'space-between' }}>
           <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}> <Menu size={20}/> </button>
-          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--primary)' }}>{activeTab.toUpperCase()}</span>
+          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--primary)' }}>{activeTab.toUpperCase().replace('_', ' ')}</span>
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
           
-          {/* TAB OVERVIEW & CHALLENGE MANAGER */}
+          {/* TAB OVERVIEW */}
           {activeTab === 'overview' && (
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -285,7 +287,64 @@ STYLE: Casual, akrab, emoji.
             </div>
           )}
 
-          {/* TAB MANAJEMEN PRODUK [BARU] */}
+          {/* TAB TRANSAKSI [BARU] */}
+          {activeTab === 'transactions' && (
+             <Card style={{padding:'1.5rem', background:'white'}}>
+                <h3 style={{fontWeight:'bold', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                    <ShoppingCart size={22}/> Riwayat Penjualan Produk
+                </h3>
+                <div style={{overflowX:'auto'}}>
+                    <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
+                        <thead style={{background:'#f0fdf4', borderBottom:'2px solid #e2e8f0'}}>
+                            <tr>
+                                <th style={thStyle}>Tanggal</th>
+                                <th style={thStyle}>Order ID</th>
+                                <th style={thStyle}>Produk</th>
+                                <th style={thStyle}>Harga</th>
+                                <th style={thStyle}>Pembeli</th>
+                                <th style={thStyle}>Status</th>
+                                <th style={thStyle}>Referral</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {salesData.length > 0 ? salesData.map(s => (
+                                <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                    <td style={tdStyle}>{s.date}</td>
+                                    <td style={tdStyle}><span style={{fontFamily:'monospace', background:'#f1f5f9', padding:'2px 4px', borderRadius:'4px'}}>{s.order_id || '-'}</span></td>
+                                    <td style={tdStyle}><b>{s.product}</b></td>
+                                    <td style={tdStyle}>Rp {s.amount.toLocaleString()}</td>
+                                    <td style={tdStyle}>
+                                        <div style={{fontWeight:'bold'}}>{s.buyer_name}</div>
+                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{s.buyer_phone}</div>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{
+                                            padding:'4px 10px', borderRadius:'20px', fontSize:'0.75rem', fontWeight:'bold',
+                                            background: s.status === 'paid' ? '#dcfce7' : '#fff7ed',
+                                            color: s.status === 'paid' ? '#166534' : '#c2410c'
+                                        }}>
+                                            {s.status ? s.status.toUpperCase() : 'PENDING'}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        {s.referrer_name !== '-' ? (
+                                            <div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}>
+                                                <span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span>
+                                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</div>
+                                            </div>
+                                        ) : <span style={{color:'#cbd5e1'}}>-</span>}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan="7" style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>Belum ada transaksi penjualan.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+             </Card>
+          )}
+
+          {/* TAB MANAJEMEN PRODUK */}
           {activeTab === 'products' && (
              <div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}>
                 <Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}>
@@ -359,13 +418,13 @@ STYLE: Casual, akrab, emoji.
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
                   <h1 className="heading-2">Broadcast Manager (30 Hari)</h1>
                   <div style={{display:'flex', gap:'1rem'}}>
-                     <select value={selectedChallengeId || ""} onChange={(e) => setSelectedChallengeId(e.target.value)} style={selectStyle}>
-                        <option value="" disabled>Pilih Challenge...</option>
-                        {challenges.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                     </select>
-                     <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
-                        {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan
-                     </button>
+                      <select value={selectedChallengeId || ""} onChange={(e) => setSelectedChallengeId(e.target.value)} style={selectStyle}>
+                         <option value="" disabled>Pilih Challenge...</option>
+                         {challenges.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                      </select>
+                      <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
+                         {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan
+                      </button>
                   </div>
               </div>
               
@@ -420,8 +479,33 @@ STYLE: Casual, akrab, emoji.
           {/* TAB ARTICLES */}
           {activeTab === 'articles' && (<div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}><Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3><form onSubmit={handlePostArticle}><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Judul Artikel</label><input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Gambar (Otomatis Kompres)</label><input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label><textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." /></div><button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>{btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}</button></form></Card><div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>{articles.map(a => (<Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>{a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}<div><h4 style={{fontWeight:'bold'}}>{a.title}</h4><p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p></div></Card>))}</div></div>)}
           
-          {/* TAB FINANCE */}
-          {activeTab === 'finance' && (<div style={{display:'flex', flexDirection:'column', gap:'2rem'}}><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#fefce8'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>User</th><th style={thStyle}>Jumlah</th><th style={thStyle}>Bank Info</th><th style={thStyle}>Status</th><th style={thStyle}>Aksi / ID Transaksi</th></tr></thead><tbody>{withdrawals.map(w => (<tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{w.date}</td><td style={tdStyle}><b>{w.user_name}</b></td><td style={tdStyle}>Rp {w.amount.toLocaleString()}</td><td style={tdStyle}>{w.bank_info}</td><td style={tdStyle}><span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>{w.status.toUpperCase()}</span></td><td style={tdStyle}>{w.status === 'pending' ? (<div style={{display:'flex', gap:'0.5rem'}}><input placeholder="No. Bukti Transfer..." style={{...selectStyle, width:'150px'}} value={wdProcessingId === w.id ? wdRefInput : ''} onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }} /><button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}><CheckCircle size={16}/></button></div>) : (<span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>)}</td></tr>))}</tbody></table></div></Card><Card style={{padding:'1.5rem', background:'white'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><ShoppingCart size={20}/> Riwayat Penjualan & Referral</h3><div style={{overflowX:'auto'}}><table style={{width:'100%', borderCollapse:'collapse'}}><thead style={{background:'#f0fdf4'}}><tr><th style={thStyle}>Tanggal</th><th style={thStyle}>Produk</th><th style={thStyle}>Pembeli</th><th style={thStyle}>Harga</th><th style={thStyle}>Referral (Upline)</th></tr></thead><tbody>{salesData.map(s => (<tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}><td style={tdStyle}>{s.date}</td><td style={tdStyle}>{s.product}</td><td style={tdStyle}><b>{s.buyer_name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{s.buyer_phone}</span></td><td style={tdStyle}>Rp {s.amount.toLocaleString()}</td><td style={tdStyle}>{s.referrer_name !== '-' ? (<div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}><span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span><br/><span style={{fontSize:'0.75rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</span></div>) : <span style={{color:'#cbd5e1'}}>-</span>}</td></tr>))}</tbody></table></div></Card></div>)}
+          {/* TAB FINANCE (WD) */}
+          {activeTab === 'finance' && (
+             <div style={{display:'flex', flexDirection:'column', gap:'2rem'}}>
+                <Card style={{padding:'1.5rem', background:'white'}}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Wallet size={20}/> Permintaan Penarikan (WD)</h3>
+                    <div style={{overflowX:'auto'}}>
+                        <table style={{width:'100%', borderCollapse:'collapse'}}>
+                            <thead style={{background:'#fefce8'}}>
+                                <tr><th style={thStyle}>Tanggal</th><th style={thStyle}>User</th><th style={thStyle}>Jumlah</th><th style={thStyle}>Bank Info</th><th style={thStyle}>Status</th><th style={thStyle}>Aksi / ID Transaksi</th></tr>
+                            </thead>
+                            <tbody>
+                                {withdrawals.map(w => (
+                                    <tr key={w.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                        <td style={tdStyle}>{w.date}</td>
+                                        <td style={tdStyle}><b>{w.user_name}</b></td>
+                                        <td style={tdStyle}>Rp {w.amount.toLocaleString()}</td>
+                                        <td style={tdStyle}>{w.bank_info}</td>
+                                        <td style={tdStyle}><span style={{padding:'2px 8px', borderRadius:'12px', background: w.status==='approved'?'#dcfce7':'#fee2e2', color: w.status==='approved'?'#166534':'#991b1b', fontSize:'0.75rem', fontWeight:'bold'}}>{w.status.toUpperCase()}</span></td>
+                                        <td style={tdStyle}>{w.status === 'pending' ? (<div style={{display:'flex', gap:'0.5rem'}}><input placeholder="No. Bukti Transfer..." style={{...selectStyle, width:'150px'}} value={wdProcessingId === w.id ? wdRefInput : ''} onChange={e => { setWdProcessingId(w.id); setWdRefInput(e.target.value); }} /><button onClick={() => handleApproveWD(w.id)} disabled={btnLoading} style={{background:'#16a34a', color:'white', border:'none', borderRadius:'6px', padding:'0.4rem', cursor:'pointer'}}><CheckCircle size={16}/></button></div>) : (<span style={{fontSize:'0.8rem', color:'#64748b'}}>Ref: {w.transaction_ref}</span>)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+             </div>
+          )}
 
         </main>
       </div>
