@@ -33,7 +33,7 @@ const UserDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [products, setProducts] = useState([]); // [BARU] State Produk
+  const [products, setProducts] = useState([]); 
   
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
@@ -50,7 +50,7 @@ const UserDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false); 
-  const [snapLoaded, setSnapLoaded] = useState(false); // [BARU] Status Snap.js
+  const [snapLoaded, setSnapLoaded] = useState(false); 
   
   // Theme & Dark Mode
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
@@ -91,22 +91,32 @@ const UserDashboard = () => {
     fetchData();
     fetchDailyContent();
     fetchArticles();
-    fetchProducts(); // [BARU] Ambil Produk dari API
+    fetchProducts(); 
     setQuote(getRandomQuote());
     
-    // [BARU] Load Midtrans Snap Script
-    const snapScriptUrl = "https://app.sandbox.midtrans.com/snap/snap.js"; 
-    const clientKey = "SB-Mid-client-61XuGAwQ8Bj8LxSS"; 
+    // [PERBAIKAN PENTING] Load Midtrans Snap Script (PRODUCTION)
+    // URL Production: app.midtrans.com (BUKAN app.sandbox.midtrans.com)
+    const snapScriptUrl = "https://app.midtrans.com/snap/snap.js"; 
+    
+    // Key Production Anda
+    const clientKey = "Mid-client-dXaTaEerstu_IviP"; 
+    
     const script = document.createElement('script');
     script.src = snapScriptUrl;
     script.setAttribute('data-client-key', clientKey);
-    script.onload = () => setSnapLoaded(true);
+    script.onload = () => {
+        console.log("Snap Production Script Loaded");
+        setSnapLoaded(true);
+    };
     script.async = true;
     document.body.appendChild(script);
 
     return () => {
         window.removeEventListener('resize', handleResize);
-        document.body.removeChild(script);
+        // Cek apakah script ada sebelum remove
+        if(document.body.contains(script)){
+            document.body.removeChild(script);
+        }
     };
   }, []);
 
@@ -171,7 +181,7 @@ const UserDashboard = () => {
   const fetchDailyContent = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); setDailyData(res.data); if (res.data.today_status) setCheckinStatus(res.data.today_status); else setCheckinStatus(null); } catch (err) {} };
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (err) {} };
   
-  // [BARU] Fetch Produk
+  // Fetch Produk
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
 
   const getRandomQuote = () => {
@@ -262,7 +272,7 @@ const UserDashboard = () => {
 
   const triggerFileInput = () => { fileInputRef.current.click(); };
 
-  // [BARU] MIDTRANS PAYMENT HANDLER
+  // MIDTRANS PAYMENT HANDLER
   const handleBuyProduct = async (productName, price) => {
       if (!snapLoaded) { alert("Sistem pembayaran sedang dimuat. Coba sebentar lagi."); return; }
       try {
@@ -453,7 +463,7 @@ const UserDashboard = () => {
                   
                   {/* CHAT DOKTER AI */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
-                     <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
+                      <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
                         <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
                             <MessageCircle size={24} color={currentTheme.text} />
                         </div>
@@ -461,34 +471,34 @@ const UserDashboard = () => {
                             <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px' }}>Dokter AI Jates9</h3>
                             <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dokter AI</p>
                         </div>
-                     </div>
+                      </div>
 
-                     <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
-                         {chatHistory.map((msg, i) => (
-                           <div key={i} style={{ 
-                             padding:'0.6rem 1rem', 
-                             background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), 
-                             borderRadius:'12px', 
-                             borderBottomRightRadius: msg.role==='user' ? '2px' : '12px',
-                             borderTopLeftRadius: msg.role==='assistant' ? '2px' : '12px',
-                             marginBottom:'0.8rem', 
-                             maxWidth:'85%',
-                             alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start',
-                             marginLeft: msg.role==='user' ? 'auto' : '0',
-                             color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'),
-                             fontSize: '0.9rem',
-                             lineHeight: '1.5'
-                           }}>
-                             {msg.content}
-                           </div>
-                         ))}
-                         {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Sedang mengetik...</div>}
-                         <div ref={chatEndRef}></div>
-                     </div>
-                     <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}>
-                        <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." />
-                        <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button>
-                     </form>
+                      <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
+                          {chatHistory.map((msg, i) => (
+                            <div key={i} style={{ 
+                              padding:'0.6rem 1rem', 
+                              background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), 
+                              borderRadius:'12px', 
+                              borderBottomRightRadius: msg.role==='user' ? '2px' : '12px',
+                              borderTopLeftRadius: msg.role==='assistant' ? '2px' : '12px',
+                              marginBottom:'0.8rem', 
+                              maxWidth:'85%',
+                              alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start',
+                              marginLeft: msg.role==='user' ? 'auto' : '0',
+                              color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'),
+                              fontSize: '0.9rem',
+                              lineHeight: '1.5'
+                            }}>
+                              {msg.content}
+                            </div>
+                          ))}
+                          {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Sedang mengetik...</div>}
+                          <div ref={chatEndRef}></div>
+                      </div>
+                      <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}>
+                         <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." />
+                         <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button>
+                      </form>
                   </Card>
 
                   {/* ARTIKEL KESEHATAN */}
@@ -556,7 +566,7 @@ const UserDashboard = () => {
           
           {activeTab === 'friends' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}><Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}><div style={{ textAlign: 'center', color: '#166534' }}><div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div><h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3></div></Card>{myFriends.map((friend, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}><CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div><div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a' }}>{friend.name}</h4><div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}><span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span><span style={{ color: '#64748b' }}>• {friend.relation}</span></div></div></CardContent></Card>))}</div></div>)}
           
-          {/* [BARU] TAB SHOP DENGAN PRODUK DARI API + MIDTRANS + DUMMY SOLD */}
+          {/* TAB SHOP DENGAN PRODUK DARI API + MIDTRANS + DUMMY SOLD */}
           {activeTab === 'shop' && (
              <div>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -634,8 +644,8 @@ const UserDashboard = () => {
                            </div>
                            <div>
                               <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>
-                                 {uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>}
-                                 {uploadingImage ? "Mengupload..." : "Ganti Foto"}
+                                  {uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>}
+                                  {uploadingImage ? "Mengupload..." : "Ganti Foto"}
                               </button>
                               <p style={{fontSize:'0.75rem', color:'#64748b', marginTop:'0.5rem'}}>Max 2MB (JPG/PNG)</p>
                            </div>
@@ -692,12 +702,12 @@ const UserDashboard = () => {
                              </div>
                           </button>
                           <button onClick={handleInstallApp} style={{ display:'flex', alignItems:'center', gap:'0.8rem', width:'100%', padding:'1rem', background: darkMode ? '#334155' : '#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', color: darkMode?'white':'black', textAlign:'left' }}>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Smartphone size={20} color={currentTheme.text}/></div>
-                              <div><div style={{fontWeight:'bold'}}>Install Aplikasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Tambahkan ke Layar Utama</div></div>
+                             <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Smartphone size={20} color={currentTheme.text}/></div>
+                             <div><div style={{fontWeight:'bold'}}>Install Aplikasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Tambahkan ke Layar Utama</div></div>
                           </button>
                           <button onClick={() => setShowPrivacyModal(true)} style={{ display:'flex', alignItems:'center', gap:'0.8rem', width:'100%', padding:'1rem', background: darkMode ? '#334155' : '#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', color: darkMode?'white':'black', textAlign:'left' }}>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Shield size={20} color="#ef4444"/></div>
-                              <div><div style={{fontWeight:'bold'}}>Kebijakan Privasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Ketentuan penggunaan data</div></div>
+                             <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Shield size={20} color="#ef4444"/></div>
+                             <div><div style={{fontWeight:'bold'}}>Kebijakan Privasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Ketentuan penggunaan data</div></div>
                           </button>
                        </div>
                     </CardContent>
