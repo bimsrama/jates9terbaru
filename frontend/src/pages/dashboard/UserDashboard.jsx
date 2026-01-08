@@ -32,7 +32,8 @@ const UserDashboard = () => {
   const [challenges, setChallenges] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
-  const [articles, setArticles] = useState([]); 
+  const [articles, setArticles] = useState([]);
+  const [products, setProducts] = useState([]); // [BARU] State Produk
   
   // --- STATE DAILY CONTENT & CHECKIN ---
   const [dailyData, setDailyData] = useState(null);
@@ -49,6 +50,7 @@ const UserDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false); 
+  const [snapLoaded, setSnapLoaded] = useState(false); // [BARU] Status Snap.js
   
   // Theme & Dark Mode
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
@@ -88,10 +90,24 @@ const UserDashboard = () => {
     
     fetchData();
     fetchDailyContent();
-    fetchArticles(); 
+    fetchArticles();
+    fetchProducts(); // [BARU] Ambil Produk dari API
     setQuote(getRandomQuote());
     
-    return () => window.removeEventListener('resize', handleResize);
+    // [BARU] Load Midtrans Snap Script
+    const snapScriptUrl = "https://app.sandbox.midtrans.com/snap/snap.js"; 
+    const clientKey = "SB-Mid-client-61XuGAwQ8Bj8LxSS"; 
+    const script = document.createElement('script');
+    script.src = snapScriptUrl;
+    script.setAttribute('data-client-key', clientKey);
+    script.onload = () => setSnapLoaded(true);
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        document.body.removeChild(script);
+    };
   }, []);
 
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
@@ -154,13 +170,16 @@ const UserDashboard = () => {
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (error) {} };
   const fetchDailyContent = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); setDailyData(res.data); if (res.data.today_status) setCheckinStatus(res.data.today_status); else setCheckinStatus(null); } catch (err) {} };
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (err) {} };
+  
+  // [BARU] Fetch Produk
+  const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
 
   const getRandomQuote = () => {
     const quotes = ["Kesehatan adalah kekayaan sejati.", "Satu langkah kecil hari ini, dampak besar di masa depan.", "Tubuhmu adalah satu-satunya tempatmu tinggal.", "Konsistensi mengalahkan intensitas."];
     return quotes[Math.floor(Math.random() * quotes.length)];
   };
 
-  const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles()]); setQuote(getRandomQuote()); setIsRefreshing(false); };
+  const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles(), fetchProducts()]); setQuote(getRandomQuote()); setIsRefreshing(false); };
   
   const generateDailyTip = (group) => {
     const tips = { 'A': "💡 Tipe A (Sembelit): Perbanyak air hangat & serat.", 'B': "💡 Tipe B (Kembung): Hindari santan & pedas.", 'C': "💡 Tipe C (GERD): Jaga jam makan.", 'Sehat': "💡 Info Sehat: Olahraga ringan & tidur cukup." };
@@ -181,7 +200,15 @@ const UserDashboard = () => {
       if (isSubmitting) return; setIsSubmitting(true);
       try {
           const res = await axios.post(`${BACKEND_URL}/api/checkin`, { journal, status: forcedStatus }, { headers: getAuthHeader() });
-          if (res.data.success) { setCheckinStatus(forcedStatus); if(forcedStatus === 'completed') { alert("✅ Selesai! Hebat."); fetchData(); } else { alert("🕒 Status Pending."); } }
+          if (res.data.success) { 
+            setCheckinStatus(forcedStatus); 
+            if(forcedStatus === 'completed') { 
+                alert("✅ Selesai! Hebat."); 
+                fetchData(); 
+            } else { 
+                alert("🕒 Oke, status PENDING tersimpan. Selesaikan sebelum jam 19:00!"); 
+            } 
+          }
       } catch (err) { alert(err.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); }
   };
 
@@ -213,7 +240,6 @@ const UserDashboard = () => {
   const handleOpenFriendProfile = () => { if(friendData) { setShowQRModal(false); setShowFriendProfile(true); } };
   const handleArticleClick = (articleId) => { navigate(`/article/${articleId}`); };
 
-  // FUNGSI UPLOAD FOTO PROFILE
   const handleProfilePictureUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -224,28 +250,35 @@ const UserDashboard = () => {
 
     try {
         const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, {
-            headers: {
-                ...getAuthHeader(),
-                'Content-Type': 'multipart/form-data',
-            },
+            headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' },
         });
 
         if (res.data.success) {
-            setOverview(prev => ({
-                ...prev,
-                user: { ...prev.user, profile_picture: res.data.image_url }
-            }));
+            setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } }));
             alert("Foto profil berhasil diperbarui!");
         }
-    } catch (error) {
-        alert("Gagal mengupload foto. Coba lagi.");
-    } finally {
-        setUploadingImage(false);
-    }
+    } catch (error) { alert("Gagal mengupload foto. Coba lagi."); } finally { setUploadingImage(false); }
   };
 
-  const triggerFileInput = () => {
-    fileInputRef.current.click();
+  const triggerFileInput = () => { fileInputRef.current.click(); };
+
+  // [BARU] MIDTRANS PAYMENT HANDLER
+  const handleBuyProduct = async (productName, price) => {
+      if (!snapLoaded) { alert("Sistem pembayaran sedang dimuat. Coba sebentar lagi."); return; }
+      try {
+          const response = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, {
+              amount: typeof price === 'number' ? price : parseInt(price.replace(/[^0-9]/g, '')),
+              item_name: productName
+          }, { headers: getAuthHeader() });
+  
+          if (response.data.success) {
+              window.snap.pay(response.data.token, {
+                  onSuccess: function(result) { alert("Pembayaran Berhasil! Pesanan diproses."); console.log(result); },
+                  onPending: function(result) { alert("Menunggu pembayaran Anda!"); console.log(result); },
+                  onError: function(result) { alert("Pembayaran gagal!"); console.log(result); }
+              });
+          }
+      } catch (error) { alert("Terjadi kesalahan saat memproses pembayaran."); }
   };
 
   const currentChallenge = challenges.find(c => c.id === overview?.user?.challenge_id) || { title: "Belum Ada Challenge", description: "Pilih tantangan di bawah" };
@@ -317,7 +350,6 @@ const UserDashboard = () => {
           {/* DASHBOARD VIEW */}
           {activeTab === 'dashboard' && (
             <>
-              {/* [HAPUS JUDUL DASHBOARD] */}
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{challengeDay}.</p>
               </div>
@@ -339,7 +371,6 @@ const UserDashboard = () => {
                                   <User size={35} color={currentTheme.text} />
                               )}
                           </div>
-                          {/* Tombol Edit Foto Kecil */}
                           <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: 'white', borderRadius: '50%', padding: '4px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}>
                               <Edit2 size={12} color="#475569" />
                           </button>
@@ -409,7 +440,7 @@ const UserDashboard = () => {
                            {/* [KEMBALIKAN TOMBOL] SAYA SUDAH LAKUKAN & NANTI SAJA */}
                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                               <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
-                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Saya Sudah Lakukan</button>
+                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
                            </div>
                         </div>
                       )}
@@ -422,7 +453,6 @@ const UserDashboard = () => {
                   
                   {/* CHAT DOKTER AI */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
-                     {/* Header Dokter AI */}
                      <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
                         <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
                             <MessageCircle size={24} color={currentTheme.text} />
@@ -466,15 +496,11 @@ const UserDashboard = () => {
                       <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
                       {articles.map(article => (
                           <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
-                              
-                              {/* Ikon FileText sebagai pengganti gambar */}
                               <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
                                   <FileText size={24} color={currentTheme.text}/>
                               </div>
-                              
                               <div style={{flex:1}}>
                                  <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
-                                 {/* Reading Time */}
                                  <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
                                     <Clock size={12}/> {article.reading_time || "3 min"} baca
                                  </p>
@@ -484,7 +510,7 @@ const UserDashboard = () => {
                       ))}
                   </Card>
 
-                  {/* REKOMENDASI CHALLENGE (DIKEMBALIKAN) */}
+                  {/* [KEMBALIKAN] REKOMENDASI CHALLENGE */}
                   <div>
                     <h3 className="heading-3" style={{marginBottom:'0.8rem', fontSize:'1rem'}}>Rekomendasi Challenge</h3>
                     <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', width: '100%' }}>
@@ -508,24 +534,8 @@ const UserDashboard = () => {
                     <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
                         "{quote}"
                     </p>
-                    <button 
-                        onClick={handleRefresh} 
-                        disabled={isRefreshing} 
-                        style={{ 
-                            background: 'transparent', 
-                            border: 'none', 
-                            color: darkMode ? '#cbd5e1' : '#475569', 
-                            fontSize: '0.85rem', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            gap: '0.5rem', 
-                            margin: '0 auto', 
-                            cursor: 'pointer' 
-                        }}
-                    >
-                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> 
-                        {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
                     </button>
                   </div>
 
@@ -546,7 +556,49 @@ const UserDashboard = () => {
           
           {activeTab === 'friends' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}><Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}><div style={{ textAlign: 'center', color: '#166534' }}><div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div><h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3></div></Card>{myFriends.map((friend, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}><CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div><div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a' }}>{friend.name}</h4><div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}><span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span><span style={{ color: '#64748b' }}>• {friend.relation}</span></div></div></CardContent></Card>))}</div></div>)}
           
-          {activeTab === 'shop' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Toko & Produk</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>{[{ name: "Jates9 - 5ml (Trial)", price: "Rp 75.000", desc: "Cocok untuk pemula. Cukup untuk 7 hari.", img: "pack" }, { name: "Jates9 - 10ml (Reguler)", price: "Rp 135.000", desc: "Ukuran standar untuk konsumsi rutin.", img: "package" }, { name: "Paket Sehat (3x 10ml)", price: "Rp 350.000", desc: "Hemat Rp 55.000! Stok untuk sebulan.", img: "star" }].map((prod, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0' }}><div style={{ height: '180px', background: darkMode ? '#334155' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}><Package size={64} color="#94a3b8"/></div><CardContent style={{ padding: '1.5rem' }}><h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem', color: darkMode ? 'white' : 'black' }}>{prod.name}</h3><p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.desc}</p><div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>{prod.price}</span><a href={`https://shopee.co.id/jates9?ref=${overview?.user?.referral_code}`} target="_blank" rel="noreferrer" style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><ShoppingBag size={16}/> Beli di Shopee</a></div></CardContent></Card>))}</div></div>)}
+          {/* [BARU] TAB SHOP DENGAN PRODUK DARI API + MIDTRANS + DUMMY SOLD */}
+          {activeTab === 'shop' && (
+             <div>
+                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                   <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                   <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Toko & Produk</h1>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                   {products.length > 0 ? products.map((prod) => (
+                      <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0' }}>
+                         <div style={{ height: '180px', background: darkMode ? '#334155' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0', overflow:'hidden' }}>
+                            {prod.image_url ? (
+                                <img src={`${BACKEND_URL}${prod.image_url}`} alt={prod.name} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                            ) : (
+                                <Package size={64} color="#94a3b8"/>
+                            )}
+                         </div>
+                         <CardContent style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem', color: darkMode ? 'white' : 'black' }}>{prod.name}</h3>
+                            <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.description}</p>
+                            
+                            {/* DUMMY SOLD COUNT */}
+                            <div style={{fontSize:'0.75rem', color:'#64748b', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.3rem'}}>
+                                <CheckCircle size={12} color="#16a34a"/> Terjual: <b>{prod.fake_sales || 0} pcs</b>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                               <span style={{ fontWeight: 'bold', color: '#166534', fontSize: '1.1rem' }}>Rp {prod.price.toLocaleString()}</span>
+                               <button 
+                                  onClick={() => handleBuyProduct(prod.name, prod.price)} 
+                                  style={{ background: '#ee4d2d', color: 'white', padding: '0.5rem 1rem', borderRadius: '6px', border:'none', fontSize: '0.9rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                               >
+                                  <ShoppingBag size={16}/> Beli Sekarang
+                               </button>
+                            </div>
+                         </CardContent>
+                      </Card>
+                   )) : (
+                      <p style={{color:'#64748b'}}>Belum ada produk.</p>
+                   )}
+                </div>
+             </div>
+          )}
 
           {/* SETTINGS PAGE */}
           {activeTab === 'settings' && (
@@ -685,8 +737,12 @@ const UserDashboard = () => {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowFriendProfile(false)}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
                 <div style={{ background: `linear-gradient(135deg, ${currentTheme.light} 0%, ${currentTheme.primary} 100%)`, padding: '2rem 1rem', textAlign: 'center' }}>
-                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                        <User size={40} color={currentTheme.text} />
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px solid white' }}>
+                        {friendData.profile_picture ? (
+                           <img src={`${BACKEND_URL}${friendData.profile_picture}`} alt={friendData.name} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                        ) : (
+                           <User size={40} color={currentTheme.text} />
+                        )}
                     </div>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '0.2rem' }}>{friendData.name}</h2>
                     <div className="gold-badge" style={{ display: 'inline-flex', marginTop: '0.5rem' }}><Medal size={14}/> {friendData.badge}</div>
