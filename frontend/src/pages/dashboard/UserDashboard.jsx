@@ -707,7 +707,8 @@ const UserDashboard = () => {
                                 <div style={{width:'60px', height:'60px', background:'#f1f5f9', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center'}}><Box size={24} color="#64748b"/></div>
                                 <div style={{flex:1}}>
                                     <div style={{display:'flex', justifyContent:'space-between'}}><h4 style={{fontWeight:'bold', fontSize:'0.95rem'}}>{order.product_name}</h4><span style={{fontSize:'0.75rem', fontWeight:'bold', padding:'2px 8px', borderRadius:'12px', background: order.status==='paid'?'#dcfce7': order.status==='shipped'?'#dbeafe':'#fff7ed', color: order.status==='paid'?'#166534': order.status==='shipped'?'#1e40af':'#9a3412'}}>{order.status === 'pending' ? 'Menunggu Bayar' : order.status === 'paid' ? 'Dikemas' : order.status === 'shipped' ? 'Dikirim' : order.status}</span></div>
-                                    <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} • {order.shipping_method.toUpperCase()}</p>
+                                    {/* FIX ERROR toUpperCase() pada data lama */}
+                                    <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} • {(order.shipping_method || 'pickup').toUpperCase()}</p>
                                     {order.resi && <p style={{fontSize:'0.8rem', color:'#1e40af', marginTop:'0.2rem'}}>Resi: {order.resi}</p>}
                                 </div>
                             </div>
