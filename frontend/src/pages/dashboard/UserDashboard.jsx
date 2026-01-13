@@ -12,7 +12,7 @@ import {
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vitalyst.com/backend_api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
 // --- KONFIGURASI TOKO ---
 const STORE_LOCATION = { lat: -6.175392, lng: 106.827153 }; // Monas Jakarta
@@ -171,10 +171,10 @@ const UserDashboard = () => {
       setSelectedProduct(product);
       setShippingCost(0);
       setShippingMethod('pickup');
-      // Auto-Fill dari data User
+      // [FIX] Auto-Fill dari data User yang sudah di-fetch
       setRecipientName(overview?.user?.name || "");
       setRecipientPhone(overview?.user?.phone || "");
-      setShippingAddress(overview?.user?.address || ""); // [FITUR BARU] Ambil alamat tersimpan
+      setShippingAddress(overview?.user?.address || ""); // Alamat otomatis terisi
       setAppliedCoupon(null);
       setCouponCode("");
       setShowCheckoutModal(true);
@@ -183,7 +183,6 @@ const UserDashboard = () => {
   const checkCoupon = () => {
       setCouponError("");
       if (!couponCode) return;
-      // Simulasi Kupon (Bisa diganti API)
       if (couponCode.toUpperCase() === 'HEMAT10') {
           setAppliedCoupon({ code: 'HEMAT10', amount: 10000 });
       } else if (couponCode.toUpperCase() === 'VITALYST') {
@@ -209,7 +208,7 @@ const UserDashboard = () => {
               shipping_cost: shippingCost,
               latitude: userLocation?.lat,
               longitude: userLocation?.lng,
-              coupon_code: appliedCoupon?.code || "" // Kirim kode kupon
+              coupon_code: appliedCoupon?.code || "" 
           }, { headers: getAuthHeader() });
   
           if (response.data.success) {
@@ -265,7 +264,204 @@ const UserDashboard = () => {
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
           
           {/* CONTENT DASHBOARD/CHECKIN/SETTINGS SAMA... */}
-          {activeTab === 'dashboard' && (<div><h2 className="heading-2">Halo, {overview?.user?.name}</h2></div>)}
+          {activeTab === 'dashboard' && (
+            <>
+              <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
+                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day || 1}.</p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
+                
+                {/* KOLOM KIRI */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                  
+                  {/* Profil Card */}
+                  <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--theme-gradient)', color: darkMode ? 'white' : '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+                    <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {/* FOTO PROFIL */}
+                      <div style={{ position: 'relative' }}>
+                          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '2px solid white' }}>
+                              {overview?.user?.profile_picture ? (
+                                  <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                  <User size={35} color={currentTheme.text} />
+                              )}
+                          </div>
+                          <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: 'white', borderRadius: '50%', padding: '4px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}>
+                              <Edit2 size={12} color="#475569" />
+                          </button>
+                      </div>
+
+                      <div>
+                        <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
+                        <div className="gold-badge"><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Tantangan Aktif */}
+                  <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardContent style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Tantangan Aktif</h3></div>
+                          <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: currentTheme.text, fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={14} /></button>
+                        </div>
+                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
+                          <div style={{ marginBottom: '0.75rem' }}>
+                              <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
+                              <span style={{ fontSize: '0.75rem', background: currentTheme.light, color: currentTheme.text, padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                              <div style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100))}%</span></div>
+                                  <div style={{ height: '6px', background: darkMode ? '#475569' : '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100)}%`, height: '100%', background: currentTheme.primary, borderRadius: '4px' }}></div></div>
+                              </div>
+                          </div>
+                        </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Check-in */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader style={{paddingBottom:'0.5rem'}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize: '1.1rem', color: darkMode ? 'white' : 'black'}}>
+                          <Activity size={20} color={currentTheme.text}/> Misi Hari Ini
+                        </CardTitle>
+                        {checkinStatus === 'completed' && <span style={{fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><CheckCircle size={12}/> Selesai</span>}
+                        {checkinStatus === 'pending' && <span style={{fontSize: '0.75rem', background: '#fffbeb', color: '#d97706', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><Clock size={12}/> Pending</span>}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {dailyData && (
+                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
+                          <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>Info Sehat:</h4>
+                          <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155' }}>{dailyData.fact || dailyData.message}</p>
+                        </div>
+                      )}
+                      {(checkinStatus === 'completed' || checkinStatus === 'skipped') ? (
+                        <div style={{ textAlign: 'center', padding: '1.5rem', background: checkinStatus === 'completed' ? '#f0fdf4' : '#fef2f2', borderRadius: '12px' }}>
+                           <h3 style={{fontWeight:'bold', color: checkinStatus === 'completed' ? '#166534' : '#991b1b'}}>Misi Selesai!</h3>
+                        </div>
+                      ) : (
+                        <div>
+                           {dailyData?.tasks?.map((task, idx) => (
+                             <div key={idx} style={{ padding: '0.8rem', background: darkMode ? '#334155' : '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom:'0.5rem', display:'flex', gap:'0.5rem', alignItems:'center', color: darkMode ? 'white' : 'black' }}>
+                               <div style={{width:'8px', height:'8px', borderRadius:'50%', background: currentTheme.primary}}></div>
+                               {task}
+                             </div>
+                           ))}
+                           <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
+                           
+                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                              <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
+                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
+                           </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+                
+                {/* KOLOM KANAN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                  
+                  {/* CHAT DOKTER AI (UPDATED) */}
+                  <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
+                      <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
+                        {/* Icon AI Baru */}
+                        <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
+                            <Bot size={24} color={currentTheme.text} />
+                        </div>
+                        <div>
+                            {/* Nama Baru + Icon Sparkles */}
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}>
+                                Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/>
+                            </h3>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dr. Alva</p>
+                        </div>
+                      </div>
+
+                      <div style={{flex:1, overflowY:'auto', padding:'1rem'}}>
+                          {chatHistory.map((msg, i) => (
+                            <div key={i} style={{ 
+                              padding:'0.6rem 1rem', 
+                              background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), 
+                              borderRadius:'12px', 
+                              borderBottomRightRadius: msg.role==='user' ? '2px' : '12px',
+                              borderTopLeftRadius: msg.role==='assistant' ? '2px' : '12px',
+                              marginBottom:'0.8rem', 
+                              maxWidth:'85%',
+                              alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start',
+                              marginLeft: msg.role==='user' ? 'auto' : '0',
+                              color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'),
+                              fontSize: '0.9rem',
+                              lineHeight: '1.5'
+                            }}>
+                              {msg.content}
+                            </div>
+                          ))}
+                          {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Dr. Alva sedang mengetik...</div>}
+                          <div ref={chatEndRef}></div>
+                      </div>
+                      <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}>
+                         <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." />
+                         <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button>
+                      </form>
+                  </Card>
+
+                  {/* ARTIKEL KESEHATAN */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
+                      <h3 style={{marginBottom:'1rem', fontWeight:'bold'}}>Artikel Kesehatan</h3>
+                      {articles.map(article => (
+                          <div key={article.id} onClick={() => handleArticleClick(article.id)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'12px', marginBottom:'0.8rem', cursor:'pointer', border: darkMode ? 'none' : '1px solid #e2e8f0', alignItems:'center' }}>
+                              <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+                                  <FileText size={24} color={currentTheme.text}/>
+                              </div>
+                              <div style={{flex:1}}>
+                                 <h4 style={{fontWeight:'bold', fontSize:'0.9rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4>
+                                 <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}>
+                                    <Clock size={12}/> {article.reading_time || "3 min"} baca
+                                 </p>
+                              </div>
+                              <ChevronRight size={18} color="#94a3b8"/>
+                          </div>
+                      ))}
+                  </Card>
+
+                  {/* REKOMENDASI CHALLENGE */}
+                  <div>
+                    <h3 className="heading-3" style={{marginBottom:'0.8rem', fontSize:'1rem'}}>Rekomendasi Challenge</h3>
+                    <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', width: '100%' }}>
+                      {challenges.map((ch) => (
+                        <div key={ch.id} style={{ minWidth: '200px', maxWidth: '200px', background: darkMode ? '#334155' : 'white', border: darkMode ? 'none' : '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display:'flex', flexDirection:'column', justifyContent:'space-between', flexShrink: 0 }}>
+                          <div>
+                            <div style={{width:'36px', height:'36px', background: currentTheme.light, borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'0.5rem'}}>
+                                <Activity size={18} color={currentTheme.text}/>
+                            </div>
+                            <h4 style={{ fontWeight: 'bold', fontSize: '0.9rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'0.3rem' }}>{ch.title}</h4>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ch.description}</p>
+                          </div>
+                          <button onClick={() => handleSwitchChallenge(ch.id)} style={{ marginTop: '0.8rem', width: '100%', padding: '0.4rem', border: `1px solid ${currentTheme.text}`, background: 'transparent', color: currentTheme.text, borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>Detail</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* QUOTE & REFRESH */}
+                  <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
+                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                        "{quote}"
+                    </p>
+                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
+                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </>
+          )}
 
           {/* FITUR TOKO */}
           {activeTab === 'shop' && (
@@ -310,9 +506,7 @@ const UserDashboard = () => {
                             </div>
                          </CardContent>
                       </Card>
-                   )) : (
-                      <p style={{color:'#64748b'}}>Belum ada produk.</p>
-                   )}
+                   ))}
                 </div>
              </div>
           )}
@@ -430,13 +624,107 @@ const UserDashboard = () => {
         </main>
       </div>
 
+      {/* MODAL CHECKOUT */}
+      {showCheckoutModal && selectedProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
+            <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'90vh', overflowY:'auto' }}>
+                <h3 style={{ fontSize:'1.4rem', fontWeight:'bold', marginBottom:'1.5rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem' }}>Checkout Pesanan</h3>
+                
+                <div style={{marginBottom:'1rem'}}>
+                    <h4 style={{fontWeight:'bold', marginBottom:'0.2rem'}}>{selectedProduct.name}</h4>
+                    <p style={{color:'#64748b'}}>Harga Satuan: Rp {selectedProduct.price.toLocaleString()}</p>
+                </div>
+
+                <div style={{marginBottom:'1rem'}}>
+                    <label style={{display:'block', marginBottom:'0.3rem', fontWeight:'bold', fontSize:'0.9rem'}}>Data Penerima</label>
+                    <input value={recipientName} onChange={(e)=>setRecipientName(e.target.value)} placeholder="Nama Penerima" style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', borderRadius:'6px', border:'1px solid #ccc'}} />
+                    <input value={recipientPhone} onChange={(e)=>setRecipientPhone(e.target.value)} placeholder="Nomor HP" style={{width:'100%', padding:'0.6rem', borderRadius:'6px', border:'1px solid #ccc'}} />
+                </div>
+
+                <div style={{marginBottom:'1rem'}}>
+                    <label style={{display:'block', marginBottom:'0.3rem', fontWeight:'bold', fontSize:'0.9rem'}}>Metode Pengiriman</label>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                        <button onClick={()=>{setShippingMethod('pickup'); setShippingCost(0);}} style={{padding:'0.6rem', border: shippingMethod==='pickup'?`2px solid ${currentTheme.primary}`:'1px solid #ccc', background: shippingMethod==='pickup'?currentTheme.light:'white', borderRadius:'8px', cursor:'pointer', fontWeight:'bold'}}>Ambil di Toko</button>
+                        <button onClick={()=>{setShippingMethod('jne');}} style={{padding:'0.6rem', border: shippingMethod==='jne'?`2px solid ${currentTheme.primary}`:'1px solid #ccc', background: shippingMethod==='jne'?currentTheme.light:'white', borderRadius:'8px', cursor:'pointer', fontWeight:'bold'}}>JNE (Kirim)</button>
+                    </div>
+                </div>
+
+                {shippingMethod === 'jne' && (
+                    <div style={{marginBottom:'1rem', background:'#f8fafc', padding:'1rem', borderRadius:'8px'}}>
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}>
+                            <label style={{fontWeight:'bold', fontSize:'0.9rem'}}>Alamat Pengiriman</label>
+                            <button onClick={handleGetLocation} disabled={isGettingLocation} style={{background: currentTheme.primary, border:'none', padding:'0.4rem 0.8rem', borderRadius:'20px', fontSize:'0.75rem', fontWeight:'bold', display:'flex', gap:'0.3rem', alignItems:'center', cursor:'pointer'}}>
+                                {isGettingLocation ? "Mencari..." : <><MapPin size={12}/> Tag Lokasi</>}
+                            </button>
+                        </div>
+                        <textarea 
+                            value={shippingAddress} 
+                            onChange={(e)=>setShippingAddress(e.target.value)} 
+                            placeholder="Alamat lengkap..." 
+                            rows={2} 
+                            style={{width:'100%', padding:'0.6rem', borderRadius:'6px', border:'1px solid #ccc', fontSize:'0.9rem'}}
+                        ></textarea>
+                    </div>
+                )}
+
+                <div style={{marginBottom:'1.5rem'}}>
+                    <label style={{display:'block', marginBottom:'0.3rem', fontWeight:'bold', fontSize:'0.9rem'}}>Kode Kupon</label>
+                    <div style={{display:'flex', gap:'0.5rem'}}>
+                        <input value={couponCode} onChange={(e)=>setCouponCode(e.target.value)} placeholder="Contoh: HEMAT10" style={{flex:1, padding:'0.6rem', borderRadius:'6px', border:'1px solid #ccc'}} />
+                        <button onClick={checkCoupon} style={{background:'#0f172a', color:'white', border:'none', padding:'0 1rem', borderRadius:'6px', fontWeight:'bold', cursor:'pointer'}}>Cek</button>
+                    </div>
+                    {couponError && <p style={{fontSize:'0.8rem', color:'red', marginTop:'0.2rem'}}>{couponError}</p>}
+                    {appliedCoupon && <p style={{fontSize:'0.8rem', color:'green', marginTop:'0.2rem'}}>Diskon Rp {appliedCoupon.amount.toLocaleString()} diterapkan!</p>}
+                </div>
+
+                <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Subtotal</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Ongkos Kirim</span><span>Rp {shippingCost.toLocaleString()}</span></div>
+                    {appliedCoupon && <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem', color:'green'}}><span>Diskon Kupon</span><span>- Rp {appliedCoupon.amount.toLocaleString()}</span></div>}
+                    <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.2rem', marginTop:'0.5rem'}}><span>Total Bayar</span><span>Rp {(selectedProduct.price + shippingCost - (appliedCoupon?.amount || 0)).toLocaleString()}</span></div>
+                </div>
+
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                    <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Batal</button>
+                    <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background:'#ee4d2d', color:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Bayar Sekarang</button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL RIWAYAT PESANAN */}
+      {showOrderHistory && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
+            <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', maxWidth: '600px', width: '90%', maxHeight:'80vh', overflowY:'auto' }}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                    <h3 style={{ fontSize:'1.4rem', fontWeight:'bold' }}>Status Pesanan</h3>
+                    <button onClick={()=>setShowOrderHistory(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24}/></button>
+                </div>
+                {myOrders.length === 0 ? <p style={{color:'#64748b', textAlign:'center'}}>Belum ada pesanan.</p> : (
+                    <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                        {myOrders.map((order, idx) => (
+                            <div key={idx} style={{border:'1px solid #e2e8f0', borderRadius:'12px', padding:'1rem', display:'flex', gap:'1rem', alignItems:'center'}}>
+                                <div style={{width:'60px', height:'60px', background:'#f1f5f9', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center'}}><Box size={24} color="#64748b"/></div>
+                                <div style={{flex:1}}>
+                                    <div style={{display:'flex', justifyContent:'space-between'}}><h4 style={{fontWeight:'bold', fontSize:'0.95rem'}}>{order.product_name}</h4><span style={{fontSize:'0.75rem', fontWeight:'bold', padding:'2px 8px', borderRadius:'12px', background: order.status==='paid'?'#dcfce7': order.status==='shipped'?'#dbeafe':'#fff7ed', color: order.status==='paid'?'#166534': order.status==='shipped'?'#1e40af':'#9a3412'}}>{order.status === 'pending' ? 'Menunggu Bayar' : order.status === 'paid' ? 'Dikemas' : order.status === 'shipped' ? 'Dikirim' : order.status}</span></div>
+                                    <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} • {order.shipping_method.toUpperCase()}</p>
+                                    {order.resi && <p style={{fontSize:'0.8rem', color:'#1e40af', marginTop:'0.2rem'}}>Resi: {order.resi}</p>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+          </div>
+      )}
+
       {/* MODAL PRIVASI */}
       {showPrivacyModal && (
          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
             <div style={{ background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'80vh', overflowY:'auto' }}>
                <h3 style={{ fontSize:'1.4rem', fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Shield size={24}/> Kebijakan Privasi</h3>
                <div style={{ fontSize:'0.9rem', lineHeight:'1.6', marginBottom:'1.5rem', color: darkMode ? '#cbd5e1' : '#334155' }}>
-                  <p><strong>1. Pengumpulan Data:</strong> Kami mengumpulkan data nama, nomor WhatsApp, dan log aktivitas kesehatan Anda untuk keperluan monitoring program Jates9.</p>
+                  <p><strong>1. Pengumpulan Data:</strong> Kami mengumpulkan data nama, nomor WhatsApp, dan log aktivitas kesehatan Anda untuk keperluan monitoring program Vitalyst.</p>
                   <p><strong>2. Penggunaan Data:</strong> Data Anda digunakan untuk memberikan rekomendasi kesehatan yang personal oleh AI dan tim ahli kami.</p>
                   <p><strong>3. Keamanan:</strong> Kami tidak membagikan data pribadi Anda kepada pihak ketiga tanpa izin, kecuali untuk keperluan pengiriman produk (ekspedisi).</p>
                   <p><strong>4. Hak Pengguna:</strong> Anda berhak meminta penghapusan akun sewaktu-waktu melalui Admin.</p>
