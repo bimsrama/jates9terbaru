@@ -116,7 +116,8 @@ const LandingPage = () => {
                 <div style={{ width: '3rem', height: '3rem', borderRadius: '50%', background: 'var(--accent-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                   <span style={{ fontSize: '1.5rem' }}>3</span>
                 </div>
-                <CardTitle>Jates9 Accelerator</CardTitle>
+                {/* UBAH DI SINI: Dari Jates9 Accelerator menjadi Vitalyst Accelerator */}
+                <CardTitle>Vitalyst Accelerator</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
