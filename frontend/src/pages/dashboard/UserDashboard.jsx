@@ -7,80 +7,41 @@ import {
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
-  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, Plus, Map
+  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, Plus, Map, Save
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- DATA WILAYAH INDONESIA LENGKAP ---
+// --- DATA WILAYAH INDONESIA ---
 const PROVINCES = [
-  "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Jambi", "Sumatera Selatan", "Bengkulu", "Lampung", "Kepulauan Bangka Belitung", "Kepulauan Riau",
-  "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta", "Jawa Timur", "Banten",
-  "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur",
-  "Kalimantan Barat", "Kalimantan Tengah", "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara",
-  "Sulawesi Utara", "Sulawesi Tengah", "Sulawesi Selatan", "Sulawesi Tenggara", "Gorontalo", "Sulawesi Barat",
-  "Maluku", "Maluku Utara",
-  "Papua", "Papua Barat", "Papua Selatan", "Papua Tengah", "Papua Pegunungan", "Papua Barat Daya"
+  "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Banten", "Bali", "D.I. Yogyakarta", 
+  "Sumatera Utara", "Sumatera Barat", "Kalimantan Timur", "Sulawesi Selatan"
 ];
 
 const CITIES = {
-  "Aceh": ["Banda Aceh", "Sabang", "Lhokseumawe", "Langsa", "Subulussalam", "Aceh Besar", "Pidie"],
-  "Sumatera Utara": ["Medan", "Binjai", "Pematangsiantar", "Tebing Tinggi", "Sibolga", "Tanjungbalai", "Gunungsitoli", "Deli Serdang", "Langkat", "Karo"],
-  "Sumatera Barat": ["Padang", "Bukittinggi", "Payakumbuh", "Pariaman", "Padang Panjang", "Solok", "Sawahlunto"],
-  "Riau": ["Pekanbaru", "Dumai", "Kampar", "Bengkalis", "Indragiri Hilir", "Rokan Hulu"],
-  "Jambi": ["Jambi", "Sungai Penuh", "Muaro Jambi", "Batanghari"],
-  "Sumatera Selatan": ["Palembang", "Prabumulih", "Lubuklinggau", "Pagar Alam", "Banyuasin", "Ogan Ilir"],
-  "Bengkulu": ["Bengkulu", "Rejang Lebong", "Mukomuko"],
-  "Lampung": ["Bandar Lampung", "Metro", "Lampung Selatan", "Lampung Tengah", "Pringsewu"],
-  "Kepulauan Bangka Belitung": ["Pangkalpinang", "Bangka", "Belitung"],
-  "Kepulauan Riau": ["Tanjungpinang", "Batam", "Bintan", "Karimun"],
-  "DKI Jakarta": ["Jakarta Pusat", "Jakarta Utara", "Jakarta Barat", "Jakarta Selatan", "Jakarta Timur", "Kepulauan Seribu"],
-  "Jawa Barat": ["Bandung", "Bekasi", "Bogor", "Depok", "Cimahi", "Sukabumi", "Tasikmalaya", "Cirebon", "Banjar", "Cianjur", "Karawang", "Purwakarta", "Indramayu", "Garut", "Subang", "Sumedang", "Kuningan", "Majalengka", "Ciamis"],
-  "Jawa Tengah": ["Semarang", "Surakarta (Solo)", "Magelang", "Pekalongan", "Salatiga", "Tegal", "Banyumas", "Cilacap", "Jepara", "Kudus", "Pati", "Klaten", "Boyolali", "Sukoharjo", "Wonogiri", "Karanganyar", "Sragen", "Grobogan", "Blora", "Rembang"],
-  "DI Yogyakarta": ["Yogyakarta", "Sleman", "Bantul", "Kulon Progo", "Gunungkidul"],
-  "Jawa Timur": ["Surabaya", "Malang", "Madiun", "Kediri", "Mojokerto", "Batu", "Pasuruan", "Probolinggo", "Blitar", "Sidoarjo", "Gresik", "Jember", "Banyuwangi", "Lamongan", "Tuban", "Bojonegoro", "Ngawi", "Magetan", "Ponorogo", "Pacitan"],
-  "Banten": ["Serang", "Cilegon", "Tangerang", "Tangerang Selatan", "Pandeglang", "Lebak"],
-  "Bali": ["Denpasar", "Badung", "Gianyar", "Tabanan", "Buleleng", "Karangasem", "Klungkung", "Bangli", "Jembrana"],
-  "Nusa Tenggara Barat": ["Mataram", "Bima", "Lombok Barat", "Lombok Tengah", "Lombok Timur", "Sumbawa"],
-  "Nusa Tenggara Timur": ["Kupang", "Flores Timur", "Sikka", "Ende", "Manggarai", "Sumba Timur"],
-  "Kalimantan Barat": ["Pontianak", "Singkawang", "Kubu Raya", "Sambas", "Sintang"],
-  "Kalimantan Tengah": ["Palangka Raya", "Kotawaringin Timur", "Kapuas"],
-  "Kalimantan Selatan": ["Banjarmasin", "Banjarbaru", "Banjar", "Tabalong"],
-  "Kalimantan Timur": ["Samarinda", "Balikpapan", "Bontang", "Kutai Kartanegara", "Kutai Timur"],
-  "Kalimantan Utara": ["Tarakan", "Bulungan", "Nunukan"],
-  "Sulawesi Utara": ["Manado", "Tomohon", "Bitung", "Kotamobagu", "Minahasa"],
-  "Sulawesi Tengah": ["Palu", "Poso", "Luwuk", "Tolitoli"],
-  "Sulawesi Selatan": ["Makassar", "Parepare", "Palopo", "Gowa", "Maros", "Bone"],
-  "Sulawesi Tenggara": ["Kendari", "Bau-Bau", "Konawe"],
-  "Gorontalo": ["Gorontalo"],
-  "Sulawesi Barat": ["Mamuju", "Majene"],
-  "Maluku": ["Ambon", "Tual", "Maluku Tengah"],
-  "Maluku Utara": ["Ternate", "Tidore Kepulauan", "Halmahera Utara"],
-  "Papua": ["Jayapura", "Keerom", "Sarmi"],
-  "Papua Barat": ["Manokwari", "Fakfak"],
-  "Papua Selatan": ["Merauke", "Boven Digoel"],
-  "Papua Tengah": ["Nabire", "Mimika"],
-  "Papua Pegunungan": ["Jayawijaya", "Yahukimo"],
-  "Papua Barat Daya": ["Sorong", "Raja Ampat"]
+  "DKI Jakarta": ["Jakarta Selatan", "Jakarta Pusat", "Jakarta Barat", "Jakarta Timur", "Jakarta Utara"],
+  "Jawa Barat": ["Bandung", "Bekasi", "Depok", "Bogor", "Cimahi", "Sukabumi"],
+  "Banten": ["Tangerang", "Tangerang Selatan", "Serang", "Cilegon"],
+  "Jawa Tengah": ["Semarang", "Surakarta (Solo)", "Magelang", "Tegal"],
+  "Jawa Timur": ["Surabaya", "Malang", "Kediri", "Madiun"],
+  "Bali": ["Denpasar", "Badung", "Gianyar"],
+  // (Kota lainnya disederhanakan untuk demo)
 };
 
-// Simulasi Kode Pos (Contoh kota besar, aslinya ribuan)
-const POSTAL_CODES = {
-  "Banda Aceh": "23116", "Medan": "20111", "Padang": "25100", "Pekanbaru": "28111", "Jambi": "36111", 
-  "Palembang": "30111", "Bengkulu": "38221", "Bandar Lampung": "35100", "Pangkalpinang": "33100", "Tanjungpinang": "29100",
-  "Jakarta Pusat": "10110", "Jakarta Utara": "14110", "Jakarta Barat": "11110", "Jakarta Selatan": "12110", "Jakarta Timur": "13110",
-  "Bandung": "40111", "Bekasi": "17100", "Bogor": "16000", "Depok": "16400", "Tangerang": "15000", "Tangerang Selatan": "15310",
-  "Semarang": "50111", "Surakarta (Solo)": "57111", "Yogyakarta": "55111", "Surabaya": "60111", "Malang": "65111",
-  "Denpasar": "80111", "Mataram": "83100", "Kupang": "85111",
-  "Pontianak": "78111", "Palangka Raya": "73111", "Banjarmasin": "70111", "Samarinda": "75100", "Balikpapan": "76100", "Tarakan": "77100",
-  "Manado": "95111", "Palu": "94111", "Makassar": "90111", "Kendari": "93111", "Gorontalo": "96111", "Mamuju": "91511",
-  "Ambon": "97111", "Ternate": "97711", "Jayapura": "99111", "Manokwari": "98311", "Sorong": "98411", "Merauke": "99600", "Mimika": "99910"
+// DATA KECAMATAN & KODE POS (CONTOH)
+const DISTRICTS = {
+  "Jakarta Selatan": { "Tebet": "12810", "Setiabudi": "12910", "Mampang Prapatan": "12790", "Pasar Minggu": "12520", "Kebayoran Baru": "12110", "Kebayoran Lama": "12240", "Cilandak": "12430", "Pancoran": "12780", "Jagakarsa": "12620", "Pesanggrahan": "12320" },
+  "Jakarta Pusat": { "Menteng": "10310", "Gambir": "10110", "Senen": "10410", "Kemayoran": "10620", "Tanah Abang": "10250" },
+  "Jakarta Barat": { "Cengkareng": "11730", "Grogol Petamburan": "11470", "Kebon Jeruk": "11530", "Kembangan": "11610" },
+  "Bandung": { "Andir": "40181", "Buahbatu": "40286", "Cicendo": "40171", "Coblong": "40132", "Sukajadi": "40161" },
+  "Tangerang Selatan": { "Serpong": "15310", "Pamulang": "15417", "Ciputat": "15411", "Pondok Aren": "15224" },
+  "Surabaya": { "Gubeng": "60281", "Wonokromo": "60243", "Tegalsari": "60262", "Genteng": "60275" },
+  "Denpasar": { "Denpasar Selatan": "80221", "Denpasar Barat": "80119", "Denpasar Timur": "80235", "Denpasar Utara": "80111" }
 };
 
 // --- KONFIGURASI TOKO & HARGA ---
-const STORE_LOCATION = { lat: -6.175392, lng: 106.827153 }; // Monas Jakarta
 const PRICE_PER_KM = 5000; 
 
 const THEMES = {
@@ -104,17 +65,18 @@ const UserDashboard = () => {
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]); 
   
-  // --- STATE CHECKOUT & ORDER ---
+  // --- STATE MODALS ---
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false); // Modal Alamat Saya
   const [selectedProduct, setSelectedProduct] = useState(null);
   
-  // Form Checkout
+  // Form Checkout & Alamat
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [savedAddress, setSavedAddress] = useState(null);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   
-  // Form Alamat Baru
+  // Form Alamat Detail
   const [addrProvince, setAddrProvince] = useState("");
   const [addrCity, setAddrCity] = useState("");
   const [addrDistrict, setAddrDistrict] = useState("");
@@ -193,38 +155,22 @@ const UserDashboard = () => {
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
-  // Update Postal Code otomatis saat Kota berubah
+  // Update Postal Code otomatis saat Kecamatan berubah
   useEffect(() => {
-      if (addrCity && POSTAL_CODES[addrCity]) {
-          setAddrPostal(POSTAL_CODES[addrCity]);
+      if (addrCity && addrDistrict && DISTRICTS[addrCity] && DISTRICTS[addrCity][addrDistrict]) {
+          setAddrPostal(DISTRICTS[addrCity][addrDistrict]);
       } else {
-          setAddrPostal("");
+          setAddrPostal(""); // Reset jika tidak ditemukan
       }
-  }, [addrCity]);
+  }, [addrCity, addrDistrict]);
 
   // Update JNE Cost saat alamat / metode berubah
   useEffect(() => {
       if (shippingMethod === 'jne') {
           // Simulasi harga berdasarkan Kota
-          let basePrice = 10000; // Jabodetabek default
-          
-          if (addrCity) {
-              if (addrCity.includes("Jakarta") || addrCity.includes("Tangerang") || addrCity.includes("Bekasi") || addrCity.includes("Depok") || addrCity.includes("Bogor")) {
-                  basePrice = 9000;
-              } else if (["Jawa Barat", "Banten"].includes(addrProvince)) {
-                  basePrice = 15000;
-              } else if (["Jawa Tengah", "DI Yogyakarta", "Jawa Timur"].includes(addrProvince)) {
-                  basePrice = 22000;
-              } else if (["Bali", "Lampung"].includes(addrProvince)) {
-                  basePrice = 30000;
-              } else if (["Sumatera Utara", "Sulawesi Selatan", "Kalimantan Timur"].includes(addrProvince)) {
-                   basePrice = 45000;
-              } else if (["Papua", "Papua Barat"].includes(addrProvince)) {
-                   basePrice = 90000;
-              } else {
-                   basePrice = 35000; // Luar Jawa lainnya
-              }
-          }
+          let basePrice = 10000;
+          if (addrCity && !addrCity.includes("Jakarta") && !addrCity.includes("Tangerang")) basePrice = 20000;
+          if (addrProvince === "Bali" || addrProvince === "Sumatera Utara") basePrice = 35000;
           setShippingCost(basePrice);
       } else {
           setShippingCost(0);
@@ -243,7 +189,7 @@ const UserDashboard = () => {
       setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Ada keluhan apa hari ini?" }]);
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+    } catch (error) { console.error("Error fetching data", error); } finally { setLoading(false); }
   };
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
@@ -282,18 +228,35 @@ const UserDashboard = () => {
       setRecipientName(overview?.user?.name || "");
       setRecipientPhone(overview?.user?.phone || "");
       
-      // Cek apakah user punya alamat tersimpan
       if (overview?.user?.address && overview.user.address.length > 5) {
           setSavedAddress(overview.user.address);
           setIsAddingAddress(false);
       } else {
           setSavedAddress(null);
-          setIsAddingAddress(true); // Paksa isi alamat jika belum ada
+          setIsAddingAddress(true);
       }
       
       setAppliedCoupon(null);
       setCouponCode("");
       setShowCheckoutModal(true);
+  };
+
+  // --- FUNGSI SIMPAN ALAMAT (LOKAL STATE) ---
+  const handleSaveAddress = () => {
+      if (!addrProvince || !addrCity || !addrDistrict || !addrDetail) {
+          alert("Mohon lengkapi semua field alamat."); return;
+      }
+      const newAddress = `${addrDetail}, Kec. ${addrDistrict}, ${addrCity}, ${addrProvince}, ${addrPostal}`;
+      setSavedAddress(newAddress);
+      
+      // Update local state overview agar tombol "Alamat Saya" menampilkan status tersimpan
+      setOverview(prev => ({
+          ...prev,
+          user: { ...prev.user, address: newAddress }
+      }));
+
+      setIsAddingAddress(false);
+      setShowAddressModal(false); // Tutup modal alamat jika dibuka dari menu
   };
 
   const checkCoupon = () => {
@@ -312,11 +275,10 @@ const UserDashboard = () => {
   const handleProcessPayment = async () => {
       if (!snapLoaded) { alert("Sistem pembayaran belum siap."); return; }
       
-      // Tentukan alamat final
       let finalAddress = savedAddress;
-      if (isAddingAddress || !savedAddress) {
+      if (isAddingAddress) {
           if (!addrProvince || !addrCity || !addrDistrict || !addrDetail) {
-              alert("Mohon lengkapi alamat pengiriman (Provinsi, Kota, Kecamatan, Detail)."); return;
+              alert("Mohon lengkapi alamat pengiriman."); return;
           }
           finalAddress = `${addrDetail}, Kec. ${addrDistrict}, ${addrCity}, ${addrProvince}, ${addrPostal}`;
       }
@@ -349,10 +311,18 @@ const UserDashboard = () => {
                   onError: function(result) { alert("Pembayaran gagal!"); }
               });
           }
-      } catch (error) { alert("Gagal memproses transaksi."); }
+      } catch (error) { alert("Gagal memproses transaksi. Cek data Anda."); }
   };
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
+
+  if (!overview) return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <h3>Gagal memuat data.</h3>
+          <p>Silakan refresh halaman atau coba lagi nanti.</p>
+          <button onClick={() => window.location.reload()} style={{marginTop:'1rem', padding:'0.5rem 1rem', background:'#000', color:'white', border:'none', borderRadius:'6px'}}>Refresh</button>
+      </div>
+  );
 
   return (
     <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
@@ -427,7 +397,8 @@ const UserDashboard = () => {
                         <div style={{ width: '40px', height: '40px', background: '#dbeafe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Truck size={20} color="#1e40af"/></div>
                         <div><div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Status Pesanan</div><div style={{ fontSize: '0.75rem', color: '#64748b' }}>Lacak paketmu</div></div>
                     </div>
-                    <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                    {/* [UPDATED] TOMBOL ALAMAT SAYA YANG BISA DIKLIK */}
+                    <div onClick={() => { setIsAddingAddress(false); setShowAddressModal(true); }} style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                          <div style={{ width: '40px', height: '40px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><MapPin size={20} color="#b45309"/></div>
                          <div><div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>Alamat Saya</div><div style={{ fontSize: '0.75rem', color: '#64748b' }}>{overview?.user?.address ? "Tersimpan" : "Belum diisi"}</div></div>
                     </div>
@@ -470,6 +441,78 @@ const UserDashboard = () => {
 
         </main>
       </div>
+
+      {/* [BARU] MODAL ALAMAT SAYA */}
+      {showAddressModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowAddressModal(false)}>
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'80vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ fontSize:'1.2rem', fontWeight:'bold', marginBottom:'1rem' }}>Kelola Alamat</h3>
+                
+                {overview?.user?.address && !isAddingAddress ? (
+                    <div style={{ padding:'1rem', border:'1px solid #e2e8f0', borderRadius:'8px', marginBottom:'1rem', background:'#f8fafc' }}>
+                        <div style={{display:'flex', gap:'0.5rem', alignItems:'flex-start'}}>
+                            <MapPin size={20} color="#0f172a" style={{ marginTop:'2px' }}/>
+                            <p style={{ fontSize:'0.9rem', color:'#334155' }}>{overview.user.address}</p>
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Tombol dengan Grid Line Style */}
+                {!isAddingAddress && (
+                    <button 
+                        onClick={() => setIsAddingAddress(true)}
+                        style={{ 
+                            width: '100%', padding: '1rem', 
+                            border: '2px dashed #cbd5e1', background: 'transparent', 
+                            borderRadius: '12px', color: '#64748b', fontWeight: 'bold', 
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                            marginBottom: '1rem'
+                        }}
+                    >
+                        <Plus size={20}/> {overview?.user?.address ? "Ubah Alamat" : "Tambah Alamat Baru"}
+                    </button>
+                )}
+
+                {/* Form Tambah/Ubah Alamat */}
+                {isAddingAddress && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom:'1rem' }}>
+                        <select value={addrProvince} onChange={(e)=>setAddrProvince(e.target.value)} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}>
+                            <option value="">Pilih Provinsi</option>
+                            {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        <select value={addrCity} onChange={(e)=>setAddrCity(e.target.value)} disabled={!addrProvince} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}>
+                            <option value="">Pilih Kota/Kabupaten</option>
+                            {addrProvince && CITIES[addrProvince]?.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        
+                        {/* Kecamatan (Dengan Data) */}
+                        <select value={addrDistrict} onChange={(e)=>setAddrDistrict(e.target.value)} disabled={!addrCity} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}>
+                            <option value="">Pilih Kecamatan</option>
+                            {/* Jika ada data spesifik untuk kota tsb, tampilkan. Jika tidak, tampilkan opsi umum */}
+                            {addrCity && DISTRICTS[addrCity] ? 
+                                Object.keys(DISTRICTS[addrCity]).map(k => <option key={k} value={k}>{k}</option>) : 
+                                <option value="Kecamatan Umum">Kecamatan Umum</option>
+                            }
+                        </select>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem' }}>
+                           {/* Detail Alamat */}
+                           <input value={addrPostal} readOnly placeholder="Kode Pos" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', background: '#f1f5f9', fontSize:'0.9rem' }} />
+                        </div>
+                        
+                        <textarea value={addrDetail} onChange={(e)=>setAddrDetail(e.target.value)} placeholder="Nama Jalan, No. Rumah, RT/RW..." rows={3} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}></textarea>
+                        
+                        <div style={{ display:'flex', gap:'1rem' }}>
+                            <button onClick={()=>setIsAddingAddress(false)} style={{ flex:1, padding:'0.8rem', border:'1px solid #ccc', borderRadius:'8px', background:'white', cursor:'pointer' }}>Batal</button>
+                            <button onClick={handleSaveAddress} style={{ flex:1, padding:'0.8rem', border:'none', borderRadius:'8px', background:'#0f172a', color:'white', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><Save size={16}/> Simpan</button>
+                        </div>
+                    </div>
+                )}
+                
+                <button onClick={() => setShowAddressModal(false)} style={{ marginTop:'1rem', width:'100%', padding:'0.8rem', border:'none', background:'#f1f5f9', borderRadius:'8px', cursor:'pointer' }}>Tutup</button>
+            </div>
+        </div>
+      )}
 
       {/* MODAL CHECKOUT LENGKAP */}
       {showCheckoutModal && selectedProduct && (
@@ -537,11 +580,19 @@ const UserDashboard = () => {
                                     <option value="">Pilih Kota/Kabupaten</option>
                                     {addrProvince && CITIES[addrProvince]?.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
+                                {/* Input Kecamatan sebagai Dropdown */}
+                                <select value={addrDistrict} onChange={(e)=>setAddrDistrict(e.target.value)} disabled={!addrCity} style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}>
+                                    <option value="">Pilih Kecamatan</option>
+                                    {addrCity && DISTRICTS[addrCity] ? 
+                                        Object.keys(DISTRICTS[addrCity]).map(k => <option key={k} value={k}>{k}</option>) : 
+                                        <option value="Kecamatan Umum">Kecamatan Umum</option>
+                                    }
+                                </select>
+
                                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '0.5rem' }}>
-                                    <input value={addrDistrict} onChange={(e)=>setAddrDistrict(e.target.value)} placeholder="Kecamatan" style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }} />
                                     <input value={addrPostal} readOnly placeholder="Kode Pos" style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #ccc', background: '#f1f5f9', fontSize:'0.9rem' }} />
                                 </div>
-                                <textarea value={addrDetail} onChange={(e)=>setAddrDetail(e.target.value)} placeholder="Nama Jalan, No. Rumah, RT/RW, Patokan..." rows={3} style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}></textarea>
+                                <textarea value={addrDetail} onChange={(e)=>setAddrDetail(e.target.value)} placeholder="Nama Jalan, No. Rumah, RT/RW..." rows={3} style={{ padding: '0.7rem', borderRadius: '8px', border: '1px solid #ccc', fontSize:'0.9rem' }}></textarea>
                                 
                                 <button onClick={handleGetLocation} style={{ background:'#eff6ff', color:'#1e40af', border:'none', padding:'0.6rem', borderRadius:'8px', fontSize:'0.8rem', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', cursor:'pointer' }}>
                                    <Map size={14}/> Gunakan Lokasi Saat Ini (GPS)
@@ -623,7 +674,6 @@ const UserDashboard = () => {
                                 <div style={{width:'60px', height:'60px', background:'#f1f5f9', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center'}}><Box size={24} color="#64748b"/></div>
                                 <div style={{flex:1}}>
                                     <div style={{display:'flex', justifyContent:'space-between'}}><h4 style={{fontWeight:'bold', fontSize:'0.95rem'}}>{order.product_name}</h4><span style={{fontSize:'0.75rem', fontWeight:'bold', padding:'2px 8px', borderRadius:'12px', background: order.status==='paid'?'#dcfce7': order.status==='shipped'?'#dbeafe':'#fff7ed', color: order.status==='paid'?'#166534': order.status==='shipped'?'#1e40af':'#9a3412'}}>{order.status === 'pending' ? 'Menunggu Bayar' : order.status === 'paid' ? 'Dikemas' : order.status === 'shipped' ? 'Dikirim' : order.status}</span></div>
-                                    {/* FIX ERROR toUpperCase: Tambahkan proteksi */}
                                     <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} • {(order.shipping_method || '-').toUpperCase()}</p>
                                     {order.resi && <p style={{fontSize:'0.8rem', color:'#1e40af', marginTop:'0.2rem'}}>Resi: {order.resi}</p>}
                                 </div>
