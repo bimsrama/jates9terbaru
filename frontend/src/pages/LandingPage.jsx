@@ -116,7 +116,7 @@ const LandingPage = () => {
                 <div style={{ width: '3rem', height: '3rem', borderRadius: '50%', background: 'var(--accent-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                   <span style={{ fontSize: '1.5rem' }}>3</span>
                 </div>
-                {/* UBAH DI SINI: Dari Jates9 Accelerator menjadi Vitalyst Accelerator */}
+                {/* SUDAH DIPERBAIKI: Vitalyst Accelerator */}
                 <CardTitle>Vitalyst Accelerator</CardTitle>
               </CardHeader>
               <CardContent>
@@ -132,6 +132,7 @@ const LandingPage = () => {
       {/* Product Section */}
       <section className="container" style={{ padding: '4rem 1.5rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          {/* Bagian ini mengambil nama dari file mock.js */}
           <h2 className="heading-2" style={{ marginBottom: '1rem' }}>
             {productInfo.name}
           </h2>
