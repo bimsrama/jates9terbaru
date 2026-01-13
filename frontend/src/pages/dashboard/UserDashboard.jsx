@@ -6,12 +6,13 @@ import {
   Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera
+  Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
+  Bot, Sparkles // Menambahkan Icon Bot dan Sparkles untuk AI
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://vitalyst.com/backend_api'; // Sesuaikan jika domain berubah
 
 // --- KONFIGURASI TEMA WARNA ---
 const THEMES = {
@@ -171,7 +172,13 @@ const UserDashboard = () => {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
       const tip = generateDailyTip(overviewRes.data.user?.group || 'Sehat');
-      setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dokter AI Jates9. Ada yang bisa saya bantu?" }]);
+      
+      // Update sapaan awal Dr. Alva AI
+      setChatHistory([
+        { role: "system_tip", content: tip }, 
+        { role: "assistant", content: "Halo! Saya Dr. Alva AI, asisten kesehatan pribadi Anda. Ada yang bisa saya bantu hari ini?" }
+      ]);
+      
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
     } catch (error) { console.error('Error:', error); } finally { setLoading(false); }
@@ -323,10 +330,11 @@ const UserDashboard = () => {
 
       {!isDesktop && isSidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 40 }}></div>}
 
-      {/* SIDEBAR */}
+      {/* SIDEBAR - UPDATED NAME */}
       <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>JATES9</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
+          {/* LOGO GANTI JADI VITALYST */}
+          <div><h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text, letterSpacing: '1px' }}>VITALYST</h2><p style={{ fontSize: '0.8rem', color: '#64748b' }}>Member Area</p></div>
           {!isDesktop && <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#64748b' }}><X size={24} /></button>}
         </div>
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
@@ -336,7 +344,8 @@ const UserDashboard = () => {
             <li><button className={`nav-item ${activeTab==='report'?'active':''}`} onClick={() => { setActiveTab('report'); setSidebarOpen(false); }}><TrendingUp size={20} /> Rapor Kesehatan</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => { setActiveTab('friends'); setSidebarOpen(false); }}><Users size={20} /> Teman Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => { setActiveTab('shop'); setSidebarOpen(false); }}><ShoppingBag size={20} /> Produk & Toko</button></li>
-            <li><button className="nav-item" onClick={handleScrollToChat}><MessageCircle size={20} /> Dokter AI</button></li>
+            {/* UPDATED AI MENU NAME */}
+            <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20} /> Dr. Alva AI</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => { setActiveTab('settings'); setSidebarOpen(false); }}><Settings size={20} /> Pengaturan</button></li>
           </ul>
         </nav>
@@ -350,7 +359,11 @@ const UserDashboard = () => {
         
         {!isDesktop && (
           <header style={{ position: 'sticky', top: 0, zIndex: 30, background: darkMode ? '#1e293b' : 'white', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}><button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: darkMode ? '#e2e8f0' : '#334155' }}><Home size={24} /></button><span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: currentTheme.text }}>JATES9</span></div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', color: darkMode ? '#e2e8f0' : '#334155' }}><Home size={24} /></button>
+                {/* LOGO MOBILE GANTI */}
+                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: currentTheme.text, letterSpacing: '1px' }}>VITALYST</span>
+            </div>
             <button onClick={logout} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', padding: '0.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 'bold' }}><LogOut size={18} /> Keluar</button>
           </header>
         )}
@@ -447,7 +460,6 @@ const UserDashboard = () => {
                            ))}
                            <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
                            
-                           {/* [KEMBALIKAN TOMBOL] SAYA SUDAH LAKUKAN & NANTI SAJA */}
                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                               <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
                               <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
@@ -461,15 +473,19 @@ const UserDashboard = () => {
                 {/* KOLOM KANAN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
-                  {/* CHAT DOKTER AI */}
+                  {/* CHAT DOKTER AI (UPDATED) */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
                       <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
+                        {/* Icon AI Baru */}
                         <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
-                            <MessageCircle size={24} color={currentTheme.text} />
+                            <Bot size={24} color={currentTheme.text} />
                         </div>
                         <div>
-                            <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px' }}>Dokter AI Jates9</h3>
-                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dokter AI</p>
+                            {/* Nama Baru + Icon Sparkles */}
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}>
+                                Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/>
+                            </h3>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dr. Alva</p>
                         </div>
                       </div>
 
@@ -492,7 +508,7 @@ const UserDashboard = () => {
                               {msg.content}
                             </div>
                           ))}
-                          {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Sedang mengetik...</div>}
+                          {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Dr. Alva sedang mengetik...</div>}
                           <div ref={chatEndRef}></div>
                       </div>
                       <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}>
@@ -520,7 +536,7 @@ const UserDashboard = () => {
                       ))}
                   </Card>
 
-                  {/* [KEMBALIKAN] REKOMENDASI CHALLENGE */}
+                  {/* REKOMENDASI CHALLENGE */}
                   <div>
                     <h3 className="heading-3" style={{marginBottom:'0.8rem', fontSize:'1rem'}}>Rekomendasi Challenge</h3>
                     <div className="scroll-hide" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', width: '100%' }}>
@@ -566,7 +582,6 @@ const UserDashboard = () => {
           
           {activeTab === 'friends' && (<div><div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button><h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1></div><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}><Card style={{ background: '#f0fdf4', border: '1px dashed #16a34a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '150px' }} onClick={() => setShowQRModal(true)}><div style={{ textAlign: 'center', color: '#166534' }}><div style={{ background: 'white', width: '50px', height: '50px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}><QrCode size={24} /></div><h3 style={{ fontWeight: 'bold' }}>Tambah Teman</h3></div></Card>{myFriends.map((friend, idx) => (<Card key={idx} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleClickFriendFromList(friend.referral_code)}><CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}><div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={24} color="#2563eb" /></div><div><h4 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a' }}>{friend.name}</h4><div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', marginTop: '0.2rem' }}><span style={{ color: '#16a34a', background: '#dcfce7', padding: '0 6px', borderRadius: '4px' }}>{friend.badge}</span><span style={{ color: '#64748b' }}>• {friend.relation}</span></div></div></CardContent></Card>))}</div></div>)}
           
-          {/* TAB SHOP DENGAN PRODUK DARI API + MIDTRANS + DUMMY SOLD */}
           {activeTab === 'shop' && (
              <div>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -587,7 +602,6 @@ const UserDashboard = () => {
                             <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem', color: darkMode ? 'white' : 'black' }}>{prod.name}</h3>
                             <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.description}</p>
                             
-                            {/* DUMMY SOLD COUNT */}
                             <div style={{fontSize:'0.75rem', color:'#64748b', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.3rem'}}>
                                 <CheckCircle size={12} color="#16a34a"/> Terjual: <b>{prod.fake_sales || 0} pcs</b>
                             </div>
@@ -633,7 +647,6 @@ const UserDashboard = () => {
                                     <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>
                                  )}
                               </div>
-                              {/* INPUT FILE HIDDEN */}
                               <input 
                                  type="file" 
                                  ref={fileInputRef} 
@@ -723,26 +736,25 @@ const UserDashboard = () => {
         </main>
       </div>
 
-      {/* MODAL PRIVASI */}
+      {/* MODAL PRIVASI - UPDATED NAME */}
       {showPrivacyModal && (
          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
             <div style={{ background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'80vh', overflowY:'auto' }}>
                <h3 style={{ fontSize:'1.4rem', fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Shield size={24}/> Kebijakan Privasi</h3>
                <div style={{ fontSize:'0.9rem', lineHeight:'1.6', marginBottom:'1.5rem', color: darkMode ? '#cbd5e1' : '#334155' }}>
-                  <p><strong>1. Pengumpulan Data:</strong> Kami mengumpulkan data nama, nomor WhatsApp, dan log aktivitas kesehatan Anda untuk keperluan monitoring program Jates9.</p>
+                  <p><strong>1. Pengumpulan Data:</strong> Kami mengumpulkan data nama, nomor WhatsApp, dan log aktivitas kesehatan Anda untuk keperluan monitoring program Vitalyst.</p>
                   <p><strong>2. Penggunaan Data:</strong> Data Anda digunakan untuk memberikan rekomendasi kesehatan yang personal oleh AI dan tim ahli kami.</p>
-                  <p><strong>3. Keamanan:</strong> Kami tidak membagikan data pribadi Anda kepada pihak ketiga tanpa izin, kecuali untuk keperluan pengiriman produk (ekspedisi).</p>
-                  <p><strong>4. Hak Pengguna:</strong> Anda berhak meminta penghapusan akun sewaktu-waktu melalui Admin.</p>
+                  <p><strong>3. Keamanan:</strong> Kami tidak membagikan data pribadi Anda kepada pihak ketiga tanpa izin.</p>
                </div>
                <button onClick={() => setShowPrivacyModal(false)} style={{ width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'black', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer' }}>Saya Mengerti</button>
             </div>
          </div>
       )}
 
-      {/* MODAL QR */}
-      {showQRModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}><div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}><h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3><div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div></div><button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button></div></div>)}
+      {/* MODAL QR - UPDATED DOMAIN/PATH IF NEEDED */}
+      {showQRModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}><div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}><h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3><div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://vitalyst.com/friend/${overview?.user?.referral_code}`} size={160} /></div></div><button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button></div></div>)}
       
-      {/* MODAL PROFIL TEMAN (SUDAH DIPERBAIKI) */}
+      {/* MODAL PROFIL TEMAN */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowFriendProfile(false)}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
