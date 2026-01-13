@@ -14,39 +14,69 @@ import { QRCodeSVG } from 'qrcode.react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- DATA WILAYAH INDONESIA (DIPERLUAS) ---
+// --- DATA WILAYAH INDONESIA LENGKAP ---
 const PROVINCES = [
-  "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "Jawa Timur", "Banten", "Bali", "D.I. Yogyakarta", 
-  "Sumatera Utara", "Sumatera Barat", "Riau", "Lampung", "Kalimantan Timur", "Sulawesi Selatan"
+  "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Jambi", "Sumatera Selatan", "Bengkulu", "Lampung", "Kepulauan Bangka Belitung", "Kepulauan Riau",
+  "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta", "Jawa Timur", "Banten",
+  "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur",
+  "Kalimantan Barat", "Kalimantan Tengah", "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara",
+  "Sulawesi Utara", "Sulawesi Tengah", "Sulawesi Selatan", "Sulawesi Tenggara", "Gorontalo", "Sulawesi Barat",
+  "Maluku", "Maluku Utara",
+  "Papua", "Papua Barat", "Papua Selatan", "Papua Tengah", "Papua Pegunungan", "Papua Barat Daya"
 ];
 
 const CITIES = {
-  "DKI Jakarta": ["Jakarta Selatan", "Jakarta Pusat", "Jakarta Barat", "Jakarta Timur", "Jakarta Utara", "Kepulauan Seribu"],
-  "Jawa Barat": ["Bandung", "Bekasi", "Depok", "Bogor", "Cimahi", "Sukabumi", "Tasikmalaya", "Cirebon", "Banjar"],
-  "Banten": ["Tangerang", "Tangerang Selatan", "Serang", "Cilegon", "Pandeglang", "Lebak"],
-  "Jawa Tengah": ["Semarang", "Solo (Surakarta)", "Magelang", "Pekalongan", "Salatiga", "Tegal", "Banyumas", "Cilacap"],
-  "Jawa Timur": ["Surabaya", "Malang", "Kediri", "Madiun", "Mojokerto", "Pasuruan", "Probolinggo", "Batu", "Blitar"],
-  "D.I. Yogyakarta": ["Yogyakarta", "Sleman", "Bantul", "Kulon Progo", "Gunungkidul"],
-  "Bali": ["Denpasar", "Badung", "Gianyar", "Tabanan", "Buleleng"],
-  "Sumatera Utara": ["Medan", "Binjai", "Pematangsiantar", "Tebing Tinggi"],
-  "Sumatera Barat": ["Padang", "Bukittinggi", "Payakumbuh", "Pariaman"],
-  "Riau": ["Pekanbaru", "Dumai"],
-  "Lampung": ["Bandar Lampung", "Metro"],
-  "Kalimantan Timur": ["Samarinda", "Balikpapan", "Bontang"],
-  "Sulawesi Selatan": ["Makassar", "Parepare", "Palopo"]
+  "Aceh": ["Banda Aceh", "Sabang", "Lhokseumawe", "Langsa", "Subulussalam", "Aceh Besar", "Pidie"],
+  "Sumatera Utara": ["Medan", "Binjai", "Pematangsiantar", "Tebing Tinggi", "Sibolga", "Tanjungbalai", "Gunungsitoli", "Deli Serdang", "Langkat", "Karo"],
+  "Sumatera Barat": ["Padang", "Bukittinggi", "Payakumbuh", "Pariaman", "Padang Panjang", "Solok", "Sawahlunto"],
+  "Riau": ["Pekanbaru", "Dumai", "Kampar", "Bengkalis", "Indragiri Hilir", "Rokan Hulu"],
+  "Jambi": ["Jambi", "Sungai Penuh", "Muaro Jambi", "Batanghari"],
+  "Sumatera Selatan": ["Palembang", "Prabumulih", "Lubuklinggau", "Pagar Alam", "Banyuasin", "Ogan Ilir"],
+  "Bengkulu": ["Bengkulu", "Rejang Lebong", "Mukomuko"],
+  "Lampung": ["Bandar Lampung", "Metro", "Lampung Selatan", "Lampung Tengah", "Pringsewu"],
+  "Kepulauan Bangka Belitung": ["Pangkalpinang", "Bangka", "Belitung"],
+  "Kepulauan Riau": ["Tanjungpinang", "Batam", "Bintan", "Karimun"],
+  "DKI Jakarta": ["Jakarta Pusat", "Jakarta Utara", "Jakarta Barat", "Jakarta Selatan", "Jakarta Timur", "Kepulauan Seribu"],
+  "Jawa Barat": ["Bandung", "Bekasi", "Bogor", "Depok", "Cimahi", "Sukabumi", "Tasikmalaya", "Cirebon", "Banjar", "Cianjur", "Karawang", "Purwakarta", "Indramayu", "Garut", "Subang", "Sumedang", "Kuningan", "Majalengka", "Ciamis"],
+  "Jawa Tengah": ["Semarang", "Surakarta (Solo)", "Magelang", "Pekalongan", "Salatiga", "Tegal", "Banyumas", "Cilacap", "Jepara", "Kudus", "Pati", "Klaten", "Boyolali", "Sukoharjo", "Wonogiri", "Karanganyar", "Sragen", "Grobogan", "Blora", "Rembang"],
+  "DI Yogyakarta": ["Yogyakarta", "Sleman", "Bantul", "Kulon Progo", "Gunungkidul"],
+  "Jawa Timur": ["Surabaya", "Malang", "Madiun", "Kediri", "Mojokerto", "Batu", "Pasuruan", "Probolinggo", "Blitar", "Sidoarjo", "Gresik", "Jember", "Banyuwangi", "Lamongan", "Tuban", "Bojonegoro", "Ngawi", "Magetan", "Ponorogo", "Pacitan"],
+  "Banten": ["Serang", "Cilegon", "Tangerang", "Tangerang Selatan", "Pandeglang", "Lebak"],
+  "Bali": ["Denpasar", "Badung", "Gianyar", "Tabanan", "Buleleng", "Karangasem", "Klungkung", "Bangli", "Jembrana"],
+  "Nusa Tenggara Barat": ["Mataram", "Bima", "Lombok Barat", "Lombok Tengah", "Lombok Timur", "Sumbawa"],
+  "Nusa Tenggara Timur": ["Kupang", "Flores Timur", "Sikka", "Ende", "Manggarai", "Sumba Timur"],
+  "Kalimantan Barat": ["Pontianak", "Singkawang", "Kubu Raya", "Sambas", "Sintang"],
+  "Kalimantan Tengah": ["Palangka Raya", "Kotawaringin Timur", "Kapuas"],
+  "Kalimantan Selatan": ["Banjarmasin", "Banjarbaru", "Banjar", "Tabalong"],
+  "Kalimantan Timur": ["Samarinda", "Balikpapan", "Bontang", "Kutai Kartanegara", "Kutai Timur"],
+  "Kalimantan Utara": ["Tarakan", "Bulungan", "Nunukan"],
+  "Sulawesi Utara": ["Manado", "Tomohon", "Bitung", "Kotamobagu", "Minahasa"],
+  "Sulawesi Tengah": ["Palu", "Poso", "Luwuk", "Tolitoli"],
+  "Sulawesi Selatan": ["Makassar", "Parepare", "Palopo", "Gowa", "Maros", "Bone"],
+  "Sulawesi Tenggara": ["Kendari", "Bau-Bau", "Konawe"],
+  "Gorontalo": ["Gorontalo"],
+  "Sulawesi Barat": ["Mamuju", "Majene"],
+  "Maluku": ["Ambon", "Tual", "Maluku Tengah"],
+  "Maluku Utara": ["Ternate", "Tidore Kepulauan", "Halmahera Utara"],
+  "Papua": ["Jayapura", "Keerom", "Sarmi"],
+  "Papua Barat": ["Manokwari", "Fakfak"],
+  "Papua Selatan": ["Merauke", "Boven Digoel"],
+  "Papua Tengah": ["Nabire", "Mimika"],
+  "Papua Pegunungan": ["Jayawijaya", "Yahukimo"],
+  "Papua Barat Daya": ["Sorong", "Raja Ampat"]
 };
 
-// Simulasi Kode Pos (Berdasarkan Kota)
+// Simulasi Kode Pos (Contoh kota besar, aslinya ribuan)
 const POSTAL_CODES = {
-  "Jakarta Selatan": "12110", "Jakarta Pusat": "10110", "Jakarta Barat": "11110", "Jakarta Timur": "13110", "Jakarta Utara": "14110",
-  "Bandung": "40111", "Bekasi": "17100", "Depok": "16400", "Bogor": "16000", "Cimahi": "40511",
-  "Tangerang": "15000", "Tangerang Selatan": "15310", "Serang": "42111", "Cilegon": "42411",
-  "Semarang": "50111", "Solo (Surakarta)": "57111", "Magelang": "56100",
-  "Surabaya": "60111", "Malang": "65111", "Kediri": "64100", "Madiun": "63100",
-  "Yogyakarta": "55111", "Sleman": "55511", "Bantul": "55700",
-  "Denpasar": "80111", "Badung": "80351", "Gianyar": "80511",
-  "Medan": "20111", "Binjai": "20700", "Padang": "25100", "Pekanbaru": "28111",
-  "Bandar Lampung": "35100", "Samarinda": "75100", "Balikpapan": "76100", "Makassar": "90111"
+  "Banda Aceh": "23116", "Medan": "20111", "Padang": "25100", "Pekanbaru": "28111", "Jambi": "36111", 
+  "Palembang": "30111", "Bengkulu": "38221", "Bandar Lampung": "35100", "Pangkalpinang": "33100", "Tanjungpinang": "29100",
+  "Jakarta Pusat": "10110", "Jakarta Utara": "14110", "Jakarta Barat": "11110", "Jakarta Selatan": "12110", "Jakarta Timur": "13110",
+  "Bandung": "40111", "Bekasi": "17100", "Bogor": "16000", "Depok": "16400", "Tangerang": "15000", "Tangerang Selatan": "15310",
+  "Semarang": "50111", "Surakarta (Solo)": "57111", "Yogyakarta": "55111", "Surabaya": "60111", "Malang": "65111",
+  "Denpasar": "80111", "Mataram": "83100", "Kupang": "85111",
+  "Pontianak": "78111", "Palangka Raya": "73111", "Banjarmasin": "70111", "Samarinda": "75100", "Balikpapan": "76100", "Tarakan": "77100",
+  "Manado": "95111", "Palu": "94111", "Makassar": "90111", "Kendari": "93111", "Gorontalo": "96111", "Mamuju": "91511",
+  "Ambon": "97111", "Ternate": "97711", "Jayapura": "99111", "Manokwari": "98311", "Sorong": "98411", "Merauke": "99600", "Mimika": "99910"
 };
 
 // --- KONFIGURASI TOKO & HARGA ---
@@ -176,9 +206,25 @@ const UserDashboard = () => {
   useEffect(() => {
       if (shippingMethod === 'jne') {
           // Simulasi harga berdasarkan Kota
-          let basePrice = 10000;
-          if (addrCity && !addrCity.includes("Jakarta") && !addrCity.includes("Tangerang")) basePrice = 20000;
-          if (addrProvince === "Bali" || addrProvince === "Sumatera Utara") basePrice = 35000;
+          let basePrice = 10000; // Jabodetabek default
+          
+          if (addrCity) {
+              if (addrCity.includes("Jakarta") || addrCity.includes("Tangerang") || addrCity.includes("Bekasi") || addrCity.includes("Depok") || addrCity.includes("Bogor")) {
+                  basePrice = 9000;
+              } else if (["Jawa Barat", "Banten"].includes(addrProvince)) {
+                  basePrice = 15000;
+              } else if (["Jawa Tengah", "DI Yogyakarta", "Jawa Timur"].includes(addrProvince)) {
+                  basePrice = 22000;
+              } else if (["Bali", "Lampung"].includes(addrProvince)) {
+                  basePrice = 30000;
+              } else if (["Sumatera Utara", "Sulawesi Selatan", "Kalimantan Timur"].includes(addrProvince)) {
+                   basePrice = 45000;
+              } else if (["Papua", "Papua Barat"].includes(addrProvince)) {
+                   basePrice = 90000;
+              } else {
+                   basePrice = 35000; // Luar Jawa lainnya
+              }
+          }
           setShippingCost(basePrice);
       } else {
           setShippingCost(0);
