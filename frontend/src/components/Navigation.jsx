@@ -12,8 +12,8 @@ const Navigation = () => {
     { path: '/', label: 'Beranda' },
     { path: '/quiz', label: 'Kuis Kesehatan' },
     { path: '/challenge', label: 'Program 30 Hari' },
-    { path: '/product', label: 'Produk Jates9' },
-    { path: '/chat', label: 'Doktor AI' }
+    { path: '/product', label: 'Produk Vitalyst' }, // Diubah dari Produk Jates9
+    { path: '/chat', label: 'Dr. Alva AI' }        // Diubah dari Doktor AI
   ];
 
   return (
@@ -32,7 +32,8 @@ const Navigation = () => {
             }}>
               <Leaf className="h-5 w-5" style={{ color: 'white' }} />
             </div>
-            <span style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--text-primary)' }}>JATES9</span>
+            {/* Diubah dari JATES9 menjadi VITALYST */}
+            <span style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--text-primary)' }}>VITALYST</span>
           </Link>
         </div>
 
@@ -89,7 +90,7 @@ const Navigation = () => {
         <div 
           className="mobile-nav"
           style={{ 
-            display: 'none',
+            display: 'none', // Pastikan CSS media query meng-handle display ini di layar kecil
             position: 'fixed',
             top: '4.5rem',
             left: 0,
