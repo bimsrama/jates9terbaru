@@ -1,4 +1,4 @@
-// Mock data untuk JATES9 Ecosystem
+// Mock data untuk Vitalyst Ecosystem
 
 export const healthQuestions = [
   {
@@ -114,9 +114,9 @@ export const challengeDays = [
 ];
 
 export const productInfo = {
-  name: "Jates9 - Superfood Enzim Buah",
+  name: "Vitalyst - Superfood Enzim Buah",
   tagline: "Accelerator Kesembuhan Pencernaan Anda",
-  description: "Jates9 adalah superfood alami yang mengandung 9 enzim buah pilihan untuk membantu mempercepat penyembuhan masalah pencernaan Anda.",
+  description: "Vitalyst adalah superfood alami yang mengandung 9 enzim buah pilihan untuk membantu mempercepat penyembuhan masalah pencernaan Anda.",
   benefits: [
     {
       icon: "Leaf",
@@ -174,21 +174,21 @@ export const productInfo = {
       age: 42,
       problem: "Maag kronis 5 tahun",
       result: "Sembuh total dalam 3 minggu",
-      quote: "Saya sudah coba berbagai obat, tapi baru kali ini benar-benar sembuh. Program 30 hari + Jates9 benar-benar mengubah hidup saya!"
+      quote: "Saya sudah coba berbagai obat, tapi baru kali ini benar-benar sembuh. Program 30 hari + Vitalyst benar-benar mengubah hidup saya!"
     },
     {
       name: "Pak Budi",
       age: 38,
       problem: "Sering kembung & sendawa",
       result: "Kembung hilang di minggu pertama",
-      quote: "Awalnya skeptis, tapi setelah ikuti challenge dan konsumsi Jates9, perut saya jadi nyaman banget. Terima kasih Coach!"
+      quote: "Awalnya skeptis, tapi setelah ikuti challenge dan konsumsi Vitalyst, perut saya jadi nyaman banget. Terima kasih Coach!"
     },
     {
       name: "Mbak Rina",
       age: 35,
       problem: "Sembelit parah",
       result: "BAB lancar setiap hari",
-      quote: "Dulu harus minum obat pencahar terus. Sekarang dengan Jates9 dan pola makan yang benar, BAB saya lancar alami!"
+      quote: "Dulu harus minum obat pencahar terus. Sekarang dengan Vitalyst dan pola makan yang benar, BAB saya lancar alami!"
     }
   ]
 };
@@ -196,7 +196,7 @@ export const productInfo = {
 export const aiChatMock = [
   {
     role: "assistant",
-    content: "Halo! Saya Doktor AI, asisten kesehatan virtual Anda. Saya di sini untuk membantu menjawab pertanyaan seputar kesehatan pencernaan Anda. Ada yang bisa saya bantu?"
+    content: "Halo! Saya Dr. Alva AI, asisten kesehatan virtual Anda. Saya di sini untuk membantu menjawab pertanyaan seputar kesehatan pencernaan Anda. Ada yang bisa saya bantu?"
   }
 ];
 
