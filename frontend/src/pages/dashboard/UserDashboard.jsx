@@ -414,10 +414,12 @@ const UserDashboard = () => {
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
+                        
                         {/* REFERRAL CODE DISINI */}
-                        <div style={{fontSize:'0.75rem', marginTop:'0.5rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem', background:'rgba(255,255,255,0.3)', padding:'2px 8px', borderRadius:'6px', width:'fit-content'}}>
-                             <QrCode size={12}/> Ref: <b>{overview?.user?.referral_code}</b>
+                        <div style={{fontSize:'0.75rem', marginTop:'0.5rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem', background:'rgba(255,255,255,0.3)', padding:'2px 8px', borderRadius:'6px', width:'fit-content', fontWeight:'bold'}}>
+                             <QrCode size={12}/> Ref: {overview?.user?.referral_code}
                         </div>
+
                       </div>
                     </CardContent>
                   </Card>
