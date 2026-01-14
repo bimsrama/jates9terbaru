@@ -8,7 +8,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
   Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard, Heart,
-  ShoppingCart
+  ShoppingCart, Bell
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -100,6 +100,9 @@ const UserDashboard = () => {
   
   // Article Modal State
   const [selectedArticle, setSelectedArticle] = useState(null);
+
+  // Notifikasi
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
   // Chat AI
   const [chatMessage, setChatMessage] = useState("");
@@ -204,7 +207,19 @@ const UserDashboard = () => {
   const generateDailyTip = (g) => { const tips = { 'A': "👋 Minum air hangat & serat.", 'B': "👋 Hindari santan & pedas.", 'C': "👋 Makan tepat waktu." }; return tips[g] || "👋 Jaga kesehatan!"; };
   const getRandomQuote = () => "Kesehatan adalah investasi terbaik.";
   const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles(), fetchProducts()]); setIsRefreshing(false); };
-  const handleScrollToChat = () => { setActiveTab('dashboard'); setSidebarOpen(false); setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); };
+  
+  // FIX: Nav Click closes sidebar on mobile
+  const handleNavClick = (tab) => {
+      setActiveTab(tab);
+      if (!isDesktop) setSidebarOpen(false);
+  };
+
+  const handleScrollToChat = () => { 
+      setActiveTab('dashboard'); 
+      if(!isDesktop) setSidebarOpen(false); 
+      setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); 
+  };
+
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
@@ -308,14 +323,6 @@ const UserDashboard = () => {
       }
   };
 
-  const checkCoupon = () => {
-      setCouponError("");
-      if (!couponCode) return;
-      if (couponCode.toUpperCase() === 'HEMAT10') setAppliedCoupon({ code: 'HEMAT10', amount: 10000 });
-      else if (couponCode.toUpperCase() === 'VITALYST') setAppliedCoupon({ code: 'VITALYST', amount: selectedProduct.price * 0.1 });
-      else { setCouponError("Kode kupon tidak valid."); setAppliedCoupon(null); }
-  };
-
   const handleProcessPayment = async () => {
       if (!snapLoaded) { alert("Sistem pembayaran belum siap."); return; }
       if (shippingMethod === 'jne' && !selectedAddrId) { alert("Pilih alamat pengiriman."); return; }
@@ -344,11 +351,6 @@ const UserDashboard = () => {
           console.error(error);
           alert("Gagal memproses transaksi: " + (error.response?.data?.message || "Server Error")); 
       }
-  };
-
-  const handleCancelOrder = async (orderId) => {
-      if(!window.confirm("Batalkan pesanan dalam 1x24 jam?")) return;
-      try { await axios.post(`${BACKEND_URL}/api/user/order/cancel/${orderId}`, {}, { headers: getAuthHeader() }); alert("Berhasil dibatalkan."); fetchOrders(); } catch(e){ alert("Gagal/Waktu habis."); }
   };
 
   const badgeStyle = {
@@ -394,7 +396,7 @@ const UserDashboard = () => {
     <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
       <style>{`
-        /* MAGIC STYLE: Hilangkan menu lama (dari app induk/template) */
+        /* MAGIC STYLE */
         header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }
         body { padding-top: 0 !important; margin-top: 0 !important; }
 
@@ -414,12 +416,12 @@ const UserDashboard = () => {
         </div>
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => setActiveTab('dashboard')}><Home size={20}/> Dashboard</button></li>
-            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => setActiveTab('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
-            <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => setActiveTab('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
-            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => setActiveTab('friends')}><Users size={20}/> Teman Sehat</button></li>
+            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Home size={20}/> Dashboard</button></li>
+            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => handleNavClick('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
+            <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
+            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
             <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva AI</button></li>
-            <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => setActiveTab('settings')}><Settings size={20}/> Pengaturan</button></li>
+            <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => handleNavClick('settings')}><Settings size={20}/> Pengaturan</button></li>
           </ul>
         </nav>
         <div style={{ padding: '1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}><button onClick={logout} className="nav-item" style={{ color: '#ef4444' }}><LogOut size={20} /> Keluar</button></div>
@@ -433,8 +435,35 @@ const UserDashboard = () => {
           {/* CONTENT DASHBOARD */}
           {activeTab === 'dashboard' && (
             <>
-              <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
+              {/* HEADER: GREETING & NOTIF */}
+              <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
+                
+                <div style={{position:'relative'}}>
+                    <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', cursor:'pointer', position:'relative'}}>
+                        <Bell size={24} color={darkMode?'white':'#1e293b'}/>
+                        {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:-2, right:-2, width:'10px', height:'10px', background:'red', borderRadius:'50%'}}></span>}
+                    </button>
+                    
+                    {showNotifDropdown && (
+                        <div style={{position:'absolute', top:'100%', right:0, width:'280px', background: darkMode?'#334155':'white', boxShadow:'0 5px 15px rgba(0,0,0,0.2)', borderRadius:'12px', padding:'1rem', zIndex:100, border: '1px solid #e2e8f0'}}>
+                            <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
+                            {overview?.notifications?.length > 0 ? (
+                                <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
+                                    {overview.notifications.map((n, i) => (
+                                        <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
+                                            <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
+                                            <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
+                                            <div style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:'2px'}}>{n.date}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>
+                            )}
+                        </div>
+                    )}
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
@@ -533,8 +562,8 @@ const UserDashboard = () => {
                            <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
                            
                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                              <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
-                              <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
+                             <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
+                             <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
                            </div>
                         </div>
                       )}
@@ -558,16 +587,6 @@ const UserDashboard = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-
-                  {/* QUOTE & REFRESH */}
-                  <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem' }}>
-                    <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
-                        "{quote}"
-                    </p>
-                    <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
-                        <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
-                    </button>
                   </div>
 
                 </div>
@@ -634,6 +653,16 @@ const UserDashboard = () => {
                   </Card>
                 </div>
               </div>
+
+              {/* QUOTE & REFRESH (DIPINDAHKAN KE PALING BAWAH) */}
+              <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
+                <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
+                    "{quote}"
+                </p>
+                <button onClick={handleRefresh} disabled={isRefreshing} style={{ background: 'transparent', border: 'none', color: darkMode ? '#cbd5e1' : '#475569', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', margin: '0 auto', cursor: 'pointer' }}>
+                    <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} /> {isRefreshing ? "Memuat ulang..." : "Refresh Halaman"}
+                </button>
+              </div>
             </>
           )}
 
@@ -641,7 +670,7 @@ const UserDashboard = () => {
           {activeTab === 'checkin' && (
               <div>
                   <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
+                    <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
                     <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Kalender</h1>
                   </div>
                   
@@ -670,7 +699,7 @@ const UserDashboard = () => {
               <div>
                 <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
-                        <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
+                        <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
                         <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Belanja Sehat</h1>
                     </div>
                 </div>
@@ -706,7 +735,7 @@ const UserDashboard = () => {
           {activeTab === 'friends' && (
               <div style={{maxWidth:'600px', margin:'0 auto'}}>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
+                    <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
                     <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1>
                 </div>
 
@@ -756,7 +785,7 @@ const UserDashboard = () => {
           {activeTab === 'settings' && (
             <div>
                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
                   <h1 className="heading-2">Pengaturan</h1>
                </div>
                
@@ -766,10 +795,10 @@ const UserDashboard = () => {
                     <CardContent>
                        <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}>
                            <div style={{ position: 'relative', width:'80px', height:'80px' }}>
-                              <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
-                                 {overview?.user?.profile_picture ? <img src={`${BACKEND_URL}${overview.user.profile_picture}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>}
-                              </div>
-                              <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleProfilePictureUpload} />
+                             <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
+                                {overview?.user?.profile_picture ? <img src={`${BACKEND_URL}${overview.user.profile_picture}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>}
+                             </div>
+                             <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleProfilePictureUpload} />
                            </div>
                            <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>{uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>} {uploadingImage ? "Mengupload..." : "Ganti Foto"}</button>
                        </div>
@@ -783,7 +812,7 @@ const UserDashboard = () => {
                           {Object.values(THEMES).map((theme) => (
                              <div key={theme.id} onClick={() => changeThemeColor(theme.id)} style={{ cursor: 'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem' }}>
                                 <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: theme.gradient, border: themeColor === theme.id ? `3px solid ${darkMode?'white':'#1e293b'}` : '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                   {themeColor === theme.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>}
+                                     {themeColor === theme.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>}
                                 </div>
                              </div>
                           ))}
