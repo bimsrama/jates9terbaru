@@ -47,7 +47,6 @@ const UserDashboard = () => {
   const [districts, setDistricts] = useState([]);
   const [subdistricts, setSubdistricts] = useState([]);
   
-  // Form Alamat
   const [newAddr, setNewAddr] = useState({ 
       label:'Rumah', name:'', phone:'', 
       prov_id:'', prov_name:'', 
@@ -62,6 +61,7 @@ const UserDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [shippingCost, setShippingCost] = useState(0);
   const [selectedAddrId, setSelectedAddrId] = useState(null);
+  const [shippingMethod, setShippingMethod] = useState("pickup");
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null); 
   const [couponError, setCouponError] = useState("");
@@ -88,12 +88,16 @@ const UserDashboard = () => {
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
+  
+  // State Modal Lain
   const [showQRModal, setShowQRModal] = useState(false); 
   const [friendCode, setFriendCode] = useState(""); 
   const [friendData, setFriendData] = useState(null); 
   const [showFriendProfile, setShowFriendProfile] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false); 
   const [installPrompt, setInstallPrompt] = useState(null); 
+  
+  // Chat AI
   const [chatMessage, setChatMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]); 
   const [chatLoading, setChatLoading] = useState(false);
@@ -197,14 +201,23 @@ const UserDashboard = () => {
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
   const triggerFileInput = () => fileInputRef.current.click();
 
+  // --- FRIENDS LOGIC ---
+  const handleAddFriend = async () => {
+      if(!friendCode) return alert("Masukkan kode teman!");
+      alert("Fitur add friend dalam pengembangan backend.");
+  };
+
+  const handleShowFriendProfile = (friend) => {
+      setFriendData(friend);
+      setShowFriendProfile(true);
+  };
+
   // --- CALENDAR LOGIC ---
   const renderCalendar = () => {
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
-    
-    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
     const startDay = firstDay === 0 ? 6 : firstDay - 1; 
 
     const days = [];
@@ -214,28 +227,17 @@ const UserDashboard = () => {
 
     for (let d = 1; d <= daysInMonth; d++) {
         const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); 
-        
         const log = checkinHistory.find(h => h.date === currentDateStr);
         let statusColor = darkMode ? '#334155' : '#f1f5f9'; 
         let textColor = darkMode ? '#94a3b8' : '#64748b';
 
         if (log) {
-            if (log.status === 'completed') {
-                statusColor = '#dcfce7'; textColor = '#166534';
-            } else if (log.status === 'skipped') {
-                statusColor = '#fee2e2'; textColor = '#991b1b';
-            }
+            if (log.status === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; }
+            else if (log.status === 'skipped') { statusColor = '#fee2e2'; textColor = '#991b1b'; }
         }
 
         days.push(
-            <div key={d} style={{ 
-                height: '40px', width:'40px', 
-                background: statusColor, 
-                borderRadius: '8px', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                fontWeight: 'bold', fontSize: '0.9rem', color: textColor,
-                cursor: 'pointer', margin:'0 auto'
-            }}>
+            <div key={d} style={{ height: '40px', width:'40px', background: statusColor, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: textColor, cursor: 'pointer', margin:'0 auto' }}>
                 {d}
             </div>
         );
@@ -264,20 +266,16 @@ const UserDashboard = () => {
       if(addr) {
           const res = await axios.post(`${BACKEND_URL}/api/location/rate`, { city_id: addr.city_id }, { headers: getAuthHeader() });
           setShippingCost(res.data.cost);
+          setShippingMethod("JNE Regular");
       }
   };
 
   const checkCoupon = () => {
       setCouponError("");
       if (!couponCode) return;
-      if (couponCode.toUpperCase() === 'HEMAT10') {
-          setAppliedCoupon({ code: 'HEMAT10', amount: 10000 });
-      } else if (couponCode.toUpperCase() === 'VITALYST') {
-          setAppliedCoupon({ code: 'VITALYST', amount: selectedProduct.price * 0.1 });
-      } else {
-          setCouponError("Kode kupon tidak valid.");
-          setAppliedCoupon(null);
-      }
+      if (couponCode.toUpperCase() === 'HEMAT10') setAppliedCoupon({ code: 'HEMAT10', amount: 10000 });
+      else if (couponCode.toUpperCase() === 'VITALYST') setAppliedCoupon({ code: 'VITALYST', amount: selectedProduct.price * 0.1 });
+      else { setCouponError("Kode kupon tidak valid."); setAppliedCoupon(null); }
   };
 
   const handleProcessPayment = async () => {
@@ -373,6 +371,7 @@ const UserDashboard = () => {
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => setActiveTab('dashboard')}><Home size={20}/> Dashboard</button></li>
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => setActiveTab('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => setActiveTab('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
+            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => setActiveTab('friends')}><Users size={20}/> Teman Sehat</button></li>
             <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva AI</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => setActiveTab('settings')}><Settings size={20}/> Pengaturan</button></li>
           </ul>
@@ -415,6 +414,7 @@ const UserDashboard = () => {
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
+                        <div style={{fontSize:'0.75rem', marginTop:'0.3rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem'}}><QrCode size={12}/> Ref: {overview?.user?.referral_code}</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -669,6 +669,167 @@ const UserDashboard = () => {
              </div>
           )}
 
+          {/* TAB FRIENDS (TEMAN SEHAT) - [BARU] */}
+          {activeTab === 'friends' && (
+             <div style={{maxWidth:'600px', margin:'0 auto'}}>
+                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
+                    <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1>
+                </div>
+
+                <Card style={{marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color:'white'}}>
+                   <CardContent style={{padding:'2rem', textAlign:'center'}}>
+                      <p style={{marginBottom:'0.5rem', opacity:0.9}}>Kode Referral Saya</p>
+                      <h1 style={{fontSize:'2.5rem', fontWeight:'bold', letterSpacing:'2px', marginBottom:'1.5rem'}}>{overview?.user?.referral_code}</h1>
+                      <div style={{background:'white', padding:'1rem', borderRadius:'12px', display:'inline-block', marginBottom:'1.5rem'}}>
+                         <QRCodeSVG value={`https://jagatetapsehat.com/join?ref=${overview?.user?.referral_code}`} size={150} />
+                      </div>
+                      <p style={{fontSize:'0.9rem', marginBottom:'1rem'}}>Ajak teman hidup sehat bersama!</p>
+                      <button onClick={copyReferral} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', color:'white', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}>
+                         <Copy size={16}/> Salin Kode
+                      </button>
+                   </CardContent>
+                </Card>
+
+                <Card style={{marginBottom: '2rem'}}>
+                    <CardContent style={{padding:'1.5rem'}}>
+                        <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Tambah Teman</h3>
+                        <div style={{display:'flex', gap:'0.5rem'}}>
+                            <input placeholder="Masukkan Kode Referral Teman" value={friendCode} onChange={e=>setFriendCode(e.target.value)} style={{flex:1, padding:'0.8rem', borderRadius:'8px', border:'1px solid #ccc'}} />
+                            <button onClick={handleAddFriend} style={{background:currentTheme.primary, color:'white', border:'none', borderRadius:'8px', padding:'0 1.5rem', fontWeight:'bold', cursor:'pointer'}}>Add</button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Daftar Teman</h3>
+                {myFriends.length === 0 ? <p style={{color:'#64748b', textAlign:'center'}}>Belum ada teman. Yuk ajak temanmu!</p> : (
+                    <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                        {myFriends.map(f => (
+                            <div key={f.id} onClick={()=>handleShowFriendProfile(f)} style={{cursor:'pointer', padding:'1rem', display:'flex', alignItems:'center', gap:'1rem', background: darkMode?'#1e293b':'white', borderRadius:'12px', border:'1px solid #e2e8f0'}}>
+                                <div style={{width:'50px', height:'50px', borderRadius:'50%', background:'#f1f5f9', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                    <User size={24} color="#64748b"/>
+                                </div>
+                                <div>
+                                    <h4 style={{fontWeight:'bold', color:darkMode?'white':'black'}}>{f.name}</h4>
+                                    <div style={{fontSize:'0.8rem', color: darkMode?'#cbd5e1':'#64748b', display:'flex', alignItems:'center', gap:'4px'}}><Medal size={12}/> {f.badge}</div>
+                                </div>
+                                <ChevronRight size={18} style={{marginLeft:'auto', color:'#94a3b8'}}/>
+                            </div>
+                        ))}
+                    </div>
+                )}
+             </div>
+          )}
+
+          {/* TAB SETTINGS */}
+          {activeTab === 'settings' && (
+            <div>
+               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button>
+                  <h1 className="heading-2">Pengaturan</h1>
+               </div>
+               
+               <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  
+                  {/* CARD PROFILE PICTURE UPDATE */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader>
+                    <CardContent>
+                       <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}>
+                           <div style={{ position: 'relative', width:'80px', height:'80px' }}>
+                              <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}>
+                                 {overview?.user?.profile_picture ? (
+                                    <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                 ) : (
+                                    <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>
+                                 )}
+                              </div>
+                              <input 
+                                 type="file" 
+                                 ref={fileInputRef} 
+                                 style={{ display: 'none' }} 
+                                 accept="image/*" 
+                                 onChange={handleProfilePictureUpload} 
+                              />
+                           </div>
+                           <div>
+                              <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                                  {uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>}
+                                  {uploadingImage ? "Mengupload..." : "Ganti Foto"}
+                              </button>
+                              <p style={{fontSize:'0.75rem', color:'#64748b', marginTop:'0.5rem'}}>Max 2MB (JPG/PNG)</p>
+                           </div>
+                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* UBAH TEMA */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Ubah Tema Aplikasi</CardTitle></CardHeader>
+                    <CardContent>
+                       <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}>
+                          {Object.values(THEMES).map((theme) => (
+                             <div key={theme.id} onClick={() => changeThemeColor(theme.id)} style={{ cursor: 'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem' }}>
+                                <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: theme.gradient, border: themeColor === theme.id ? `3px solid ${darkMode?'white':'#1e293b'}` : '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                   {themeColor === theme.id && <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/></div>}
+                                </div>
+                                <span style={{fontSize:'0.75rem', fontWeight: themeColor === theme.id ? 'bold' : 'normal'}}>{theme.name}</span>
+                             </div>
+                          ))}
+                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* AKUN & REFERRAL */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Info Akun</CardTitle></CardHeader>
+                    <CardContent>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                           <label style={{ fontSize: '0.85rem', color: '#64748b' }}>Nomor WhatsApp</label>
+                           <input type="text" value={overview?.user?.phone || ""} disabled style={{ width:'100%', padding: '0.8rem', background: darkMode ? '#334155' : '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', color: darkMode?'white':'black' }} />
+                        </div>
+                        <div>
+                           <label style={{ fontSize: '0.85rem', color: '#64748b' }}>Kode Referral Saya</label>
+                           <div style={{ display:'flex', gap:'0.5rem' }}>
+                              <input type="text" value={overview?.user?.referral_code || ""} disabled style={{ flex:1, padding: '0.8rem', background: darkMode ? '#334155' : '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight:'bold', letterSpacing:'1px', color: darkMode?'white':'black' }} />
+                              <button onClick={copyReferral} style={{ background: currentTheme.primary, color:'black', border:'none', borderRadius:'6px', padding:'0 1rem', cursor:'pointer' }}><Copy size={18}/></button>
+                           </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* TAMPILAN & APLIKASI */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Lainnya</CardTitle></CardHeader>
+                    <CardContent>
+                       <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
+                          <button onClick={toggleDarkMode} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', width:'100%', padding:'1rem', background: darkMode ? '#334155' : '#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', color: darkMode?'white':'black' }}>
+                             <div style={{display:'flex', alignItems:'center', gap:'0.8rem'}}><div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}>{darkMode ? <Moon size={20} color="#fbbf24"/> : <Sun size={20} color="#f59e0b"/>}</div> <span style={{fontWeight:'bold'}}>Mode Gelap</span></div>
+                             <div style={{ width:'40px', height:'20px', background: darkMode ? currentTheme.primary : '#cbd5e1', borderRadius:'20px', position:'relative', transition:'background 0.3s' }}>
+                                <div style={{ width:'16px', height:'16px', background:'white', borderRadius:'50%', position:'absolute', top:'2px', left: darkMode ? '22px' : '2px', transition:'left 0.3s' }}></div>
+                             </div>
+                          </button>
+                          <button onClick={handleInstallApp} style={{ display:'flex', alignItems:'center', gap:'0.8rem', width:'100%', padding:'1rem', background: darkMode ? '#334155' : '#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', color: darkMode?'white':'black', textAlign:'left' }}>
+                             <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Smartphone size={20} color={currentTheme.text}/></div>
+                             <div><div style={{fontWeight:'bold'}}>Install Aplikasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Tambahkan ke Layar Utama</div></div>
+                          </button>
+                          <button onClick={() => setShowPrivacyModal(true)} style={{ display:'flex', alignItems:'center', gap:'0.8rem', width:'100%', padding:'1rem', background: darkMode ? '#334155' : '#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', color: darkMode?'white':'black', textAlign:'left' }}>
+                             <div style={{background: darkMode?'#1e293b':'white', padding:'8px', borderRadius:'50%'}}><Shield size={20} color="#ef4444"/></div>
+                             <div><div style={{fontWeight:'bold'}}>Kebijakan Privasi</div><div style={{fontSize:'0.75rem', color:'#64748b'}}>Ketentuan penggunaan data</div></div>
+                          </button>
+                       </div>
+                    </CardContent>
+                  </Card>
+
+                  <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}>
+                     <LogOut size={20}/> Keluar dari Aplikasi
+                  </button>
+               </div>
+            </div>
+          )}
+
       {/* MODAL ALAMAT SAYA */}
       {showAddressModal && (
           <div className="modal-overlay">
@@ -807,8 +968,73 @@ const UserDashboard = () => {
           </div>
       )}
 
-      {/* MODAL SETTINGS (PRIVASI, QR, DLL) SAMA SEPERTI SEBELUMNYA */}
-      {/* ... (Kode modal lain tetap sama) ... */}
+      {/* MODAL PRIVASI */}
+      {showPrivacyModal && (
+         <div className="modal-overlay">
+            <div style={{ background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '90%', maxHeight:'80vh', overflowY:'auto' }}>
+               <h3 style={{ fontSize:'1.4rem', fontWeight:'bold', marginBottom:'1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Shield size={24}/> Kebijakan Privasi</h3>
+               <div style={{ fontSize:'0.9rem', lineHeight:'1.6', marginBottom:'1.5rem', color: darkMode ? '#cbd5e1' : '#334155' }}>
+                  <p><strong>1. Pengumpulan Data:</strong> Kami mengumpulkan data nama, nomor WhatsApp, dan log aktivitas kesehatan Anda untuk keperluan monitoring program Vitalyst.</p>
+                  <p><strong>2. Penggunaan Data:</strong> Data Anda digunakan untuk memberikan rekomendasi kesehatan yang personal oleh AI dan tim ahli kami.</p>
+                  <p><strong>3. Keamanan:</strong> Kami tidak membagikan data pribadi Anda kepada pihak ketiga tanpa izin, kecuali untuk keperluan pengiriman produk (ekspedisi).</p>
+                  <p><strong>4. Hak Pengguna:</strong> Anda berhak meminta penghapusan akun sewaktu-waktu melalui Admin.</p>
+               </div>
+               <button onClick={() => setShowPrivacyModal(false)} style={{ width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'black', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer' }}>Saya Mengerti</button>
+            </div>
+         </div>
+      )}
+
+      {/* MODAL QR */}
+      {showQRModal && (
+        <div className="modal-overlay" onClick={() => setShowQRModal(false)}>
+            <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}>
+                <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3>
+                <div style={{ marginBottom: '1.5rem' }}>
+                    <div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}>
+                        <QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} />
+                    </div>
+                </div>
+                <button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button>
+            </div>
+        </div>
+      )}
+      
+      {/* MODAL PROFIL TEMAN */}
+      {showFriendProfile && friendData && (
+        <div className="modal-overlay" onClick={() => setShowFriendProfile(false)}>
+            <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                <div style={{ background: `linear-gradient(135deg, ${currentTheme.light} 0%, ${currentTheme.primary} 100%)`, padding: '2rem 1rem', textAlign: 'center' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'white', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', overflow: 'hidden', border: '2px solid white' }}>
+                        {friendData.profile_picture ? (
+                           <img src={`${BACKEND_URL}${friendData.profile_picture}`} alt={friendData.name} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                        ) : (
+                           <User size={40} color={currentTheme.text} />
+                        )}
+                    </div>
+                    <h2 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#1e293b', marginBottom: '0.2rem' }}>{friendData.name}</h2>
+                    <div className="gold-badge" style={{ display: 'inline-flex', marginTop: '0.5rem' }}><Medal size={14}/> {friendData.badge}</div>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+                        <h4 style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1rem' }}>{friendData.challenge_title}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} 窶｢ Hari ke-{friendData.challenge_day}</div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ textAlign: 'center', padding: '0.8rem', background: '#f0fdf4', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#166534' }}>{friendData.total_checkins}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#166534' }}>Check-in</div>
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '0.8rem', background: '#fff7ed', borderRadius: '8px' }}>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ea580c' }}>{friendData.challenge_day}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#ea580c' }}>Hari Jalan</div>
+                        </div>
+                    </div>
+                    <button onClick={() => setShowFriendProfile(false)} style={{ marginTop: '1.5rem', width: '100%', padding: '0.8rem', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Tutup</button>
+                </div>
+            </div>
+        </div>
+      )}
       
     </div>
   );
