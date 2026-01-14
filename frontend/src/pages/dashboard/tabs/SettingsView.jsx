@@ -1,104 +1,79 @@
-import React, { useState } from 'react';
-import { Bell, Lock, User, Globe, Moon, Shield, Save } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Moon, Sun, Camera, Check, RefreshCw } from 'lucide-react';
+import axios from 'axios';
 
-const SettingsView = () => {
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+const SettingsView = ({ BACKEND_URL, getAuthHeader, darkMode, toggleDarkMode, currentTheme, changeThemeColor, themeColor, THEMES, userOverview, fetchUserOverview }) => {
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleProfileUpload = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('image', file);
+      try {
+          await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' }});
+          fetchUserOverview(); // Refresh global user data
+          alert("Foto berhasil diupdate!");
+      } catch(e) { alert("Gagal upload foto."); }
+      finally { setUploading(false); }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
-        <p className="text-gray-500 text-sm">Manage your account preferences</p>
-      </div>
+    <div style={{maxWidth:'600px'}}>
+        <h1 className="text-2xl font-bold mb-6">Pengaturan</h1>
 
-      <div className="grid gap-6">
-        {/* Profile Settings Section */}
-        <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-              <User className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-800">Account Information</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Full Name</label>
-              <input type="text" defaultValue="Admin User" className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email Address</label>
-              <input type="email" defaultValue="admin@example.com" className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-            </div>
-          </div>
-        </section>
-
-        {/* Preferences Section */}
-        <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-              <Globe className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-800">App Preferences</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-gray-400" />
-                <div>
-                  <p className="font-medium text-gray-700">Push Notifications</p>
-                  <p className="text-xs text-gray-500">Receive alerts about activity</p>
+        {/* 1. GANTI FOTO PROFIL */}
+        <Card style={{marginBottom:'1.5rem', background: darkMode?'#1e293b':'white'}}>
+            <CardHeader><CardTitle>Foto Profil</CardTitle></CardHeader>
+            <CardContent style={{display:'flex', alignItems:'center', gap:'1.5rem'}}>
+                <div style={{width:'80px', height:'80px', borderRadius:'50%', background:'#f1f5f9', overflow:'hidden', border:'2px solid #e2e8f0'}}>
+                    {userOverview?.user?.profile_picture && <img src={`${BACKEND_URL}${userOverview.user.profile_picture}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/>}
                 </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={notifications} onChange={() => setNotifications(!notifications)} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors">
-              <div className="flex items-center gap-3">
-                <Moon className="h-5 w-5 text-gray-400" />
                 <div>
-                  <p className="font-medium text-gray-700">Dark Mode</p>
-                  <p className="text-xs text-gray-500">Switch to dark theme</p>
+                    <button onClick={()=>fileInputRef.current.click()} disabled={uploading} style={{background: currentTheme.primary, padding:'0.6rem 1rem', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                        {uploading ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>}
+                        {uploading ? "Mengupload..." : "Ganti Foto"}
+                    </button>
+                    <input type="file" ref={fileInputRef} style={{display:'none'}} accept="image/*" onChange={handleProfileUpload}/>
                 </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={darkMode} onChange={() => setDarkMode(!darkMode)} />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-              </label>
-            </div>
-          </div>
-        </section>
+            </CardContent>
+        </Card>
 
-        {/* Security Section */}
-        <section className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-green-50 rounded-lg text-green-600">
-              <Shield className="h-5 w-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-800">Security</h3>
-          </div>
-          
-          <button className="flex items-center gap-2 text-sm text-blue-600 font-medium hover:text-blue-700">
-            <Lock className="h-4 w-4" />
-            Change Password
-          </button>
-        </section>
-      </div>
+        {/* 2. GANTI TEMA (LINGKARAN WARNA) */}
+        <Card style={{marginBottom:'1.5rem', background: darkMode?'#1e293b':'white'}}>
+            <CardHeader><CardTitle>Tema Aplikasi</CardTitle></CardHeader>
+            <CardContent>
+                <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}>
+                    {Object.values(THEMES).map(t => (
+                        <div key={t.id} onClick={()=>changeThemeColor(t.id)} style={{cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem'}}>
+                            <div style={{width:'40px', height:'40px', borderRadius:'50%', background: t.gradient, border: themeColor===t.id ? `3px solid ${darkMode?'white':'#333'}` : '1px solid #ccc', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                {themeColor===t.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>}
+                            </div>
+                            <span style={{fontSize:'0.75rem', fontWeight: themeColor===t.id?'bold':'normal'}}>{t.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
 
-      <div className="flex justify-end pt-4">
-        <button className="flex items-center gap-2 px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200">
-          <Save className="h-4 w-4" />
-          Save Changes
-        </button>
-      </div>
+        {/* 3. DARK MODE */}
+        <Card style={{background: darkMode?'#1e293b':'white'}}>
+            <CardContent style={{paddingTop:'1.5rem'}}>
+                <button onClick={toggleDarkMode} style={{width:'100%', display:'flex', justifyContent:'space-between', alignItems:'center', background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}>
+                    <div style={{display:'flex', gap:'0.8rem', alignItems:'center'}}>
+                        {darkMode ? <Moon size={20} color="#fbbf24"/> : <Sun size={20} color="#f59e0b"/>}
+                        <span style={{fontWeight:'bold', fontSize:'1rem'}}>Mode Gelap</span>
+                    </div>
+                    <div style={{width:'40px', height:'20px', background: darkMode ? currentTheme.primary : '#cbd5e1', borderRadius:'20px', position:'relative'}}>
+                        <div style={{width:'16px', height:'16px', background:'white', borderRadius:'50%', position:'absolute', top:'2px', left: darkMode ? '22px' : '2px', transition:'all 0.3s'}}></div>
+                    </div>
+                </button>
+            </CardContent>
+        </Card>
     </div>
   );
 };
-
 export default SettingsView;
