@@ -7,7 +7,7 @@ import {
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
-  Bot, Sparkles, MapPin, Truck, Box, TicketPercent
+  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -54,17 +54,19 @@ const UserDashboard = () => {
   
   // Coupon
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // {code, amount}
+  const [appliedCoupon, setAppliedCoupon] = useState(null); 
   const [couponError, setCouponError] = useState("");
 
   const [myOrders, setMyOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
 
+  // --- STATE BARU (HISTORY CHECKIN) ---
+  const [checkinHistory, setCheckinHistory] = useState([]);
+
   // --- STATE LAINNYA ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
   const [checkinStatus, setCheckinStatus] = useState(null); 
-  const [countdown, setCountdown] = useState(null);
   const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -80,7 +82,6 @@ const UserDashboard = () => {
   const [showQRModal, setShowQRModal] = useState(false); 
   const [friendCode, setFriendCode] = useState(""); 
   const [friendData, setFriendData] = useState(null); 
-  const [searchLoading, setSearchLoading] = useState(false);
   const [showFriendProfile, setShowFriendProfile] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false); 
   const [installPrompt, setInstallPrompt] = useState(null); 
@@ -103,8 +104,10 @@ const UserDashboard = () => {
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
   }, []);
 
+  // [FIX] Tambahkan fetchCheckinHistory saat tab checkin aktif
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
+  useEffect(() => { if (activeTab === 'checkin') fetchCheckinHistory(); }, [activeTab]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
@@ -122,21 +125,27 @@ const UserDashboard = () => {
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  // ... (Fetch Functions sama seperti sebelumnya) ...
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
   const fetchDailyContent = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); setDailyData(res.data); setCheckinStatus(res.data.today_status || null); } catch (e) {} };
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
+  
+  // [BARU] Fetch History
+  const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
-  const generateDailyTip = (g) => { const tips = { 'A': "💡 Minum air hangat & serat.", 'B': "💡 Hindari santan & pedas.", 'C': "💡 Makan tepat waktu." }; return tips[g] || "💡 Jaga kesehatan!"; };
+  const generateDailyTip = (g) => { const tips = { 'A': "庁 Minum air hangat & serat.", 'B': "庁 Hindari santan & pedas.", 'C': "庁 Makan tepat waktu." }; return tips[g] || "庁 Jaga kesehatan!"; };
   const getRandomQuote = () => "Kesehatan adalah investasi terbaik.";
   const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles(), fetchProducts()]); setIsRefreshing(false); };
   const handleScrollToChat = () => { setActiveTab('dashboard'); setSidebarOpen(false); setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); };
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   const handleSubmitCheckin = async (status) => { if(isSubmitting) return; setIsSubmitting(true); try { await axios.post(`${BACKEND_URL}/api/checkin`, {journal, status}, {headers:getAuthHeader()}); setCheckinStatus(status); if(status==='completed') { alert("Selesai!"); fetchData(); } } catch(e){alert("Gagal.");} finally {setIsSubmitting(false);} };
-  
+  const handleSwitchChallenge = async (id) => { if(window.confirm("Ganti challenge akan mereset progress ke hari 1. Lanjut?")) { try { await axios.post(`${BACKEND_URL}/api/user/select-challenge`, {challenge_id: id}, {headers: getAuthHeader()}); alert("Berhasil ganti challenge!"); handleRefresh(); } catch(e){alert("Gagal.");} } };
+  const handleArticleClick = (id) => { alert("Fitur detail artikel segera hadir!"); };
+  const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
+  const triggerFileInput = () => fileInputRef.current.click();
+
   // --- FUNGSI LOKASI & JARAK ---
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
       const R = 6371; 
@@ -171,10 +180,9 @@ const UserDashboard = () => {
       setSelectedProduct(product);
       setShippingCost(0);
       setShippingMethod('pickup');
-      // [FIX] Auto-Fill dari data User yang sudah di-fetch
       setRecipientName(overview?.user?.name || "");
       setRecipientPhone(overview?.user?.phone || "");
-      setShippingAddress(overview?.user?.address || ""); // Alamat otomatis terisi
+      setShippingAddress(overview?.user?.address || ""); 
       setAppliedCoupon(null);
       setCouponCode("");
       setShowCheckoutModal(true);
@@ -213,11 +221,7 @@ const UserDashboard = () => {
   
           if (response.data.success) {
               setShowCheckoutModal(false);
-              // Update state overview agar alamat tersimpan terlihat langsung tanpa refresh
-              setOverview(prev => ({
-                  ...prev,
-                  user: { ...prev.user, address: shippingAddress, phone: recipientPhone }
-              }));
+              setOverview(prev => ({ ...prev, user: { ...prev.user, address: shippingAddress, phone: recipientPhone } }));
               window.snap.pay(response.data.token, {
                   onSuccess: function(result) { alert("Pembayaran Berhasil!"); fetchOrders(); },
                   onPending: function(result) { alert("Menunggu pembayaran!"); fetchOrders(); },
@@ -227,12 +231,26 @@ const UserDashboard = () => {
       } catch (error) { alert("Gagal memproses transaksi."); }
   };
 
+  // --- STYLE BADGE BARU ---
+  const badgeStyle = {
+      background: 'linear-gradient(45deg, #FFD700, #FDB931)', 
+      color: '#7B3F00', 
+      padding: '5px 12px', 
+      borderRadius: '20px', 
+      fontSize: '0.8rem', 
+      fontWeight: 'bold', 
+      display: 'inline-flex', 
+      alignItems: 'center', 
+      gap: '5px',
+      boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+      border: '1px solid #FFF'
+  };
+
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
 
   return (
     <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       
-      {/* STYLE SAMA SEPERTI SEBELUMNYA */}
       <style>{`
         :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }
         .dark { --theme-gradient: ${currentTheme.darkGradient}; }
@@ -241,7 +259,7 @@ const UserDashboard = () => {
         .scroll-hide::-webkit-scrollbar { display: none; }
       `}</style>
 
-      {/* SIDEBAR & HEADER SAMA (SAYA SINGKAT) */}
+      {/* SIDEBAR */}
       <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2>
@@ -263,10 +281,11 @@ const UserDashboard = () => {
         
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
           
-          {/* CONTENT DASHBOARD/CHECKIN/SETTINGS SAMA... */}
+          {/* CONTENT DASHBOARD */}
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
+                {/* [FIX] GUNAKAN HARI REAL */}
                 <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day || 1}.</p>
               </div>
 
@@ -294,7 +313,8 @@ const UserDashboard = () => {
 
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
-                        <div className="gold-badge"><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
+                        {/* [FIX] BADGE UI BARU */}
+                        <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -306,6 +326,18 @@ const UserDashboard = () => {
                           <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Tantangan Aktif</h3></div>
                           <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: currentTheme.text, fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={14} /></button>
                         </div>
+                        
+                        {/* [FIX] ALERT MISSED DAYS */}
+                        {(overview?.user?.missed_days > 0) && (
+                            <div style={{marginBottom:'1rem', padding:'0.8rem', background:'#fef2f2', border:'1px solid #fee2e2', borderRadius:'8px', display:'flex', gap:'0.8rem', alignItems:'center'}}>
+                                <AlertTriangle size={20} color="#ef4444"/>
+                                <div>
+                                    <div style={{fontWeight:'bold', color:'#991b1b', fontSize:'0.9rem'}}>Kamu melewatkan {overview.user.missed_days} hari!</div>
+                                    <div style={{fontSize:'0.75rem', color:'#b91c1c'}}>Ayo kejar ketertinggalanmu hari ini.</div>
+                                </div>
+                            </div>
+                        )}
+
                         <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
                           <div style={{ marginBottom: '0.75rem' }}>
                               <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
@@ -366,15 +398,13 @@ const UserDashboard = () => {
                 {/* KOLOM KANAN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
-                  {/* CHAT DOKTER AI (UPDATED) */}
+                  {/* CHAT DOKTER AI */}
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
                       <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
-                        {/* Icon AI Baru */}
                         <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}>
                             <Bot size={24} color={currentTheme.text} />
                         </div>
                         <div>
-                            {/* Nama Baru + Icon Sparkles */}
                             <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}>
                                 Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/>
                             </h3>
@@ -463,6 +493,40 @@ const UserDashboard = () => {
             </>
           )}
 
+          {/* [FIX] TAB RIWAYAT CHECK-IN (SUDAH DIPERBAIKI, TIDAK BLANK) */}
+          {activeTab === 'checkin' && (
+              <div>
+                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
+                    <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1>
+                 </div>
+                 
+                 {checkinHistory.length === 0 ? (
+                     <div style={{textAlign:'center', padding:'3rem', color:'#64748b'}}>Belum ada riwayat check-in.</div>
+                 ) : (
+                     <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                        {checkinHistory.map((log, idx) => (
+                            <div key={idx} style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', display:'flex', gap:'1rem', alignItems:'flex-start'}}>
+                                <div style={{display:'flex', flexDirection:'column', alignItems:'center', minWidth:'50px'}}>
+                                    <div style={{fontSize:'1.2rem', fontWeight:'bold', color: currentTheme.text}}>H-{log.day}</div>
+                                    <div style={{fontSize:'0.7rem', color:'#64748b'}}>{log.time}</div>
+                                </div>
+                                <div style={{flex:1}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}>
+                                        <span style={{fontWeight:'bold', color: darkMode?'white':'black'}}>{log.date}</span>
+                                        <span style={{fontSize:'0.75rem', padding:'2px 8px', borderRadius:'10px', background: log.status==='completed'?'#dcfce7':'#fee2e2', color: log.status==='completed'?'#166534':'#991b1b', fontWeight:'bold'}}>
+                                            {log.status === 'completed' ? 'Selesai' : 'Terlewat'}
+                                        </span>
+                                    </div>
+                                    <p style={{fontSize:'0.9rem', color: darkMode ? '#cbd5e1' : '#475569', fontStyle: 'italic'}}>"{log.notes || 'Tanpa catatan'}"</p>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                 )}
+              </div>
+          )}
+
           {/* FITUR TOKO */}
           {activeTab === 'shop' && (
              <div>
@@ -490,7 +554,6 @@ const UserDashboard = () => {
                             <h3 style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem', color: darkMode ? 'white' : 'black' }}>{prod.name}</h3>
                             <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem', minHeight: '40px' }}>{prod.description}</p>
                             
-                            {/* DUMMY SOLD COUNT */}
                             <div style={{fontSize:'0.75rem', color:'#64748b', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.3rem'}}>
                                 <CheckCircle size={12} color="#16a34a"/> Terjual: <b>{prod.fake_sales || 0} pcs</b>
                             </div>
@@ -534,7 +597,6 @@ const UserDashboard = () => {
                                     <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>
                                  )}
                               </div>
-                              {/* INPUT FILE HIDDEN */}
                               <input 
                                  type="file" 
                                  ref={fileInputRef} 
@@ -707,8 +769,7 @@ const UserDashboard = () => {
                                 <div style={{width:'60px', height:'60px', background:'#f1f5f9', borderRadius:'8px', display:'flex', alignItems:'center', justifyContent:'center'}}><Box size={24} color="#64748b"/></div>
                                 <div style={{flex:1}}>
                                     <div style={{display:'flex', justifyContent:'space-between'}}><h4 style={{fontWeight:'bold', fontSize:'0.95rem'}}>{order.product_name}</h4><span style={{fontSize:'0.75rem', fontWeight:'bold', padding:'2px 8px', borderRadius:'12px', background: order.status==='paid'?'#dcfce7': order.status==='shipped'?'#dbeafe':'#fff7ed', color: order.status==='paid'?'#166534': order.status==='shipped'?'#1e40af':'#9a3412'}}>{order.status === 'pending' ? 'Menunggu Bayar' : order.status === 'paid' ? 'Dikemas' : order.status === 'shipped' ? 'Dikirim' : order.status}</span></div>
-                                    {/* FIX ERROR toUpperCase() pada data lama */}
-                                    <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} • {(order.shipping_method || 'pickup').toUpperCase()}</p>
+                                    <p style={{fontSize:'0.8rem', color:'#64748b'}}>Total: Rp {order.amount.toLocaleString()} 窶｢ {(order.shipping_method || 'pickup').toUpperCase()}</p>
                                     {order.resi && <p style={{fontSize:'0.8rem', color:'#1e40af', marginTop:'0.2rem'}}>Resi: {order.resi}</p>}
                                 </div>
                             </div>
@@ -738,7 +799,7 @@ const UserDashboard = () => {
       {/* MODAL QR */}
       {showQRModal && (<div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowQRModal(false)}><div style={{ background: 'white', padding: '2rem', borderRadius: '16px', textAlign: 'center', maxWidth: '350px', width: '90%' }} onClick={e => e.stopPropagation()}><h3 style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1rem', color: '#1e293b' }}>Kode Pertemanan</h3><div style={{ marginBottom: '1.5rem' }}><div style={{ background: 'white', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}><QRCodeSVG value={`https://jagatetapsehat.com/friend/${overview?.user?.referral_code}`} size={160} /></div></div><button onClick={() => setShowQRModal(false)} style={{ marginTop: '1rem', width: '100%', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px' }}>Tutup</button></div></div>)}
       
-      {/* MODAL PROFIL TEMAN (SUDAH DIPERBAIKI) */}
+      {/* MODAL PROFIL TEMAN */}
       {showFriendProfile && friendData && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }} onClick={() => setShowFriendProfile(false)}>
             <div style={{ background: 'white', borderRadius: '16px', maxWidth: '350px', width: '90%', overflow: 'hidden', position: 'relative' }} onClick={e => e.stopPropagation()}>
@@ -757,7 +818,7 @@ const UserDashboard = () => {
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
                         <h4 style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
                         <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1rem' }}>{friendData.challenge_title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} • Hari ke-{friendData.challenge_day}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} 窶｢ Hari ke-{friendData.challenge_day}</div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div style={{ textAlign: 'center', padding: '0.8rem', background: '#f0fdf4', borderRadius: '8px' }}>
