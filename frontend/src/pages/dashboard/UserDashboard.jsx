@@ -7,7 +7,7 @@ import {
   Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
-  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard
+  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard, Heart
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react'; 
@@ -414,7 +414,10 @@ const UserDashboard = () => {
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
-                        <div style={{fontSize:'0.75rem', marginTop:'0.3rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem'}}><QrCode size={12}/> Ref: {overview?.user?.referral_code}</div>
+                        {/* REFERRAL CODE DISINI */}
+                        <div style={{fontSize:'0.75rem', marginTop:'0.5rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem', background:'rgba(255,255,255,0.3)', padding:'2px 8px', borderRadius:'6px', width:'fit-content'}}>
+                             <QrCode size={12}/> Ref: <b>{overview?.user?.referral_code}</b>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -669,7 +672,7 @@ const UserDashboard = () => {
              </div>
           )}
 
-          {/* TAB FRIENDS (TEMAN SEHAT) - [BARU] */}
+          {/* TAB FRIENDS (TEMAN SEHAT) */}
           {activeTab === 'friends' && (
              <div style={{maxWidth:'600px', margin:'0 auto'}}>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
