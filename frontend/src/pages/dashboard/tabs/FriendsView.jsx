@@ -1,83 +1,84 @@
-import React, { useState } from 'react';
-import { Search, UserPlus, MoreHorizontal, MessageCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '../../../components/ui/card';
+import { Copy, QrCode, Users, Medal, ChevronRight, X, User } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react'; // Pastikan install: npm install qrcode.react
+import axios from 'axios';
 
-const FriendView = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+const FriendView = ({ BACKEND_URL, getAuthHeader, darkMode, currentTheme, userOverview }) => {
+  const [myFriends, setMyFriends] = useState([]);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [friendCode, setFriendCode] = useState("");
 
-  // Dummy data untuk teman
-  const friends = [
-    { id: 1, name: 'Sarah Wilson', role: 'UI Designer', status: 'online', avatar: 'SW' },
-    { id: 2, name: 'Budi Santoso', role: 'Developer', status: 'offline', avatar: 'BS' },
-    { id: 3, name: 'Jessica Lee', role: 'Project Manager', status: 'online', avatar: 'JL' },
-    { id: 4, name: 'Mike Chen', role: 'DevOps', status: 'busy', avatar: 'MC' },
-  ];
+  useEffect(() => {
+      axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() })
+           .then(res => setMyFriends(res.data.friends))
+           .catch(e => console.log(e));
+  }, []);
 
-  const filteredFriends = friends.filter(friend =>
-    friend.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const copyReferral = () => {
+      navigator.clipboard.writeText(userOverview?.user?.referral_code || "");
+      alert("Kode referral disalin!");
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800">Friends</h2>
-          <p className="text-gray-500 text-sm">Manage your connections</p>
-        </div>
-        <div className="flex w-full sm:w-auto gap-3">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Search friends..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors">
-            <UserPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Friend</span>
-          </button>
-        </div>
-      </div>
+    <div style={{maxWidth:'600px', margin:'0 auto'}}>
+        <h1 className="text-2xl font-bold mb-6">Teman Sehat</h1>
 
-      {/* Friends Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredFriends.map((friend) => (
-          <div key={friend.id} className="bg-white p-4 rounded-2xl border border-gray-100 hover:shadow-lg transition-all duration-300 group">
-            <div className="flex items-start justify-between">
-              <div className="flex gap-3">
-                <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-600 font-bold text-lg">
-                    {friend.avatar}
-                  </div>
-                  <span className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
-                    friend.status === 'online' ? 'bg-green-500' : 
-                    friend.status === 'busy' ? 'bg-red-500' : 'bg-gray-400'
-                  }`} />
+        {/* 1. KARTU REFERRAL (Yang Anda cari) */}
+        <Card style={{marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color:'white', border:'none'}}>
+            <CardContent style={{padding:'2rem', textAlign:'center'}}>
+                <p style={{opacity:0.9, marginBottom:'0.5rem'}}>Kode Referral Saya</p>
+                <h1 style={{fontSize:'2.5rem', fontWeight:'bold', letterSpacing:'2px', marginBottom:'1.5rem'}}>{userOverview?.user?.referral_code || "LOADING"}</h1>
+                
+                <div style={{display:'flex', justifyContent:'center', gap:'1rem'}}>
+                    <button onClick={copyReferral} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', color:'white', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}>
+                        <Copy size={16}/> Salin
+                    </button>
+                    <button onClick={()=>setShowQRModal(true)} style={{background:'white', color:'#4f46e5', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}>
+                        <QrCode size={16}/> QR Code
+                    </button>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800">{friend.name}</h3>
-                  <p className="text-sm text-gray-500">{friend.role}</p>
+            </CardContent>
+        </Card>
+
+        {/* 2. INPUT TAMBAH TEMAN */}
+        <Card style={{marginBottom:'2rem', background: darkMode?'#1e293b':'white'}}>
+            <CardContent style={{padding:'1.5rem'}}>
+                <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Teman</h3>
+                <div style={{display:'flex', gap:'0.5rem'}}>
+                    <input placeholder="Masukkan Kode Teman" value={friendCode} onChange={e=>setFriendCode(e.target.value)} style={{flex:1, padding:'0.8rem', borderRadius:'8px', border:'1px solid #ccc', color:'black'}} />
+                    <button style={{background: currentTheme.primary, border:'none', padding:'0 1.5rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Add</button>
                 </div>
-              </div>
-              <button className="text-gray-400 hover:text-gray-600 p-1">
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
+            </CardContent>
+        </Card>
+
+        {/* 3. LIST TEMAN */}
+        <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Daftar Teman</h3>
+        <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+            {myFriends.map((f, i) => (
+                <div key={i} style={{padding:'1rem', background: darkMode?'#1e293b':'white', borderRadius:'12px', border:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:'1rem'}}>
+                    <div style={{width:'40px', height:'40px', background:'#f1f5f9', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={20} color="gray"/></div>
+                    <div>
+                        <div style={{fontWeight:'bold'}}>{f.name}</div>
+                        <div style={{fontSize:'0.8rem', color:'gray', display:'flex', alignItems:'center', gap:'4px'}}><Medal size={12}/> {f.badge}</div>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        {/* 4. MODAL QR CODE */}
+        {showQRModal && (
+            <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}} onClick={()=>setShowQRModal(false)}>
+                <div style={{background:'white', padding:'2rem', borderRadius:'16px', textAlign:'center'}} onClick={e=>e.stopPropagation()}>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', color:'black'}}>Kode Pertemanan</h3>
+                    <div style={{padding:'1rem', border:'1px solid #eee', borderRadius:'12px', display:'inline-block'}}>
+                        <QRCodeSVG value={`https://jagatetapsehat.com/add/${userOverview?.user?.referral_code}`} size={180} />
+                    </div>
+                    <button onClick={()=>setShowQRModal(false)} style={{display:'block', width:'100%', marginTop:'1rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer'}}>Tutup</button>
+                </div>
             </div>
-            
-            <div className="mt-4 flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <MessageCircle className="h-4 w-4" />
-                Message
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+        )}
     </div>
   );
 };
-
 export default FriendView;
