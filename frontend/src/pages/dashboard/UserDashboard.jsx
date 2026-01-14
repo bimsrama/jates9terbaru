@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Home, LogOut, Settings, User, ShoppingBag, 
-  Calendar, Users, Bot, Menu 
+  Home, Settings, ShoppingBag, 
+  Calendar, Users, Bot 
 } from 'lucide-react';
 import axios from 'axios';
 
-// --- IMPORT TABS (Pastikan file-file ini ada di folder tabs) ---
+// --- IMPORT TABS ---
 import DashboardView from './tabs/DashboardView';
 import CheckinView from './tabs/CheckinView';
 import ShopView from './tabs/ShopView';
@@ -31,10 +31,6 @@ const UserDashboard = () => {
   
   // --- STATE UTAMA ---
   const [activeTab, setActiveTab] = useState('dashboard'); 
-  const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
-  
-  // State Data User Global (PENTING AGAR TIDAK ERROR)
   const [userOverview, setUserOverview] = useState(null); 
 
   // --- STATE TEMA ---
@@ -42,7 +38,7 @@ const UserDashboard = () => {
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
 
-  // --- FUNGSI LOAD DATA USER (SOLUSI ERROR "u is not a function") ---
+  // --- LOAD DATA USER ---
   const fetchUserOverview = async () => {
       try {
           const res = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
@@ -52,21 +48,11 @@ const UserDashboard = () => {
       }
   };
 
-  // Load data saat pertama kali buka
   useEffect(() => {
     fetchUserOverview();
-    
-    const handleResize = () => { 
-        setIsDesktop(window.innerWidth > 1024); 
-        if(window.innerWidth > 1024) setSidebarOpen(false); 
-    };
-    window.addEventListener('resize', handleResize);
-    
-    // Apply Dark Mode Class to HTML/Body
+    // Apply Dark Mode Class
     if (darkMode) document.documentElement.classList.add('dark'); 
     else document.documentElement.classList.remove('dark');
-
-    return () => window.removeEventListener('resize', handleResize);
   }, [darkMode]);
 
   // Handler Tema
@@ -80,78 +66,110 @@ const UserDashboard = () => {
       localStorage.setItem('colorTheme', k); 
   };
 
-  // --- PROPS YANG AKAN DIKIRIM KE SEMUA TAB ---
+  // --- PROPS SHARED ---
   const commonProps = {
-      BACKEND_URL, 
-      getAuthHeader, 
-      darkMode, 
-      currentTheme, 
-      userOverview,        // Data User
-      setUserOverview, 
-      fetchUserOverview,   // Fungsi Refresh Data (INI KUNCI PERBAIKANNYA)
-      toggleDarkMode, 
-      changeThemeColor, 
-      themeColor, 
-      THEMES, 
-      setActiveTab
+      BACKEND_URL, getAuthHeader, darkMode, currentTheme, 
+      userOverview, setUserOverview, fetchUserOverview,
+      toggleDarkMode, changeThemeColor, themeColor, THEMES, setActiveTab
   };
 
+  // --- STYLE UNTUK BOTTOM NAV ---
+  const navButtonStyle = (tabName) => ({
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'transparent',
+      border: 'none',
+      padding: '0.8rem 0',
+      cursor: 'pointer',
+      color: activeTab === tabName ? currentTheme.text : (darkMode ? '#94a3b8' : '#64748b'),
+      transition: 'all 0.3s ease'
+  });
+
   return (
-    <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden' }}>
+    <div style={{ 
+        minHeight: '100vh', 
+        background: darkMode ? '#0f172a' : '#f8fafc', 
+        color: darkMode ? '#e2e8f0' : '#1e293b',
+        paddingBottom: '100px', // Memberi ruang agar konten tidak tertutup Bottom Nav
+        overflowX: 'hidden'
+    }}>
       
-      {/* INJECT CSS DYNAMIC VARIABLES */}
+      {/* INJECT CSS VARIABLES & UTILITIES */}
       <style>{`
         :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }
         .dark { --theme-gradient: ${currentTheme.darkGradient}; }
-        .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; }
-        .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 600; }
-        .nav-item:hover { background: ${darkMode ? 'rgba(255,255,255,0.1)' : '#f1f5f9'}; }
-        
-        /* Scrollbar Hide */
         .scroll-hide::-webkit-scrollbar { display: none; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; alignItems: center; justifyContent: center; z-index: 99999; }
         .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }
       `}</style>
 
-      {/* SIDEBAR */}
-      <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
-        <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2>
-        </div>
-        <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => setActiveTab('dashboard')}><Home size={20}/> Dashboard</button></li>
-            <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => setActiveTab('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
-            <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => setActiveTab('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
-            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => setActiveTab('friends')}><Users size={20}/> Teman Sehat</button></li>
-            <li><button className="nav-item" onClick={()=>setActiveTab('dashboard')}><Bot size={20}/> Dr. Alva AI</button></li>
-            <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => setActiveTab('settings')}><Settings size={20}/> Pengaturan</button></li>
-          </ul>
-        </nav>
-        <div style={{ padding: '1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-            <button onClick={logout} className="nav-item" style={{ color: '#ef4444' }}><LogOut size={20} /> Keluar</button>
-        </div>
-      </aside>
+      {/* --- MAIN CONTENT AREA (FULL CANVAS - NO HEADER, NO SIDEBAR) --- */}
+      <main style={{ padding: '1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+          {activeTab === 'dashboard' && <DashboardView {...commonProps} />}
+          {activeTab === 'checkin' && <CheckinView {...commonProps} />}
+          {activeTab === 'shop' && <ShopView {...commonProps} />}
+          {activeTab === 'friends' && <FriendView {...commonProps} />}
+          {activeTab === 'settings' && <SettingsView {...commonProps} />}
+      </main>
 
-      {/* MAIN CONTENT AREA */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
-        {!isDesktop && (
-            <header style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center', background: darkMode ? '#1e293b' : 'white' }}>
-                <button onClick={()=>setSidebarOpen(true)} style={{background:'none', border:'none', color: darkMode?'white':'black'}}><Menu/></button>
-                <span style={{fontWeight:'bold'}}>VITALYST</span>
-                <div style={{width:'24px'}}></div>
-            </header>
-        )}
-        
-        <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
-            {/* SWITCH RENDER BERDASARKAN TAB */}
-            {activeTab === 'dashboard' && <DashboardView {...commonProps} />}
-            {activeTab === 'checkin' && <CheckinView {...commonProps} />}
-            {activeTab === 'shop' && <ShopView {...commonProps} />}
-            {activeTab === 'friends' && <FriendView {...commonProps} />}
-            {activeTab === 'settings' && <SettingsView {...commonProps} />}
-        </main>
-      </div>
+      {/* --- BOTTOM NAVIGATION BAR (FIXED) --- */}
+      <nav style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          width: '100%',
+          background: darkMode ? '#1e293b' : 'white',
+          borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          zIndex: 50,
+          paddingBottom: 'env(safe-area-inset-bottom)', // Support untuk iPhone X+
+          boxShadow: '0 -4px 15px rgba(0, 0, 0, 0.05)'
+      }}>
+          <button onClick={() => setActiveTab('dashboard')} style={navButtonStyle('dashboard')}>
+              <Home size={24} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+              <span style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('checkin')} style={navButtonStyle('checkin')}>
+              <Calendar size={24} strokeWidth={activeTab === 'checkin' ? 2.5 : 2} />
+              <span style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: activeTab === 'checkin' ? 'bold' : 'normal' }}>Jurnal</span>
+          </button>
+
+          {/* Tombol Tengah (Shop) Lebih Menonjol */}
+          <div style={{ position: 'relative', top: '-25px' }}>
+              <button onClick={() => setActiveTab('shop')} style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${currentTheme.primary} 0%, ${currentTheme.text} 100%)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '6px solid ' + (darkMode ? '#0f172a' : '#f8fafc'), // Border tebal agar terlihat melayang
+                  boxShadow: '0 8px 15px rgba(0,0,0,0.3)',
+                  cursor: 'pointer',
+                  color: 'white'
+              }}>
+                  <ShoppingBag size={28} fill="white" fillOpacity={0.2} />
+              </button>
+          </div>
+
+          <button onClick={() => setActiveTab('friends')} style={navButtonStyle('friends')}>
+              <Users size={24} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
+              <span style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
+          </button>
+
+          <button onClick={() => setActiveTab('settings')} style={navButtonStyle('settings')}>
+              <Settings size={24} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+              <span style={{ fontSize: '0.65rem', marginTop: '4px', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Akun</span>
+          </button>
+      </nav>
+
     </div>
   );
 };
