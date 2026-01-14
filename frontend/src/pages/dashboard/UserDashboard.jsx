@@ -1,22 +1,22 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { 
-  Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
-  Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
+import {
+  Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X,
+  Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search,
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
   Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard, Heart
 } from 'lucide-react';
 import axios from 'axios';
-import { QRCodeSVG } from 'qrcode.react'; 
+import { QRCodeSVG } from 'qrcode.react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
 // --- KONFIGURASI TOKO ---
 const STORE_LOCATION = { lat: -6.175392, lng: 106.827153 }; // Monas Jakarta
-const PRICE_PER_KM = 5000; 
+const PRICE_PER_KM = 5000;
 
 const THEMES = {
   green: { id: 'green', name: 'Hijau Alami', primary: '#8fec78', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
@@ -28,16 +28,16 @@ const THEMES = {
 
 const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
-  const navigate = useNavigate(); 
-  const fileInputRef = useRef(null); 
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
-  const [challenges, setChallenges] = useState([]); 
+  const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [products, setProducts] = useState([]); 
+  const [products, setProducts] = useState([]);
   
   // --- STATE TOKO & ALAMAT ---
   const [addresses, setAddresses] = useState([]);
@@ -47,13 +47,13 @@ const UserDashboard = () => {
   const [districts, setDistricts] = useState([]);
   const [subdistricts, setSubdistricts] = useState([]);
   
-  const [newAddr, setNewAddr] = useState({ 
-      label:'Rumah', name:'', phone:'', 
-      prov_id:'', prov_name:'', 
-      city_id:'', city_name:'', 
-      dis_id:'', dis_name:'', 
-      subdis_id:'', subdis_name:'', 
-      address:'', zip:'' 
+  const [newAddr, setNewAddr] = useState({
+      label:'Rumah', name:'', phone:'',
+      prov_id:'', prov_name:'',
+      city_id:'', city_name:'',
+      dis_id:'', dis_name:'',
+      subdis_id:'', subdis_name:'',
+      address:'', zip:''
   });
 
   // --- STATE CHECKOUT & ORDER ---
@@ -63,43 +63,43 @@ const UserDashboard = () => {
   const [selectedAddrId, setSelectedAddrId] = useState(null);
   const [shippingMethod, setShippingMethod] = useState("pickup");
   const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null); 
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
   const [myOrders, setMyOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
 
   // --- STATE HISTORY CHECKIN (CALENDAR) ---
   const [checkinHistory, setCheckinHistory] = useState([]);
-  const [calendarDate, setCalendarDate] = useState(new Date()); 
+  const [calendarDate, setCalendarDate] = useState(new Date());
 
   // --- STATE LAINNYA ---
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
-  const [checkinStatus, setCheckinStatus] = useState(null); 
+  const [checkinStatus, setCheckinStatus] = useState(null);
   const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
-  const [activeTab, setActiveTab] = useState('dashboard'); 
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false); 
-  const [snapLoaded, setSnapLoaded] = useState(false); 
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [snapLoaded, setSnapLoaded] = useState(false);
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
   
   // State Modal Lain
-  const [showQRModal, setShowQRModal] = useState(false); 
-  const [friendCode, setFriendCode] = useState(""); 
-  const [friendData, setFriendData] = useState(null); 
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [friendCode, setFriendCode] = useState("");
+  const [friendData, setFriendData] = useState(null);
   const [showFriendProfile, setShowFriendProfile] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false); 
-  const [installPrompt, setInstallPrompt] = useState(null); 
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
   
   // Chat AI
   const [chatMessage, setChatMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState([]); 
+  const [chatHistory, setChatHistory] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
@@ -114,8 +114,8 @@ const UserDashboard = () => {
     // Load Provinces
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
 
-    const snapScriptUrl = "https://app.midtrans.com/snap/snap.js"; 
-    const clientKey = "Mid-client-dXaTaEerstu_IviP"; 
+    const snapScriptUrl = "https://app.midtrans.com/snap/snap.js";
+    const clientKey = "Mid-client-dXaTaEerstu_IviP";
     const script = document.createElement('script'); script.src = snapScriptUrl; script.setAttribute('data-client-key', clientKey);
     script.onload = () => { console.log("Snap Loaded"); setSnapLoaded(true); }; script.async = true; document.body.appendChild(script);
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
@@ -218,7 +218,7 @@ const UserDashboard = () => {
     const month = calendarDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startDay = firstDay === 0 ? 6 : firstDay - 1; 
+    const startDay = firstDay === 0 ? 6 : firstDay - 1;
 
     const days = [];
     for (let i = 0; i < startDay; i++) {
@@ -226,9 +226,9 @@ const UserDashboard = () => {
     }
 
     for (let d = 1; d <= daysInMonth; d++) {
-        const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); 
+        const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         const log = checkinHistory.find(h => h.date === currentDateStr);
-        let statusColor = darkMode ? '#334155' : '#f1f5f9'; 
+        let statusColor = darkMode ? '#334155' : '#f1f5f9';
         let textColor = darkMode ? '#94a3b8' : '#64748b';
 
         if (log) {
@@ -288,11 +288,11 @@ const UserDashboard = () => {
           const response = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, {
               item_name: selectedProduct.name,
               shipping_cost: shippingCost,
-              address_detail: addr, 
+              address_detail: addr,
               coupon: appliedCoupon?.code || "",
               discount: appliedCoupon?.amount || 0
           }, { headers: getAuthHeader() });
-  
+   
           if (response.data.success) {
               setShowCheckoutModal(false);
               window.snap.pay(response.data.token, {
@@ -310,14 +310,14 @@ const UserDashboard = () => {
   };
 
   const badgeStyle = {
-      background: 'linear-gradient(45deg, #FFD700, #FDB931)', 
-      color: '#7B3F00', 
-      padding: '5px 12px', 
-      borderRadius: '20px', 
-      fontSize: '0.8rem', 
-      fontWeight: 'bold', 
-      display: 'inline-flex', 
-      alignItems: 'center', 
+      background: 'linear-gradient(45deg, #FFD700, #FDB931)',
+      color: '#7B3F00',
+      padding: '5px 12px',
+      borderRadius: '20px',
+      fontSize: '0.8rem',
+      fontWeight: 'bold',
+      display: 'inline-flex',
+      alignItems: 'center',
       gap: '5px',
       boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
       border: '1px solid #FFF'
@@ -1023,7 +1023,7 @@ const UserDashboard = () => {
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
                         <h4 style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' }}>Sedang Mengikuti:</h4>
                         <div style={{ fontWeight: 'bold', color: '#0f172a', fontSize: '1rem' }}>{friendData.challenge_title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} 窶｢ Hari ke-{friendData.challenge_day}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.2rem' }}>Tipe {friendData.group || 'Umum'} • Hari ke-{friendData.challenge_day}</div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div style={{ textAlign: 'center', padding: '0.8rem', background: '#f0fdf4', borderRadius: '8px' }}>
@@ -1039,8 +1039,10 @@ const UserDashboard = () => {
                 </div>
             </div>
         </div>
-      )}  
+      )}
+      
     </div>
   );
 };
+
 export default UserDashboard;
