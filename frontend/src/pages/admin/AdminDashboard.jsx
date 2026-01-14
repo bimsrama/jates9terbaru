@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -29,14 +29,15 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [products, setProducts] = useState([]); // State Produk
+  const [products, setProducts] = useState([]); 
+  const [orders, setOrders] = useState([]); // State Pesanan
+  const [notifications, setNotifications] = useState([]); // State Notifikasi
   
   // FORM STATES
   const [productForm, setProductForm] = useState({ name: '', price: '', description: '', fake_sales: 0, image: null });
   const [articleForm, setArticleForm] = useState({ title: '', content: '', image: null });
 
   // FINANCE & TRANSACTION STATES
-  const [salesData, setSalesData] = useState([]); // Data Transaksi Penjualan
   const [withdrawals, setWithdrawals] = useState([]);
   const [wdRefInput, setWdRefInput] = useState(""); 
   const [wdProcessingId, setWdProcessingId] = useState(null);
@@ -60,6 +61,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
+    fetchNotifications(); // Auto fetch notif
   }, []);
 
   useEffect(() => {
@@ -67,8 +69,8 @@ const AdminDashboard = () => {
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
     if (activeTab === 'products') fetchProducts(); 
-    if (activeTab === 'finance') fetchWithdrawals(); // Halaman Keuangan Khusus WD
-    if (activeTab === 'transactions') fetchSales(); // Halaman Transaksi Produk
+    if (activeTab === 'finance') fetchWithdrawals(); 
+    if (activeTab === 'orders') fetchOrders(); // Tab Pesanan Baru
   }, [activeTab, selectedChallengeId]);
 
   // --- API FETCH ---
@@ -80,8 +82,24 @@ const AdminDashboard = () => {
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/products`, { headers: getAuthHeader() }); setProducts(res.data); } catch(e){} };
   
   // FINANCE FETCH
-  const fetchSales = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/sales`, { headers: getAuthHeader() }); setSalesData(res.data); } catch(e){} };
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
+
+  // ORDERS FETCH [BARU]
+  const fetchOrders = async () => { 
+      try { 
+          const res = await axios.get(`${BACKEND_URL}/api/admin/orders`, { headers: getAuthHeader() }); 
+          setOrders(res.data); 
+      } catch(e){} 
+  };
+
+  // NOTIFICATIONS FETCH [BARU]
+  const fetchNotifications = async () => {
+      try {
+          // Asumsi backend punya endpoint ini (bisa reuse endpoint user/notifications jika logicnya handle admin)
+          // Atau buat endpoint khusus admin notif
+          // Di sini kita pakai mock dulu atau sesuaikan dengan endpoint yang ada
+      } catch(e){}
+  };
 
   // FETCH PARTICIPANTS
   const fetchParticipants = async (challengeId) => {
@@ -97,6 +115,15 @@ const AdminDashboard = () => {
   };
 
   // --- HANDLERS ---
+  const handleUpdateOrder = async (orderId, status, resi) => {
+      if(!window.confirm(`Update order ${orderId} ke status ${status}?`)) return;
+      try {
+          await axios.post(`${BACKEND_URL}/api/admin/orders/update`, { order_id: orderId, status, resi }, { headers: getAuthHeader() });
+          fetchOrders();
+          alert("Order updated!");
+      } catch(e) { alert("Gagal update order."); }
+  };
+
   const handleApproveWD = async (id) => {
       if(!wdRefInput) return alert("Masukkan Nomor ID/Bukti Transfer dulu!");
       if(!window.confirm("Setujui penarikan ini?")) return;
@@ -240,21 +267,27 @@ STYLE: Casual, akrab, emoji.
         <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9' }}><h2 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary)', display:'flex', alignItems:'center', gap:'0.5rem' }}> <Bot size={20} /> Jates Admin</h2></div>
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
-          <SidebarItem id="transactions" icon={ShoppingCart} label="Riwayat Transaksi" />
+          <SidebarItem id="orders" icon={ShoppingCart} label="Pesanan Masuk" />
           <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
+          <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
-          <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
-          <SidebarItem id="finance" icon={Wallet} label="Keuangan WD" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
+          <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
       </aside>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
         <header style={{ height: '64px', background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', padding: '0 1.5rem', justifyContent: 'space-between' }}>
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}> <Menu size={20}/> </button>
-          <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--primary)' }}>{activeTab.toUpperCase().replace('_', ' ')}</span>
+          <div style={{display:'flex', gap:'1rem', alignItems:'center'}}>
+              <button onClick={() => setSidebarOpen(!isSidebarOpen)} style={{ background: '#f1f5f9', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}> <Menu size={20}/> </button>
+              <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--primary)' }}>{activeTab.toUpperCase().replace('_', ' ')}</span>
+          </div>
+          <button style={{background:'none', border:'none', position:'relative', cursor:'pointer'}}>
+              <Bell size={20} color="#64748b"/>
+              <div style={{position:'absolute', top:'-2px', right:'-2px', width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></div>
+          </button>
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
@@ -265,8 +298,17 @@ STYLE: Casual, akrab, emoji.
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                 <StatCard label="Total User" val={stats.total_users} icon={<Users/>} color="#3b82f6" />
                 <StatCard label="WD Pending" val={stats.pending_withdrawals} icon={<Wallet/>} color="#f59e0b" />
-                <StatCard label="Revenue" val={`Rp ${stats.total_revenue?.toLocaleString()}`} icon={<ShoppingCart/>} color="#10b981" />
+                <StatCard label="Total Penjualan" val={`Rp ${stats.total_revenue?.toLocaleString() || 0}`} icon={<ShoppingCart/>} color="#10b981" />
               </div>
+              
+              {/* Notifikasi Singkat */}
+              <Card style={{marginBottom:'2rem', padding:'1.5rem', background:'white'}}>
+                  <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', gap:'0.5rem', alignItems:'center'}}><Bell size={18}/> Notifikasi Terbaru</h3>
+                  <div style={{maxHeight:'200px', overflowY:'auto'}}>
+                      <p style={{color:'#64748b', fontSize:'0.9rem', fontStyle:'italic'}}>Belum ada notifikasi baru.</p>
+                  </div>
+              </Card>
+
               <h2 className="heading-2" style={{marginBottom:'1rem'}}>Manajemen Challenge</h2>
               <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
@@ -287,56 +329,64 @@ STYLE: Casual, akrab, emoji.
             </div>
           )}
 
-          {/* TAB TRANSAKSI [BARU] */}
-          {activeTab === 'transactions' && (
+          {/* TAB ORDERS (BARU) */}
+          {activeTab === 'orders' && (
              <Card style={{padding:'1.5rem', background:'white'}}>
                 <h3 style={{fontWeight:'bold', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                    <ShoppingCart size={22}/> Riwayat Penjualan Produk
+                    <ShoppingCart size={22}/> Manajemen Pesanan
                 </h3>
                 <div style={{overflowX:'auto'}}>
                     <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
                         <thead style={{background:'#f0fdf4', borderBottom:'2px solid #e2e8f0'}}>
                             <tr>
-                                <th style={thStyle}>Tanggal</th>
                                 <th style={thStyle}>Order ID</th>
                                 <th style={thStyle}>Produk</th>
-                                <th style={thStyle}>Harga</th>
-                                <th style={thStyle}>Pembeli</th>
+                                <th style={thStyle}>Total</th>
+                                <th style={thStyle}>Customer & Alamat</th>
                                 <th style={thStyle}>Status</th>
-                                <th style={thStyle}>Referral</th>
+                                <th style={thStyle}>Resi</th>
+                                <th style={thStyle}>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {salesData.length > 0 ? salesData.map(s => (
-                                <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                                    <td style={tdStyle}>{s.date}</td>
-                                    <td style={tdStyle}><span style={{fontFamily:'monospace', background:'#f1f5f9', padding:'2px 4px', borderRadius:'4px'}}>{s.order_id || '-'}</span></td>
-                                    <td style={tdStyle}><b>{s.product}</b></td>
-                                    <td style={tdStyle}>Rp {s.amount.toLocaleString()}</td>
+                            {orders.length > 0 ? orders.map(o => (
+                                <tr key={o.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                    <td style={tdStyle}><span style={{fontFamily:'monospace', background:'#f1f5f9', padding:'2px 4px', borderRadius:'4px'}}>{o.order_id}</span><div style={{fontSize:'0.7rem', color:'#94a3b8'}}>{o.date}</div></td>
+                                    <td style={tdStyle}><b>{o.product}</b></td>
+                                    <td style={tdStyle}>Rp {o.amount.toLocaleString()}</td>
                                     <td style={tdStyle}>
-                                        <div style={{fontWeight:'bold'}}>{s.buyer_name}</div>
-                                        <div style={{fontSize:'0.75rem', color:'#64748b'}}>{s.buyer_phone}</div>
+                                        <div style={{fontWeight:'bold'}}>{o.customer}</div>
+                                        <div style={{fontSize:'0.75rem', color:'#64748b', maxWidth:'200px', lineHeight:'1.3'}}>
+                                            {o.address}
+                                        </div>
                                     </td>
                                     <td style={tdStyle}>
-                                        <span style={{
-                                            padding:'4px 10px', borderRadius:'20px', fontSize:'0.75rem', fontWeight:'bold',
-                                            background: s.status === 'paid' ? '#dcfce7' : '#fff7ed',
-                                            color: s.status === 'paid' ? '#166534' : '#c2410c'
-                                        }}>
-                                            {s.status ? s.status.toUpperCase() : 'PENDING'}
-                                        </span>
+                                        <select 
+                                            value={o.status} 
+                                            onChange={(e)=>handleUpdateOrder(o.order_id, e.target.value, o.resi)}
+                                            style={{...selectStyle, padding:'2px 6px', fontSize:'0.8rem', borderColor: o.status==='cancelled'?'red':'#cbd5e1'}}
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="paid">Paid (Dikemas)</option>
+                                            <option value="shipped">Shipped (Dikirim)</option>
+                                            <option value="cancelled">Cancelled</option>
+                                            <option value="completed">Completed</option>
+                                        </select>
                                     </td>
                                     <td style={tdStyle}>
-                                        {s.referrer_name !== '-' ? (
-                                            <div style={{background:'#eff6ff', padding:'4px 8px', borderRadius:'6px', width:'fit-content'}}>
-                                                <span style={{fontWeight:'bold', color:'#1e40af'}}>{s.referrer_name}</span>
-                                                <div style={{fontSize:'0.7rem', color:'#60a5fa'}}>Kode: {s.referrer_code}</div>
-                                            </div>
-                                        ) : <span style={{color:'#cbd5e1'}}>-</span>}
+                                        <input 
+                                            defaultValue={o.resi} 
+                                            placeholder="Input Resi..." 
+                                            onBlur={(e)=>handleUpdateOrder(o.order_id, o.status, e.target.value)}
+                                            style={{padding:'4px', borderRadius:'4px', border:'1px solid #cbd5e1', width:'120px', fontSize:'0.8rem'}}
+                                        />
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <button onClick={()=>handleUpdateOrder(o.order_id, 'shipped', o.resi)} title="Simpan Perubahan" style={{background:'#3b82f6', color:'white', border:'none', padding:'4px 8px', borderRadius:'4px', cursor:'pointer'}}><Save size={14}/></button>
                                     </td>
                                 </tr>
                             )) : (
-                                <tr><td colSpan="7" style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>Belum ada transaksi penjualan.</td></tr>
+                                <tr><td colSpan="7" style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>Belum ada pesanan masuk.</td></tr>
                             )}
                         </tbody>
                     </table>
