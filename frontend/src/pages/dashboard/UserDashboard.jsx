@@ -42,8 +42,6 @@ const UserDashboard = () => {
   // --- STATE CHECKOUT & ORDER ---
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  
-  // Form Checkout
   const [recipientName, setRecipientName] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -51,17 +49,15 @@ const UserDashboard = () => {
   const [userLocation, setUserLocation] = useState(null); 
   const [shippingCost, setShippingCost] = useState(0);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  
-  // Coupon
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null); 
   const [couponError, setCouponError] = useState("");
-
   const [myOrders, setMyOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
 
-  // --- STATE BARU (HISTORY CHECKIN) ---
+  // --- STATE HISTORY CHECKIN (CALENDAR) ---
   const [checkinHistory, setCheckinHistory] = useState([]);
+  const [calendarDate, setCalendarDate] = useState(new Date()); // Untuk navigasi bulan
 
   // --- STATE LAINNYA ---
   const [dailyData, setDailyData] = useState(null);
@@ -104,7 +100,6 @@ const UserDashboard = () => {
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
   }, []);
 
-  // [FIX] Tambahkan fetchCheckinHistory saat tab checkin aktif
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'checkin') fetchCheckinHistory(); }, [activeTab]);
@@ -113,6 +108,15 @@ const UserDashboard = () => {
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
   const changeThemeColor = (k) => { setThemeColor(k); localStorage.setItem('colorTheme', k); };
   const handleInstallApp = async () => { if (!installPrompt) { alert("Sudah terinstall/buka menu browser."); return; } installPrompt.prompt(); const { outcome } = await installPrompt.userChoice; if (outcome === 'accepted') setInstallPrompt(null); };
+
+  // --- HELPER TIME GREETING ---
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours < 11) return "Selamat Pagi";
+    if (hours < 15) return "Selamat Siang";
+    if (hours < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  };
 
   const fetchData = async () => {
     try {
@@ -130,8 +134,6 @@ const UserDashboard = () => {
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
-  
-  // [BARU] Fetch History
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const generateDailyTip = (g) => { const tips = { 'A': "庁 Minum air hangat & serat.", 'B': "庁 Hindari santan & pedas.", 'C': "庁 Makan tepat waktu." }; return tips[g] || "庁 Jaga kesehatan!"; };
@@ -145,6 +147,62 @@ const UserDashboard = () => {
   const handleArticleClick = (id) => { alert("Fitur detail artikel segera hadir!"); };
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
   const triggerFileInput = () => fileInputRef.current.click();
+
+  // --- CALENDAR LOGIC ---
+  const renderCalendar = () => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    
+    const firstDay = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Adjust start day to Monday (1) instead of Sunday (0)
+    const startDay = firstDay === 0 ? 6 : firstDay - 1; 
+
+    const days = [];
+    // Empty cells for previous month
+    for (let i = 0; i < startDay; i++) {
+        days.push(<div key={`empty-${i}`} style={{ height: '40px' }}></div>);
+    }
+
+    // Days cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); // "05 Jan 2026"
+        
+        // Cek status dari history
+        const log = checkinHistory.find(h => h.date === currentDateStr);
+        let statusColor = darkMode ? '#334155' : '#f1f5f9'; // Default gray
+        let textColor = darkMode ? '#94a3b8' : '#64748b';
+
+        if (log) {
+            if (log.status === 'completed') {
+                statusColor = '#dcfce7'; textColor = '#166534';
+            } else if (log.status === 'skipped') {
+                statusColor = '#fee2e2'; textColor = '#991b1b';
+            }
+        }
+
+        days.push(
+            <div key={d} style={{ 
+                height: '40px', width:'40px', 
+                background: statusColor, 
+                borderRadius: '8px', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                fontWeight: 'bold', fontSize: '0.9rem', color: textColor,
+                cursor: 'pointer', margin:'0 auto'
+            }}>
+                {d}
+            </div>
+        );
+    }
+
+    return days;
+  };
+
+  const changeMonth = (offset) => {
+      const newDate = new Date(calendarDate.setMonth(calendarDate.getMonth() + offset));
+      setCalendarDate(new Date(newDate));
+  };
 
   // --- FUNGSI LOKASI & JARAK ---
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -231,7 +289,6 @@ const UserDashboard = () => {
       } catch (error) { alert("Gagal memproses transaksi."); }
   };
 
-  // --- STYLE BADGE BARU ---
   const badgeStyle = {
       background: 'linear-gradient(45deg, #FFD700, #FDB931)', 
       color: '#7B3F00', 
@@ -285,8 +342,8 @@ const UserDashboard = () => {
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem' }}>
-                {/* [FIX] GUNAKAN HARI REAL */}
-                <p className="body-medium" style={{ color: '#64748b' }}>Halo, <strong>{overview?.user?.name}</strong>! Semangat hari ke-{overview?.user?.challenge_day || 1}.</p>
+                {/* [UPDATE] GREETING SESUAI JAM */}
+                <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
@@ -297,7 +354,6 @@ const UserDashboard = () => {
                   {/* Profil Card */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--theme-gradient)', color: darkMode ? 'white' : '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      {/* FOTO PROFIL */}
                       <div style={{ position: 'relative' }}>
                           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '2px solid white' }}>
                               {overview?.user?.profile_picture ? (
@@ -310,16 +366,14 @@ const UserDashboard = () => {
                               <Edit2 size={12} color="#475569" />
                           </button>
                       </div>
-
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
-                        {/* [FIX] BADGE UI BARU */}
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Tantangan Aktif */}
+                  {/* Tantangan Aktif [UPDATE: TAMBAH INFO STATS] */}
                   <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -327,22 +381,24 @@ const UserDashboard = () => {
                           <button onClick={() => setShowAllChallenges(true)} style={{ background: 'none', border: 'none', color: currentTheme.text, fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>Lihat Semua <ChevronRight size={14} /></button>
                         </div>
                         
-                        {/* [FIX] ALERT MISSED DAYS */}
-                        {(overview?.user?.missed_days > 0) && (
-                            <div style={{marginBottom:'1rem', padding:'0.8rem', background:'#fef2f2', border:'1px solid #fee2e2', borderRadius:'8px', display:'flex', gap:'0.8rem', alignItems:'center'}}>
-                                <AlertTriangle size={20} color="#ef4444"/>
-                                <div>
-                                    <div style={{fontWeight:'bold', color:'#991b1b', fontSize:'0.9rem'}}>Kamu melewatkan {overview.user.missed_days} hari!</div>
-                                    <div style={{fontSize:'0.75rem', color:'#b91c1c'}}>Ayo kejar ketertinggalanmu hari ini.</div>
-                                </div>
-                            </div>
-                        )}
-
                         <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
                           <div style={{ marginBottom: '0.75rem' }}>
                               <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
                               <span style={{ fontSize: '0.75rem', background: currentTheme.light, color: currentTheme.text, padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span>
                           </div>
+
+                          {/* STATISTIK BERHASIL & TERLEWAT */}
+                          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'1rem'}}>
+                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
+                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Berhasil</div>
+                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#166534'}}>{overview?.financial?.total_checkins || 0} Hari</div>
+                              </div>
+                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
+                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Terlewat</div>
+                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#991b1b'}}>{overview?.user?.missed_days || 0} Hari</div>
+                              </div>
+                          </div>
+
                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
                               <div style={{ flex: 1 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100))}%</span></div>
@@ -493,37 +549,46 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* [FIX] TAB RIWAYAT CHECK-IN (SUDAH DIPERBAIKI, TIDAK BLANK) */}
+          {/* [UPDATE] TAB RIWAYAT CHECK-IN (KALENDER) */}
           {activeTab === 'checkin' && (
               <div>
                  <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <button onClick={() => setActiveTab('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
-                    <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Perjalanan</h1>
+                    <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Kalender</h1>
                  </div>
                  
-                 {checkinHistory.length === 0 ? (
-                     <div style={{textAlign:'center', padding:'3rem', color:'#64748b'}}>Belum ada riwayat check-in.</div>
-                 ) : (
-                     <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-                        {checkinHistory.map((log, idx) => (
-                            <div key={idx} style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', display:'flex', gap:'1rem', alignItems:'flex-start'}}>
-                                <div style={{display:'flex', flexDirection:'column', alignItems:'center', minWidth:'50px'}}>
-                                    <div style={{fontSize:'1.2rem', fontWeight:'bold', color: currentTheme.text}}>H-{log.day}</div>
-                                    <div style={{fontSize:'0.7rem', color:'#64748b'}}>{log.time}</div>
-                                </div>
-                                <div style={{flex:1}}>
-                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}>
-                                        <span style={{fontWeight:'bold', color: darkMode?'white':'black'}}>{log.date}</span>
-                                        <span style={{fontSize:'0.75rem', padding:'2px 8px', borderRadius:'10px', background: log.status==='completed'?'#dcfce7':'#fee2e2', color: log.status==='completed'?'#166534':'#991b1b', fontWeight:'bold'}}>
-                                            {log.status === 'completed' ? 'Selesai' : 'Terlewat'}
-                                        </span>
-                                    </div>
-                                    <p style={{fontSize:'0.9rem', color: darkMode ? '#cbd5e1' : '#475569', fontStyle: 'italic'}}>"{log.notes || 'Tanpa catatan'}"</p>
-                                </div>
-                            </div>
+                 <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1.5rem', borderRadius:'16px', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', maxWidth:'500px', margin:'0 auto'}}>
+                    {/* Header Kalender */}
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                        <button onClick={()=>changeMonth(-1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronLeft/></button>
+                        <h3 style={{fontWeight:'bold', fontSize:'1.2rem', color: darkMode?'white':'black'}}>
+                            {calendarDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                        </h3>
+                        <button onClick={()=>changeMonth(1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronRight/></button>
+                    </div>
+
+                    {/* Nama Hari */}
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', textAlign:'center', marginBottom:'0.5rem'}}>
+                        {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d => (
+                            <div key={d} style={{fontSize:'0.8rem', fontWeight:'bold', color:'#64748b'}}>{d}</div>
                         ))}
-                     </div>
-                 )}
+                    </div>
+
+                    {/* Grid Tanggal */}
+                    <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'0.5rem'}}>
+                        {renderCalendar()}
+                    </div>
+
+                    {/* Legend */}
+                    <div style={{display:'flex', gap:'1rem', marginTop:'1.5rem', justifyContent:'center'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'0.3rem', fontSize:'0.8rem', color: darkMode?'#cbd5e1':'#475569'}}>
+                            <div style={{width:'12px', height:'12px', background:'#dcfce7', borderRadius:'3px'}}></div> Berhasil
+                        </div>
+                        <div style={{display:'flex', alignItems:'center', gap:'0.3rem', fontSize:'0.8rem', color: darkMode?'#cbd5e1':'#475569'}}>
+                            <div style={{width:'12px', height:'12px', background:'#fee2e2', borderRadius:'3px'}}></div> Terlewat
+                        </div>
+                    </div>
+                 </div>
               </div>
           )}
 
