@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card } from '../../components/ui/card';
+import { Card } from '../../../components/ui/card';
 import { ShoppingBag, MapPin, Truck, Plus, Package, X } from 'lucide-react';
 
 const ShopView = ({ BACKEND_URL, getAuthHeader, darkMode, currentTheme }) => {
