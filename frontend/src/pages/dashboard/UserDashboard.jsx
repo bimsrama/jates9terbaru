@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, LogOut, Settings, User, ShoppingBag, 
   Calendar, Users, Bot, Menu 
 } from 'lucide-react';
+import axios from 'axios';
 
-// Import Views (Tab) yang sudah kita pisah
+// --- IMPORT TABS (Pastikan file-file ini ada di folder tabs) ---
 import DashboardView from './tabs/DashboardView';
 import CheckinView from './tabs/CheckinView';
 import ShopView from './tabs/ShopView';
-import FriendView from './tabs/FriendsView'; // Pastikan nama file sesuai (ada 's' atau tidak)
+import FriendView from './tabs/FriendsView';
 import SettingsView from './tabs/SettingsView';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- DEFINISI TEMA (Sama seperti kodingan lama Anda) ---
+// --- DEFINISI TEMA ---
 export const THEMES = {
   green: { id: 'green', name: 'Hijau Alami', primary: '#8fec78', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#fca5a5', light: '#fee2e2', text: '#991b1b', gradient: 'linear-gradient(135deg, #ffffff 0%, #fca5a5 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
@@ -24,75 +25,81 @@ export const THEMES = {
   purple: { id: 'purple', name: 'Ungu Misteri', primary: '#d8b4fe', light: '#f3e8ff', text: '#6b21a8', gradient: 'linear-gradient(135deg, #ffffff 0%, #d8b4fe 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #581c87 100%)' },
 };
 
-const DashboardLayout = () => {
+const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate();
   
-  // State Tema & UI
+  // --- STATE UTAMA ---
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
   
-  // Load Tema dari LocalStorage
+  // State Data User Global (PENTING AGAR TIDAK ERROR)
+  const [userOverview, setUserOverview] = useState(null); 
+
+  // --- STATE TEMA ---
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark'); 
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
 
+  // --- FUNGSI LOAD DATA USER (SOLUSI ERROR "u is not a function") ---
+  const fetchUserOverview = async () => {
+      try {
+          const res = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
+          setUserOverview(res.data);
+      } catch (e) { 
+          console.error("Gagal load user data", e); 
+      }
+  };
+
+  // Load data saat pertama kali buka
   useEffect(() => {
+    fetchUserOverview();
+    
     const handleResize = () => { 
         setIsDesktop(window.innerWidth > 1024); 
         if(window.innerWidth > 1024) setSidebarOpen(false); 
     };
     window.addEventListener('resize', handleResize);
     
-    // Apply Dark Mode Class
+    // Apply Dark Mode Class to HTML/Body
     if (darkMode) document.documentElement.classList.add('dark'); 
     else document.documentElement.classList.remove('dark');
 
     return () => window.removeEventListener('resize', handleResize);
   }, [darkMode]);
 
-  // Fungsi Ganti Tema (Akan dioper ke SettingsView)
+  // Handler Tema
   const toggleDarkMode = () => { 
-      const newMode = !darkMode;
+      const newMode = !darkMode; 
       setDarkMode(newMode); 
       localStorage.setItem('theme', newMode ? 'dark' : 'light'); 
   };
-
   const changeThemeColor = (k) => { 
       setThemeColor(k); 
       localStorage.setItem('colorTheme', k); 
   };
 
-  // Props yang akan dikirim ke semua Tab Anak
+  // --- PROPS YANG AKAN DIKIRIM KE SEMUA TAB ---
   const commonProps = {
-      BACKEND_URL,
-      getAuthHeader,
-      darkMode,
-      currentTheme,
-      toggleDarkMode,   // Khusus Settings
-      changeThemeColor, // Khusus Settings
-      themeColor,       // Khusus Settings
-      THEMES,           // Khusus Settings
-      setActiveTab      // Agar anak bisa pindah tab
-  };
-
-  // Render Tab Content
-  const renderContent = () => {
-      switch (activeTab) {
-          case 'dashboard': return <DashboardView {...commonProps} />;
-          case 'checkin': return <CheckinView {...commonProps} />;
-          case 'shop': return <ShopView {...commonProps} />;
-          case 'friends': return <FriendView {...commonProps} />;
-          case 'settings': return <SettingsView {...commonProps} />;
-          default: return <DashboardView {...commonProps} />;
-      }
+      BACKEND_URL, 
+      getAuthHeader, 
+      darkMode, 
+      currentTheme, 
+      userOverview,        // Data User
+      setUserOverview, 
+      fetchUserOverview,   // Fungsi Refresh Data (INI KUNCI PERBAIKANNYA)
+      toggleDarkMode, 
+      changeThemeColor, 
+      themeColor, 
+      THEMES, 
+      setActiveTab
   };
 
   return (
     <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden' }}>
       
-      {/* INJECT CSS VARIABLES AGAR TEMA BERJALAN */}
+      {/* INJECT CSS DYNAMIC VARIABLES */}
       <style>{`
         :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }
         .dark { --theme-gradient: ${currentTheme.darkGradient}; }
@@ -106,7 +113,7 @@ const DashboardLayout = () => {
         .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }
       `}</style>
 
-      {/* SIDEBAR (Menggunakan Style Lama Anda) */}
+      {/* SIDEBAR */}
       <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2>
@@ -117,7 +124,7 @@ const DashboardLayout = () => {
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => setActiveTab('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => setActiveTab('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => setActiveTab('friends')}><Users size={20}/> Teman Sehat</button></li>
-            <li><button className="nav-item"><Bot size={20}/> Dr. Alva AI</button></li>
+            <li><button className="nav-item" onClick={()=>setActiveTab('dashboard')}><Bot size={20}/> Dr. Alva AI</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => setActiveTab('settings')}><Settings size={20}/> Pengaturan</button></li>
           </ul>
         </nav>
@@ -137,11 +144,16 @@ const DashboardLayout = () => {
         )}
         
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
-            {renderContent()}
+            {/* SWITCH RENDER BERDASARKAN TAB */}
+            {activeTab === 'dashboard' && <DashboardView {...commonProps} />}
+            {activeTab === 'checkin' && <CheckinView {...commonProps} />}
+            {activeTab === 'shop' && <ShopView {...commonProps} />}
+            {activeTab === 'friends' && <FriendView {...commonProps} />}
+            {activeTab === 'settings' && <SettingsView {...commonProps} />}
         </main>
       </div>
     </div>
   );
 };
 
-export default DashboardLayout;
+export default UserDashboard;
