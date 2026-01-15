@@ -161,33 +161,35 @@ const AdminDashboard = () => {
   
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
-  // --- LOGIC GENERATOR CHALLENGE (SMART TYPE) ---
+  // --- LOGIC GENERATOR CHALLENGE (PERBAIKAN PROMPT) ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
     
-    // Prompt yang meminta AI menentukan Tipe A/B/C secara otomatis berdasarkan Topik
+    // PROMPT BARU: Misi Mudah, Ada Penjelasan, Tipe Otomatis
     const template = `
-Berperanlah sebagai Pakar Kesehatan & Program Creator.
+Berperanlah sebagai Pelatih Kesehatan Pribadi yang ramah dan solutif.
 Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
 
-TUGAS 1: DEFINISIKAN TIPE PESERTA (Jangan pakai Pemula/Mahir)
-Analisa topik tersebut dan tentukan 3 kategori/tipe spesifik yang paling relevan.
-Contoh:
-- Jika Topik "Usus Sehat": Tipe A=Sembelit, Tipe B=GERD, Tipe C=Seimbang.
-- Jika Topik "Diet Keto": Tipe A=Strict, Tipe B=Lazy Keto, Tipe C=Maintenance.
+TUGAS 1: TENTUKAN 3 TIPE KONDISI (Spesifik Sesuai Topik)
+Analisa topik tersebut dan tentukan 3 tipe kondisi/masalah spesifik yang paling umum.
+(Contoh: Jika topik "Usus Sehat", maka Tipe A=Sembelit, Tipe B=Gerd/Asam Lambung, Tipe C=Kembung/Begah).
 
-TUGAS 2: BUAT MISI HARIAN
-Buatkan misi harian yang actionable (singkat & jelas) untuk masing-masing tipe selama 30 hari.
+TUGAS 2: BUAT MISI HARIAN YANG **MUDAH & ADA PENJELASAN**
+Buatkan tabel misi 30 hari untuk ketiga tipe tersebut. 
+Syarat Wajib Isi Misi:
+1. **SANGAT MUDAH & PRAKTIS**: Misi harus gampang dilakukan orang awam, ringan, dan tidak memberatkan.
+2. **ADA PENJELASAN**: Di dalam teks misi, jelaskan SINGKAT "Kenapa" atau "Manfaatnya" agar user mengerti.
+3. **FORMAT PENULISAN**: "[Lakukan Aksi Ini] - [Karena/Manfaat Singkat]"
 
-FORMAT OUTPUT WAJIB (Agar mudah saya copy):
+Contoh Isi Sel Misi: 
+"Minum 1 gelas air hangat saat bangun - Membantu melancarkan pencernaan pagi hari."
 
-[DEFINISI TIPE]
-Tipe A: [Nama Kategori A]
-Tipe B: [Nama Kategori B]
-Tipe C: [Nama Kategori C]
+[FORMAT TABEL OUTPUT]
+[Judul Tipe A: ...]
+[Judul Tipe B: ...]
+[Judul Tipe C: ...]
 
-[TABEL MISI 30 HARI]
-| Hari | Misi Tipe A ([Nama A]) | Misi Tipe B ([Nama B]) | Misi Tipe C ([Nama C]) |
+| Hari | Tipe A ([Nama Kondisi]) | Tipe B ([Nama Kondisi]) | Tipe C ([Nama Kondisi]) |
 |---|---|---|---|
 | 1 | ... | ... | ... |
 | 2 | ... | ... | ... |
