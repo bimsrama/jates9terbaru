@@ -54,7 +54,7 @@ const AdminDashboard = () => {
   const [viewMode, setViewMode] = useState('info'); 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // GENERATOR CHALLENGE STATE (UPDATED)
+  // GENERATOR CHALLENGE STATE
   const [genChallengeName, setGenChallengeName] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
@@ -144,8 +144,6 @@ const AdminDashboard = () => {
   };
 
   const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Challenge Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
-  
-  // Fitur Create Challenge dari Prompt (Auto Create Entity)
   const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
   
   const handleDeleteChallenge = async (id, e) => { e.stopPropagation(); if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} };
@@ -163,25 +161,37 @@ const AdminDashboard = () => {
   
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
-  // --- LOGIC GENERATOR CHALLENGE (UPDATED) ---
+  // --- LOGIC GENERATOR CHALLENGE (SMART TYPE) ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
+    
+    // Prompt yang meminta AI menentukan Tipe A/B/C secara otomatis berdasarkan Topik
     const template = `
-Berperanlah sebagai Pakar Kesehatan Holistik & Kebugaran.
-Saya ingin membuat Program Tantangan Kesehatan 30 Hari dengan Topik: "${genChallengeName}"
+Berperanlah sebagai Pakar Kesehatan & Program Creator.
+Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
 
-Tolong buatkan detail misi harian (hanya misinya saja, singkat padat jelas) untuk 3 Kategori Peserta (Tipe A, Tipe B, Tipe C).
-- Tipe A: Pemula / Masalah Ringan
-- Tipe B: Menengah / Masalah Sedang
-- Tipe C: Advanced / Masalah Berat
+TUGAS 1: DEFINISIKAN TIPE PESERTA (Jangan pakai Pemula/Mahir)
+Analisa topik tersebut dan tentukan 3 kategori/tipe spesifik yang paling relevan.
+Contoh:
+- Jika Topik "Usus Sehat": Tipe A=Sembelit, Tipe B=GERD, Tipe C=Seimbang.
+- Jika Topik "Diet Keto": Tipe A=Strict, Tipe B=Lazy Keto, Tipe C=Maintenance.
 
-Output wajib dalam Format Tabel seperti ini agar mudah di-copy:
-| Hari | Misi Tipe A | Misi Tipe B | Misi Tipe C |
+TUGAS 2: BUAT MISI HARIAN
+Buatkan misi harian yang actionable (singkat & jelas) untuk masing-masing tipe selama 30 hari.
+
+FORMAT OUTPUT WAJIB (Agar mudah saya copy):
+
+[DEFINISI TIPE]
+Tipe A: [Nama Kategori A]
+Tipe B: [Nama Kategori B]
+Tipe C: [Nama Kategori C]
+
+[TABEL MISI 30 HARI]
+| Hari | Misi Tipe A ([Nama A]) | Misi Tipe B ([Nama B]) | Misi Tipe C ([Nama C]) |
+|---|---|---|---|
 | 1 | ... | ... | ... |
 | 2 | ... | ... | ... |
-... sampai hari 30.
-
-Pastikan isi tantangannya actionable (bisa dilakukan), menyenangkan, dan bertahap.
+... lanjut sampai hari 30
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -189,7 +199,7 @@ Pastikan isi tantangannya actionable (bisa dilakukan), menyenangkan, dan bertaha
   const handleOpenGemini = () => {
     if (!generatedPrompt) return alert("Generate prompt dulu!");
     navigator.clipboard.writeText(generatedPrompt).then(() => {
-        alert("Prompt disalin! Paste di Gemini.");
+        alert("Prompt disalin! Paste di Gemini/ChatGPT.");
         window.open("https://gemini.google.com/app", "_blank");
     }).catch(err => { alert("Gagal menyalin: " + err); });
   };
@@ -356,7 +366,7 @@ Pastikan isi tantangannya actionable (bisa dilakukan), menyenangkan, dan bertaha
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                    <h2 className="heading-2">Challenge Generator (AI)</h2>
-                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis dengan bantuan AI (Gemini/ChatGPT).</p>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Tipe Spesifik) dengan bantuan AI.</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                    <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
