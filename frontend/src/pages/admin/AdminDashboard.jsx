@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink, RefreshCw
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -54,7 +54,7 @@ const AdminDashboard = () => {
   const [viewMode, setViewMode] = useState('info'); 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // GENERATOR WA STATE
+  // GENERATOR CHALLENGE STATE (UPDATED)
   const [genChallengeName, setGenChallengeName] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
@@ -81,25 +81,10 @@ const AdminDashboard = () => {
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() }); setArticles(res.data); } catch(e){} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/products`, { headers: getAuthHeader() }); setProducts(res.data); } catch(e){} };
   
-  // FINANCE FETCH
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
+  const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/orders`, { headers: getAuthHeader() }); setOrders(res.data); } catch(e){} };
+  const fetchNotifications = async () => {};
 
-  // ORDERS FETCH
-  const fetchOrders = async () => { 
-      try { 
-          const res = await axios.get(`${BACKEND_URL}/api/admin/orders`, { headers: getAuthHeader() }); 
-          setOrders(res.data); 
-      } catch(e){} 
-  };
-
-  // NOTIFICATIONS FETCH
-  const fetchNotifications = async () => {
-      try {
-          // Placeholder jika ada endpoint notifikasi admin
-      } catch(e){}
-  };
-
-  // FETCH PARTICIPANTS
   const fetchParticipants = async (challengeId) => {
     setLoadingParticipants(true);
     try {
@@ -150,14 +135,7 @@ const AdminDashboard = () => {
       fd.append('description', productForm.description); 
       fd.append('fake_sales', productForm.fake_sales);
       if(productForm.image) fd.append('image', productForm.image);
-      
-      try { 
-        await axios.post(`${BACKEND_URL}/api/admin/products`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); 
-        alert("Produk Ditambahkan!"); 
-        setProductForm({name:'', price:'', description:'', fake_sales:0, image:null}); 
-        fetchProducts(); 
-      } catch(e){ alert("Error"); } 
-      setBtnLoading(false);
+      try { await axios.post(`${BACKEND_URL}/api/admin/products`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); alert("Produk Ditambahkan!"); setProductForm({name:'', price:'', description:'', fake_sales:0, image:null}); fetchProducts(); } catch(e){ alert("Error"); } setBtnLoading(false);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -166,71 +144,44 @@ const AdminDashboard = () => {
   };
 
   const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Challenge Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
+  
+  // Fitur Create Challenge dari Prompt (Auto Create Entity)
   const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
   
-  const handleDeleteChallenge = async (id, e) => { 
-      e.stopPropagation(); 
-      if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} 
-  };
+  const handleDeleteChallenge = async (id, e) => { e.stopPropagation(); if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} };
   
   const handleUpdateChallenge = async () => {
-    if(!editingChallenge) return;
-    setBtnLoading(true);
-    try {
-        await axios.post(`${BACKEND_URL}/api/admin/quiz/update-challenge`, editingChallenge, { headers: getAuthHeader() });
-        alert("Challenge berhasil diupdate!");
-        setEditingChallenge(null);
-        fetchChallengeCards();
-    } catch (e) {
-        alert("Gagal update challenge. Pastikan backend mendukung route ini.");
-    } finally {
-        setBtnLoading(false);
-    }
+    if(!editingChallenge) return; setBtnLoading(true);
+    try { await axios.post(`${BACKEND_URL}/api/admin/quiz/update-challenge`, editingChallenge, { headers: getAuthHeader() }); alert("Challenge berhasil diupdate!"); setEditingChallenge(null); fetchChallengeCards(); } catch (e) { alert("Gagal update."); } finally { setBtnLoading(false); }
   };
 
-  const handleOpenChallengeModal = (challenge) => {
-    setEditingChallenge(challenge);
-    setViewMode('info'); 
-    fetchParticipants(challenge.id);
-  };
+  const handleOpenChallengeModal = (challenge) => { setEditingChallenge(challenge); setViewMode('info'); fetchParticipants(challenge.id); };
 
   const handleUpdateUser = async (uid, type, val) => {
-    try {
-        const payload = { user_id: uid };
-        if (type === 'role') payload.role = val;
-        if (type === 'badge') payload.badge = val;
-
-        await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() });
-        fetchUsers(); 
-        alert(`User ${type} berhasil diubah!`);
-    } catch(e) {
-        alert("Gagal update user.");
-    }
+    try { const payload = { user_id: uid }; if (type === 'role') payload.role = val; if (type === 'badge') payload.badge = val; await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() }); fetchUsers(); alert(`User ${type} berhasil diubah!`); } catch(e) { alert("Gagal update user."); }
   };
   
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
-  // --- LOGIC GENERATOR WA ---
+  // --- LOGIC GENERATOR CHALLENGE (UPDATED) ---
   const generatePrompt = () => {
-    if (!genChallengeName) { alert("Mohon isi Nama Program Challenge!"); return; }
+    if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
     const template = `
-Topik Challenge: "${genChallengeName}"
-TUGAS ANDA:
-1. Analisa topik di atas.
-2. Tentukan 3 Tipe/Kategori Peserta (Tipe A, Tipe B, Tipe C) yang paling relevan.
-3. Buatkan konten WhatsApp Broadcast 30 Hari.
+Berperanlah sebagai Pakar Kesehatan Holistik & Kebugaran.
+Saya ingin membuat Program Tantangan Kesehatan 30 Hari dengan Topik: "${genChallengeName}"
 
-STRUKTUR OUTPUT (Format Tabel/List):
-[JUDUL: Daftar Tipe]
-- Tipe A: [Nama]
-- Tipe B: [Nama]
-- Tipe C: [Nama]
+Tolong buatkan detail misi harian (hanya misinya saja, singkat padat jelas) untuk 3 Kategori Peserta (Tipe A, Tipe B, Tipe C).
+- Tipe A: Pemula / Masalah Ringan
+- Tipe B: Menengah / Masalah Sedang
+- Tipe C: Advanced / Masalah Berat
 
-[KONTEN HARIAN]
-1. BAGIAN 1: 30 HARI CHALLENGE (Action)
-   - Kode: CH_[KODE_TIPE]_[HARI]
-   - Isi: Tantangan harian.
-STYLE: Casual, akrab, emoji.
+Output wajib dalam Format Tabel seperti ini agar mudah di-copy:
+| Hari | Misi Tipe A | Misi Tipe B | Misi Tipe C |
+| 1 | ... | ... | ... |
+| 2 | ... | ... | ... |
+... sampai hari 30.
+
+Pastikan isi tantangannya actionable (bisa dilakukan), menyenangkan, dan bertahap.
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -265,7 +216,7 @@ STYLE: Casual, akrab, emoji.
           <SidebarItem id="challenge_content" icon={Calendar} label="Input Challenge" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
-          <SidebarItem id="wa_generator" icon={Sparkles} label="AI Generator" />
+          <SidebarItem id="challenge_generator" icon={Sparkles} label="Challenge Generator" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
       </aside>
@@ -298,7 +249,7 @@ STYLE: Casual, akrab, emoji.
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Buat Challenge Baru</h3>
                   <input placeholder="Judul Tantangan..." style={{ ...inputStyle, marginBottom: '1rem' }} value={newChallengeTitle} onChange={(e) => setNewChallengeTitle(e.target.value)} />
-                  <button onClick={handleGenerateAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Generate via AI'}</button>
+                  <button onClick={handleGenerateAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Buat Challenge (Entity Only)'}</button>
                 </Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
@@ -400,19 +351,19 @@ STYLE: Casual, akrab, emoji.
              </div>
           )}
 
-          {/* TAB WA GENERATOR / AI */}
-          {activeTab === 'wa_generator' && (
+          {/* TAB CHALLENGE GENERATOR */}
+          {activeTab === 'challenge_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                   <h2 className="heading-2">Generator Konten WA</h2>
-                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
+                   <h2 className="heading-2">Challenge Generator (AI)</h2>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis dengan bantuan AI (Gemini/ChatGPT).</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                    <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
                       <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
                       <CardContent>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                             <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
+                             <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Topik Challenge (Misal: Usus Sehat)</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
                              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                                 <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
                                 <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
