@@ -204,7 +204,7 @@ const UserDashboard = () => {
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
-  const generateDailyTip = (g) => { const tips = { 'A': "👋 Minum air hangat & serat.", 'B': "👋 Hindari santan & pedas.", 'C': "👋 Makan tepat waktu." }; return tips[g] || "👋 Jaga kesehatan!"; };
+  const generateDailyTip = (g) => { const tips = { 'A': "💡 Minum air hangat & serat.", 'B': "💡 Hindari santan & pedas.", 'C': "💡 Makan tepat waktu." }; return tips[g] || "💡 Jaga kesehatan!"; };
   const getRandomQuote = () => "Kesehatan adalah investasi terbaik.";
   const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles(), fetchProducts()]); setIsRefreshing(false); };
   
@@ -489,46 +489,12 @@ const UserDashboard = () => {
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
-                        
-                        <div style={{fontSize:'0.75rem', marginTop:'0.5rem', color: darkMode?'#cbd5e1':'#475569', display:'flex', alignItems:'center', gap:'0.3rem', background:'rgba(255,255,255,0.3)', padding:'2px 8px', borderRadius:'6px', width:'fit-content', fontWeight:'bold'}}>
-                             <QrCode size={12}/> Ref: {overview?.user?.referral_code}
-                        </div>
+                        {/* NO REFERRAL REMOVED FROM HERE */}
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Tantangan Aktif */}
-                  <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                    <CardContent style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                          <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Tantangan Aktif</h3></div>
-                        </div>
-                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
-                          <div style={{ marginBottom: '0.75rem' }}>
-                              <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
-                              <span style={{ fontSize: '0.75rem', background: currentTheme.light, color: currentTheme.text, padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span>
-                          </div>
-                          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'1rem'}}>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
-                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Berhasil</div>
-                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#166534'}}>{overview?.financial?.total_checkins || 0} Hari</div>
-                              </div>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
-                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Terlewat</div>
-                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#991b1b'}}>{overview?.user?.missed_days || 0} Hari</div>
-                              </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                              <div style={{ flex: 1 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100))}%</span></div>
-                                  <div style={{ height: '6px', background: darkMode ? '#475569' : '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100)}%`, height: '100%', background: currentTheme.primary, borderRadius: '4px' }}></div></div>
-                              </div>
-                          </div>
-                        </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Check-in */}
+                  {/* Check-in (Misi Hari Ini) MOVED HERE - UNDER PROFILE */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -567,6 +533,37 @@ const UserDashboard = () => {
                            </div>
                         </div>
                       )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Tantangan Aktif */}
+                  <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                    <CardContent style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Tantangan Aktif</h3></div>
+                        </div>
+                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
+                          <div style={{ marginBottom: '0.75rem' }}>
+                              <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
+                              <span style={{ fontSize: '0.75rem', background: currentTheme.light, color: currentTheme.text, padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span>
+                          </div>
+                          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'1rem'}}>
+                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
+                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Berhasil</div>
+                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#166534'}}>{overview?.financial?.total_checkins || 0} Hari</div>
+                              </div>
+                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
+                                  <div style={{fontSize:'0.7rem', color:'#64748b'}}>Terlewat</div>
+                                  <div style={{fontSize:'1rem', fontWeight:'bold', color:'#991b1b'}}>{overview?.user?.missed_days || 0} Hari</div>
+                              </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                              <div style={{ flex: 1 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100))}%</span></div>
+                                  <div style={{ height: '6px', background: darkMode ? '#475569' : '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100)}%`, height: '100%', background: currentTheme.primary, borderRadius: '4px' }}></div></div>
+                              </div>
+                          </div>
+                        </div>
                     </CardContent>
                   </Card>
 
@@ -654,8 +651,24 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* QUOTE & REFRESH (DIPINDAHKAN KE PALING BAWAH) */}
-              <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
+              {/* REFERRAL CODE SECTION - MOVED HERE (BOTTOM) */}
+              <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
+                  <div style={{ background: darkMode ? '#334155' : 'white', padding: '1rem 2rem', borderRadius: '12px', border: darkMode ? '1px solid #475569' : '1px solid #e2e8f0', display: 'inline-block', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                      <p style={{ fontSize: '0.8rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.3rem', textTransform:'uppercase', letterSpacing:'1px', fontWeight:'bold' }}>Kode Referral Anda</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text, letterSpacing: '2px' }}>{overview?.user?.referral_code || '-'}</span>
+                          <button onClick={copyReferral} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding:'4px', borderRadius:'4px', display:'flex', alignItems:'center' }}>
+                              <Copy size={18} color={darkMode ? 'white' : '#1e293b'} />
+                          </button>
+                          <button onClick={()=>setShowQRModal(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding:'4px', borderRadius:'4px', display:'flex', alignItems:'center' }}>
+                              <QrCode size={18} color={darkMode ? 'white' : '#1e293b'} />
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              {/* QUOTE & REFRESH */}
+              <div style={{ paddingBottom: '3rem', textAlign: 'center', marginTop: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '2rem' }}>
                 <p style={{ fontStyle: 'italic', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9rem', marginBottom: '1rem', padding: '0 1rem' }}>
                     "{quote}"
                 </p>
