@@ -47,6 +47,9 @@ const AdminDashboard = () => {
   const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
+  
+  // STATE BARU: TIPE TAB UNTUK INPUT (A/B/C)
+  const [activeTypeTab, setActiveTypeTab] = useState('a'); // 'a', 'b', or 'c'
 
   // EDIT & VIEW CHALLENGE STATE
   const [editingChallenge, setEditingChallenge] = useState(null); 
@@ -159,34 +162,48 @@ const AdminDashboard = () => {
     try { const payload = { user_id: uid }; if (type === 'role') payload.role = val; if (type === 'badge') payload.badge = val; await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() }); fetchUsers(); alert(`User ${type} berhasil diubah!`); } catch(e) { alert("Gagal update user."); }
   };
   
-  const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
+  // --- HANDLE MATRIX CHANGE UNTUK ARRAY (3 OPSI) ---
+  const handleMatrixChange = (d, typeKey, idx, val) => {
+    // typeKey contoh: 'challenge_a', 'challenge_b', 'challenge_c'
+    setContentMatrix(prev => {
+        const row = prev[d] || {};
+        const currentArr = row[typeKey] || ["", "", ""]; // Default 3 empty slots
+        const newArr = [...currentArr];
+        newArr[idx] = val; // Update index 0, 1, atau 2
+        return { ...prev, [d]: { ...row, [typeKey]: newArr } };
+    });
+  };
 
-  // --- LOGIC GENERATOR CHALLENGE (3 OPSI PILIHAN) ---
+  // --- LOGIC GENERATOR CHALLENGE (3 TIPE x 3 OPSI) ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
     
-    // PROMPT BARU: 3 OPSI UNTUK DIPILIH (MUDAH/SEDANG/SULIT ATAU VARIASI)
     const template = `
 Berperanlah sebagai Pelatih Kebugaran & Kesehatan.
 Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
 
 TUGAS ANDA:
-Buatkan tabel 30 hari dimana setiap harinya ada **3 Pilihan Challenge (Opsi 1, Opsi 2, Opsi 3)** yang bisa dipilih user sesuai kemampuan/situasi mereka hari itu.
+1. Analisa topik tersebut dan tentukan **3 Tipe Kondisi Spesifik** (Misal: Tipe A=Sembelit, Tipe B=GERD, Tipe C=Kembung).
+2. Untuk SETIAP Tipe, buatkan **3 Pilihan Challenge (Opsi)** per hari selama 30 hari.
 
-Ketentuan Isi Challenge:
-1. **Opsi 1 (Mudah/Ringan)**: Sangat gampang dilakukan, cocok saat sibuk.
-2. **Opsi 2 (Sedang/Standar)**: Challenge normal untuk hari itu.
-3. **Opsi 3 (Menantang/Advance)**: Untuk yang ingin hasil lebih maksimal.
+STRUKTUR OPSI:
+- Opsi 1 (Mudah): Sangat ringan, < 5 menit.
+- Opsi 2 (Sedang): Standar, butuh sedikit usaha.
+- Opsi 3 (Menantang): Hasil maksimal.
 
-WAJIB ADA PENJELASAN SINGKAT:
-Format penulisan setiap sel: "[Aksi Challenge] - [Manfaat Singkat]"
+FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
 
-FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
-| Hari | Opsi 1 (Mudah) | Opsi 2 (Sedang) | Opsi 3 (Menantang) |
+[TIPE A: (Nama Kondisi A)]
+| Hari | Opsi 1 | Opsi 2 | Opsi 3 |
 |---|---|---|---|
 | 1 | ... | ... | ... |
-| 2 | ... | ... | ... |
-... sampai hari 30
+... (sampai hari 30)
+
+[TIPE B: (Nama Kondisi B)]
+... (Tabel sama)
+
+[TIPE C: (Nama Kondisi C)]
+... (Tabel sama)
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -361,7 +378,7 @@ FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                    <h2 className="heading-2">Challenge Generator (AI)</h2>
-                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Opsi Pilihan) dengan bantuan AI.</p>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Tipe Kondisi x 3 Opsi Pilihan) dengan bantuan AI.</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                    <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
@@ -392,7 +409,7 @@ FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
              </div>
           )}
 
-          {/* TAB INPUT CHALLENGE (UPDATED - 3 OPSI) */}
+          {/* TAB INPUT CHALLENGE (UPDATED - 3 OPSI PER TIPE) */}
           {activeTab === 'challenge_content' && (
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
@@ -411,35 +428,61 @@ FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
                   </div>
               </div>
               
+              {/* TAB SELECTOR UNTUK TIPE */}
+              <div style={{display:'flex', gap:'1rem', marginBottom:'1rem', borderBottom:'1px solid #e2e8f0'}}>
+                  {['A','B','C'].map(t => (
+                      <button 
+                        key={t}
+                        onClick={()=>setActiveTypeTab(t.toLowerCase())}
+                        style={{
+                            padding:'0.8rem 2rem', 
+                            borderBottom: activeTypeTab===t.toLowerCase() ? '3px solid var(--primary)' : '3px solid transparent',
+                            color: activeTypeTab===t.toLowerCase() ? 'var(--primary)' : '#64748b',
+                            background: 'transparent',
+                            borderTop: 'none', borderLeft:'none', borderRight:'none',
+                            fontWeight: 'bold', cursor:'pointer', fontSize:'1rem'
+                        }}
+                      >
+                          TIPE {t}
+                      </button>
+                  ))}
+              </div>
+
               {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading data...</div> : (
                   <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
                     <table style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
                         <tr>
-                            <th style={{...thStyle, width: '50px', background: '#f1f5f9', textAlign:'center'}}>Hari</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af'}}>OPSI 1 (Misal: Mudah)</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534'}}>OPSI 2 (Misal: Sedang)</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>OPSI 3 (Misal: Menantang)</th>
+                            <th style={{...thStyle, width: '60px', background: '#f1f5f9', textAlign:'center'}}>Hari</th>
+                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 1 (Mudah)</th>
+                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 2 (Sedang)</th>
+                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 3 (Menantang)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
                             const row = contentMatrix[day] || {};
+                            // key: challenge_a, challenge_b, challenge_c
+                            // Value harus array: ["op1", "op2", "op3"]
+                            // Kita handle default kalau null
+                            const currentKey = `challenge_${activeTypeTab}`;
+                            const optionsArray = Array.isArray(row[currentKey]) ? row[currentKey] : ["", "", ""];
+
                             return (
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
-                                    {/* GROUP A -> OPSI 1 */}
-                                    <td style={{...tdStyle, background: '#eff6ff', padding:'0.5rem'}}>
-                                        <textarea placeholder="Pilihan Challenge 1..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
-                                    </td>
-                                    {/* GROUP B -> OPSI 2 */}
-                                    <td style={{...tdStyle, background: '#f0fdf4', padding:'0.5rem'}}>
-                                        <textarea placeholder="Pilihan Challenge 2..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
-                                    </td>
-                                    {/* GROUP C -> OPSI 3 */}
-                                    <td style={{...tdStyle, background: '#faf5ff', padding:'0.5rem'}}>
-                                        <textarea placeholder="Pilihan Challenge 3..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
-                                    </td>
+                                    
+                                    {/* 3 KOLOM OPSI UNTUK TIPE YANG DIPILIH */}
+                                    {[0, 1, 2].map((optIndex) => (
+                                        <td key={optIndex} style={{...tdStyle, padding:'0.5rem', background: activeTypeTab==='a'?'#eff6ff': activeTypeTab==='b'?'#f0fdf4':'#faf5ff'}}>
+                                            <textarea 
+                                                placeholder={`Pilihan ${optIndex+1} untuk Hari ${day}`} 
+                                                style={tableInputStyle} 
+                                                value={optionsArray[optIndex] || ""} 
+                                                onChange={e=>handleMatrixChange(day, currentKey, optIndex, e.target.value)} 
+                                            />
+                                        </td>
+                                    ))}
                                 </tr>
                             )
                         })}
@@ -447,7 +490,7 @@ FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
                     </table>
                   </div>
               )}
-              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Catatan: Data disimpan sebagai Tipe A/B/C di database, namun digunakan sebagai Opsi 1/2/3.</p>
+              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Masukkan 3 pilihan challenge yang berbeda setiap harinya agar user punya alternatif.</p>
             </div>
           )}
 
