@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -30,8 +30,8 @@ const AdminDashboard = () => {
   const [challenges, setChallenges] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]); 
-  const [orders, setOrders] = useState([]); // State Pesanan
-  const [notifications, setNotifications] = useState([]); // State Notifikasi
+  const [orders, setOrders] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   
   // FORM STATES
   const [productForm, setProductForm] = useState({ name: '', price: '', description: '', fake_sales: 0, image: null });
@@ -42,7 +42,7 @@ const AdminDashboard = () => {
   const [wdRefInput, setWdRefInput] = useState(""); 
   const [wdProcessingId, setWdProcessingId] = useState(null);
 
-  // MATRIX STATES
+  // MATRIX STATES (INPUT CHALLENGE)
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
   const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
@@ -61,7 +61,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
-    fetchNotifications(); // Auto fetch notif
+    fetchNotifications();
   }, []);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ const AdminDashboard = () => {
     if (activeTab === 'articles') fetchArticles();
     if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'finance') fetchWithdrawals(); 
-    if (activeTab === 'orders') fetchOrders(); // Tab Pesanan Baru
+    if (activeTab === 'orders') fetchOrders();
   }, [activeTab, selectedChallengeId]);
 
   // --- API FETCH ---
@@ -84,7 +84,7 @@ const AdminDashboard = () => {
   // FINANCE FETCH
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
 
-  // ORDERS FETCH [BARU]
+  // ORDERS FETCH
   const fetchOrders = async () => { 
       try { 
           const res = await axios.get(`${BACKEND_URL}/api/admin/orders`, { headers: getAuthHeader() }); 
@@ -92,12 +92,10 @@ const AdminDashboard = () => {
       } catch(e){} 
   };
 
-  // NOTIFICATIONS FETCH [BARU]
+  // NOTIFICATIONS FETCH
   const fetchNotifications = async () => {
       try {
-          // Asumsi backend punya endpoint ini (bisa reuse endpoint user/notifications jika logicnya handle admin)
-          // Atau buat endpoint khusus admin notif
-          // Di sini kita pakai mock dulu atau sesuaikan dengan endpoint yang ada
+          // Placeholder jika ada endpoint notifikasi admin
       } catch(e){}
   };
 
@@ -167,7 +165,7 @@ const AdminDashboard = () => {
       try { await axios.delete(`${BACKEND_URL}/api/admin/products/${id}`, { headers: getAuthHeader() }); fetchProducts(); } catch(e){ alert("Gagal hapus"); }
   };
 
-  const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
+  const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Challenge Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
   const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
   
   const handleDeleteChallenge = async (id, e) => { 
@@ -232,12 +230,6 @@ STRUKTUR OUTPUT (Format Tabel/List):
 1. BAGIAN 1: 30 HARI CHALLENGE (Action)
    - Kode: CH_[KODE_TIPE]_[HARI]
    - Isi: Tantangan harian.
-2. BAGIAN 2: 30 HARI FAKTA (Edukasi)
-   - Kode: FT_[KODE_TIPE]_[HARI]
-   - Isi: Fakta.
-3. BAGIAN 3: SOFT SELLING JATES9 (Hari 1,3,6,9...)
-   - Kode: SS_[KODE_TIPE]_[HARI]
-   - Isi: Jualan soft.
 STYLE: Casual, akrab, emoji.
     `;
     setGeneratedPrompt(template.trim());
@@ -270,10 +262,10 @@ STYLE: Casual, akrab, emoji.
           <SidebarItem id="orders" icon={ShoppingCart} label="Pesanan Masuk" />
           <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
           <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
-          <SidebarItem id="challenge_content" icon={Calendar} label="Broadcast 30 Hari" />
+          <SidebarItem id="challenge_content" icon={Calendar} label="Input Challenge" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
-          <SidebarItem id="wa_generator" icon={Sparkles} label="Generator WA" />
+          <SidebarItem id="wa_generator" icon={Sparkles} label="AI Generator" />
         </nav>
         <div style={{ padding: '1rem', borderTop: '1px solid #f1f5f9' }}><button onClick={logout} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ef4444', width: '100%', padding: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}> <LogOut size={18} /> Logout </button></div>
       </aside>
@@ -301,14 +293,6 @@ STYLE: Casual, akrab, emoji.
                 <StatCard label="Total Penjualan" val={`Rp ${stats.total_revenue?.toLocaleString() || 0}`} icon={<ShoppingCart/>} color="#10b981" />
               </div>
               
-              {/* Notifikasi Singkat */}
-              <Card style={{marginBottom:'2rem', padding:'1.5rem', background:'white'}}>
-                  <h3 style={{fontWeight:'bold', marginBottom:'1rem', display:'flex', gap:'0.5rem', alignItems:'center'}}><Bell size={18}/> Notifikasi Terbaru</h3>
-                  <div style={{maxHeight:'200px', overflowY:'auto'}}>
-                      <p style={{color:'#64748b', fontSize:'0.9rem', fontStyle:'italic'}}>Belum ada notifikasi baru.</p>
-                  </div>
-              </Card>
-
               <h2 className="heading-2" style={{marginBottom:'1rem'}}>Manajemen Challenge</h2>
               <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
@@ -329,7 +313,7 @@ STYLE: Casual, akrab, emoji.
             </div>
           )}
 
-          {/* TAB ORDERS (BARU) */}
+          {/* TAB ORDERS */}
           {activeTab === 'orders' && (
              <Card style={{padding:'1.5rem', background:'white'}}>
                 <h3 style={{fontWeight:'bold', marginBottom:'1.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}>
@@ -361,11 +345,7 @@ STYLE: Casual, akrab, emoji.
                                         </div>
                                     </td>
                                     <td style={tdStyle}>
-                                        <select 
-                                            value={o.status} 
-                                            onChange={(e)=>handleUpdateOrder(o.order_id, e.target.value, o.resi)}
-                                            style={{...selectStyle, padding:'2px 6px', fontSize:'0.8rem', borderColor: o.status==='cancelled'?'red':'#cbd5e1'}}
-                                        >
+                                        <select value={o.status} onChange={(e)=>handleUpdateOrder(o.order_id, e.target.value, o.resi)} style={{...selectStyle, padding:'2px 6px', fontSize:'0.8rem', borderColor: o.status==='cancelled'?'red':'#cbd5e1'}}>
                                             <option value="pending">Pending</option>
                                             <option value="paid">Paid (Dikemas)</option>
                                             <option value="shipped">Shipped (Dikirim)</option>
@@ -374,12 +354,7 @@ STYLE: Casual, akrab, emoji.
                                         </select>
                                     </td>
                                     <td style={tdStyle}>
-                                        <input 
-                                            defaultValue={o.resi} 
-                                            placeholder="Input Resi..." 
-                                            onBlur={(e)=>handleUpdateOrder(o.order_id, o.status, e.target.value)}
-                                            style={{padding:'4px', borderRadius:'4px', border:'1px solid #cbd5e1', width:'120px', fontSize:'0.8rem'}}
-                                        />
+                                        <input defaultValue={o.resi} placeholder="Input Resi..." onBlur={(e)=>handleUpdateOrder(o.order_id, o.status, e.target.value)} style={{padding:'4px', borderRadius:'4px', border:'1px solid #cbd5e1', width:'120px', fontSize:'0.8rem'}} />
                                     </td>
                                     <td style={tdStyle}>
                                         <button onClick={()=>handleUpdateOrder(o.order_id, 'shipped', o.resi)} title="Simpan Perubahan" style={{background:'#3b82f6', color:'white', border:'none', padding:'4px 8px', borderRadius:'4px', cursor:'pointer'}}><Save size={14}/></button>
@@ -394,7 +369,7 @@ STYLE: Casual, akrab, emoji.
              </Card>
           )}
 
-          {/* TAB MANAJEMEN PRODUK */}
+          {/* TAB PRODUCTS */}
           {activeTab === 'products' && (
              <div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}>
                 <Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}>
@@ -425,25 +400,24 @@ STYLE: Casual, akrab, emoji.
              </div>
           )}
 
-          {/* TAB WA GENERATOR */}
+          {/* TAB WA GENERATOR / AI */}
           {activeTab === 'wa_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                    <h2 className="heading-2">Generator Konten WA</h2>
                    <p style={{ color: '#64748b', marginBottom: '1rem' }}>Bikin konten challenge 30 hari otomatis dengan bantuan AI.</p>
-                   <a href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?usp=sharing" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.7rem 1.2rem', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}> <FileSpreadsheet size={18} /> Buka Sheet Broadcast </a>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                    <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
                       <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
                       <CardContent>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                               <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
-                               <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
-                            </div>
-                         </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                             <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Nama Program Challenge</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
+                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
+                                <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
+                             </div>
+                          </div>
                       </CardContent>
                    </Card>
                    {generatedPrompt && (
@@ -462,37 +436,34 @@ STYLE: Casual, akrab, emoji.
              </div>
           )}
 
-          {/* TAB CHALLENGE CONTENT */}
+          {/* TAB INPUT CHALLENGE (UPDATED) */}
           {activeTab === 'challenge_content' && (
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
-                  <h1 className="heading-2">Broadcast Manager (30 Hari)</h1>
+                  <h1 className="heading-2">Input Challenge 30 Hari</h1>
                   <div style={{display:'flex', gap:'1rem'}}>
+                      <a href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?gid=0#gid=0" target="_blank" rel="noreferrer" style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', textDecoration:'none', padding:'0.5rem 1rem', borderRadius:'6px', fontWeight:'bold', fontSize:'0.9rem'}}>
+                          <FileSpreadsheet size={18}/> Buka Master Sheet (Fakta & Promo)
+                      </a>
                       <select value={selectedChallengeId || ""} onChange={(e) => setSelectedChallengeId(e.target.value)} style={selectStyle}>
                          <option value="" disabled>Pilih Challenge...</option>
                          {challenges.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                       </select>
-                      <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
-                         {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan
+                      <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'var(--primary)', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
+                         {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan Challenge
                       </button>
                   </div>
               </div>
               
-              {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading matrix...</div> : (
+              {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading data...</div> : (
                   <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
-                    <table style={{ width: '100%', minWidth: '2000px', borderCollapse: 'collapse' }}>
+                    <table style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
                         <tr>
-                            <th style={{...thStyle, width: '50px', background: '#f1f5f9'}}></th>
-                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af', borderRight:'2px solid white'}}>GROUP A (Misal: Sembelit)</th>
-                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534', borderRight:'2px solid white'}}>GROUP B (Misal: Kembung)</th>
-                            <th colSpan={3} style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>GROUP C (Misal: GERD)</th>
-                        </tr>
-                        <tr>
-                          <th style={{...thStyle, textAlign:'center'}}>Hari</th>
-                          <th style={subThStyle}>Tugas A</th><th style={subThStyle}>Fakta A</th><th style={subThStyle}>Soft Sell A</th>
-                          <th style={subThStyle}>Tugas B</th><th style={subThStyle}>Fakta B</th><th style={subThStyle}>Soft Sell B</th>
-                          <th style={subThStyle}>Tugas C</th><th style={subThStyle}>Fakta C</th><th style={subThStyle}>Soft Sell C</th>
+                            <th style={{...thStyle, width: '50px', background: '#f1f5f9', textAlign:'center'}}>Hari</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af'}}>CHALLENGE TIPE A</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534'}}>CHALLENGE TIPE B</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>CHALLENGE TIPE C</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -502,17 +473,17 @@ STYLE: Casual, akrab, emoji.
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
                                     {/* GROUP A */}
-                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#eff6ff'}}><textarea style={tableInputStyle} value={row.fact_a||""} onChange={e=>handleMatrixChange(day,'fact_a',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#eff6ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#93c5fd'}} value={row.soft_sell_a||""} onChange={e=>handleMatrixChange(day,'soft_sell_a',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                    <td style={{...tdStyle, background: '#eff6ff', padding:'0.5rem'}}>
+                                        <textarea placeholder="Tulis tantangan Tipe A..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
+                                    </td>
                                     {/* GROUP B */}
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}><textarea style={tableInputStyle} value={row.fact_b||""} onChange={e=>handleMatrixChange(day,'fact_b',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#f0fdf4'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#86efac'}} value={row.soft_sell_b||""} onChange={e=>handleMatrixChange(day,'soft_sell_b',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                    <td style={{...tdStyle, background: '#f0fdf4', padding:'0.5rem'}}>
+                                        <textarea placeholder="Tulis tantangan Tipe B..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
+                                    </td>
                                     {/* GROUP C */}
-                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#faf5ff'}}><textarea style={tableInputStyle} value={row.fact_c||""} onChange={e=>handleMatrixChange(day,'fact_c',e.target.value)} /></td>
-                                    <td style={{...tdStyle, background: '#faf5ff'}}>{day%3===0 || day===1 ? <textarea style={{...tableInputStyle, borderColor: '#d8b4fe'}} value={row.soft_sell_c||""} onChange={e=>handleMatrixChange(day,'soft_sell_c',e.target.value)} /> : <span style={dashStyle}>-</span>}</td>
+                                    <td style={{...tdStyle, background: '#faf5ff', padding:'0.5rem'}}>
+                                        <textarea placeholder="Tulis tantangan Tipe C..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
+                                    </td>
                                 </tr>
                             )
                         })}
@@ -520,6 +491,7 @@ STYLE: Casual, akrab, emoji.
                     </table>
                   </div>
               )}
+              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Catatan: Fakta Kesehatan & Soft Selling diambil otomatis dari Google Sheet berdasarkan Hari ke-X.</p>
             </div>
           )}
 
