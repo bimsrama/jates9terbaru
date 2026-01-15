@@ -161,39 +161,32 @@ const AdminDashboard = () => {
   
   const handleMatrixChange = (d,f,v) => setContentMatrix(p=>({...p, [d]:{...p[d],[f]:v}}));
 
-  // --- LOGIC GENERATOR CHALLENGE (PERBAIKAN PROMPT) ---
+  // --- LOGIC GENERATOR CHALLENGE (3 OPSI PILIHAN) ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
     
-    // PROMPT BARU: Misi Mudah, Ada Penjelasan, Tipe Otomatis
+    // PROMPT BARU: 3 OPSI UNTUK DIPILIH (MUDAH/SEDANG/SULIT ATAU VARIASI)
     const template = `
-Berperanlah sebagai Pelatih Kesehatan Pribadi yang ramah dan solutif.
+Berperanlah sebagai Pelatih Kebugaran & Kesehatan.
 Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
 
-TUGAS 1: TENTUKAN 3 TIPE KONDISI (Spesifik Sesuai Topik)
-Analisa topik tersebut dan tentukan 3 tipe kondisi/masalah spesifik yang paling umum.
-(Contoh: Jika topik "Usus Sehat", maka Tipe A=Sembelit, Tipe B=Gerd/Asam Lambung, Tipe C=Kembung/Begah).
+TUGAS ANDA:
+Buatkan tabel 30 hari dimana setiap harinya ada **3 Pilihan Challenge (Opsi 1, Opsi 2, Opsi 3)** yang bisa dipilih user sesuai kemampuan/situasi mereka hari itu.
 
-TUGAS 2: BUAT MISI HARIAN YANG **MUDAH & ADA PENJELASAN**
-Buatkan tabel misi 30 hari untuk ketiga tipe tersebut. 
-Syarat Wajib Isi Misi:
-1. **SANGAT MUDAH & PRAKTIS**: Misi harus gampang dilakukan orang awam, ringan, dan tidak memberatkan.
-2. **ADA PENJELASAN**: Di dalam teks misi, jelaskan SINGKAT "Kenapa" atau "Manfaatnya" agar user mengerti.
-3. **FORMAT PENULISAN**: "[Lakukan Aksi Ini] - [Karena/Manfaat Singkat]"
+Ketentuan Isi Challenge:
+1. **Opsi 1 (Mudah/Ringan)**: Sangat gampang dilakukan, cocok saat sibuk.
+2. **Opsi 2 (Sedang/Standar)**: Challenge normal untuk hari itu.
+3. **Opsi 3 (Menantang/Advance)**: Untuk yang ingin hasil lebih maksimal.
 
-Contoh Isi Sel Misi: 
-"Minum 1 gelas air hangat saat bangun - Membantu melancarkan pencernaan pagi hari."
+WAJIB ADA PENJELASAN SINGKAT:
+Format penulisan setiap sel: "[Aksi Challenge] - [Manfaat Singkat]"
 
-[FORMAT TABEL OUTPUT]
-[Judul Tipe A: ...]
-[Judul Tipe B: ...]
-[Judul Tipe C: ...]
-
-| Hari | Tipe A ([Nama Kondisi]) | Tipe B ([Nama Kondisi]) | Tipe C ([Nama Kondisi]) |
+FORMAT TABEL OUTPUT (Wajib format ini agar mudah di-copy):
+| Hari | Opsi 1 (Mudah) | Opsi 2 (Sedang) | Opsi 3 (Menantang) |
 |---|---|---|---|
 | 1 | ... | ... | ... |
 | 2 | ... | ... | ... |
-... lanjut sampai hari 30
+... sampai hari 30
     `;
     setGeneratedPrompt(template.trim());
   };
@@ -368,7 +361,7 @@ Contoh Isi Sel Misi:
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
                    <h2 className="heading-2">Challenge Generator (AI)</h2>
-                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Tipe Spesifik) dengan bantuan AI.</p>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Opsi Pilihan) dengan bantuan AI.</p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                    <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
@@ -399,7 +392,7 @@ Contoh Isi Sel Misi:
              </div>
           )}
 
-          {/* TAB INPUT CHALLENGE (UPDATED) */}
+          {/* TAB INPUT CHALLENGE (UPDATED - 3 OPSI) */}
           {activeTab === 'challenge_content' && (
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
@@ -424,9 +417,9 @@ Contoh Isi Sel Misi:
                       <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
                         <tr>
                             <th style={{...thStyle, width: '50px', background: '#f1f5f9', textAlign:'center'}}>Hari</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af'}}>CHALLENGE TIPE A</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534'}}>CHALLENGE TIPE B</th>
-                            <th style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>CHALLENGE TIPE C</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#dbeafe', color: '#1e40af'}}>OPSI 1 (Misal: Mudah)</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#dcfce7', color: '#166534'}}>OPSI 2 (Misal: Sedang)</th>
+                            <th style={{...thStyle, textAlign:'center', background: '#fae8ff', color: '#86198f'}}>OPSI 3 (Misal: Menantang)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -435,17 +428,17 @@ Contoh Isi Sel Misi:
                             return (
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
-                                    {/* GROUP A */}
+                                    {/* GROUP A -> OPSI 1 */}
                                     <td style={{...tdStyle, background: '#eff6ff', padding:'0.5rem'}}>
-                                        <textarea placeholder="Tulis tantangan Tipe A..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
+                                        <textarea placeholder="Pilihan Challenge 1..." style={tableInputStyle} value={row.challenge_a||""} onChange={e=>handleMatrixChange(day,'challenge_a',e.target.value)} />
                                     </td>
-                                    {/* GROUP B */}
+                                    {/* GROUP B -> OPSI 2 */}
                                     <td style={{...tdStyle, background: '#f0fdf4', padding:'0.5rem'}}>
-                                        <textarea placeholder="Tulis tantangan Tipe B..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
+                                        <textarea placeholder="Pilihan Challenge 2..." style={tableInputStyle} value={row.challenge_b||""} onChange={e=>handleMatrixChange(day,'challenge_b',e.target.value)} />
                                     </td>
-                                    {/* GROUP C */}
+                                    {/* GROUP C -> OPSI 3 */}
                                     <td style={{...tdStyle, background: '#faf5ff', padding:'0.5rem'}}>
-                                        <textarea placeholder="Tulis tantangan Tipe C..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
+                                        <textarea placeholder="Pilihan Challenge 3..." style={tableInputStyle} value={row.challenge_c||""} onChange={e=>handleMatrixChange(day,'challenge_c',e.target.value)} />
                                     </td>
                                 </tr>
                             )
@@ -454,7 +447,7 @@ Contoh Isi Sel Misi:
                     </table>
                   </div>
               )}
-              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Catatan: Fakta Kesehatan & Soft Selling diambil otomatis dari Google Sheet berdasarkan Hari ke-X.</p>
+              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Catatan: Data disimpan sebagai Tipe A/B/C di database, namun digunakan sebagai Opsi 1/2/3.</p>
             </div>
           )}
 
