@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +8,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
   Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
   Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard, Heart,
-  ShoppingCart, Bell
+  ShoppingCart, Bell, Target, ArrowRight
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -83,7 +82,6 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
-  const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -96,7 +94,6 @@ const UserDashboard = () => {
   const [friendCode, setFriendCode] = useState("");
   const [friendData, setFriendData] = useState(null);
   const [showFriendProfile, setShowFriendProfile] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   
   // Article Modal State
@@ -111,6 +108,10 @@ const UserDashboard = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
+
+  // STATE BARU: Pilihan Opsi & Lock
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [missionDone, setMissionDone] = useState(false);
 
   useEffect(() => {
     const handleResize = () => { setIsDesktop(window.innerWidth > 1024); if(window.innerWidth > 1024) setSidebarOpen(false); };
@@ -199,7 +200,22 @@ const UserDashboard = () => {
   };
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
-  const fetchDailyContent = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); setDailyData(res.data); setCheckinStatus(res.data.today_status || null); } catch (e) {} };
+  
+  // FETCH DAILY CONTENT (UPDATED LOCK)
+  const fetchDailyContent = async () => { 
+      try { 
+          const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); 
+          setDailyData(res.data); 
+          setCheckinStatus(res.data.today_status || null);
+          
+          if(res.data.today_status === 'completed') {
+              setMissionDone(true);
+          } else {
+              setMissionDone(false);
+          }
+      } catch (e) {} 
+  };
+
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
@@ -224,14 +240,30 @@ const UserDashboard = () => {
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
+  // SUBMIT CHECKIN (UPDATED LOCK)
   const handleSubmitCheckin = async (status) => { 
-      if(isSubmitting) return; setIsSubmitting(true); 
+      if(isSubmitting) return; 
+      setIsSubmitting(true); 
       try { 
-          await axios.post(`${BACKEND_URL}/api/checkin`, {journal, status}, {headers:getAuthHeader()}); 
+          await axios.post(`${BACKEND_URL}/api/checkin`, {
+              journal, 
+              status, 
+              chosen_option: selectedOption // Kirim opsi yg dipilih
+          }, {headers:getAuthHeader()}); 
+          
           setCheckinStatus(status); 
-          if(status === 'completed') { alert("Selesai!"); fetchData(); }
-          if(status === 'pending') { alert("Oke, diingatkan nanti!"); }
-      } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } 
+          
+          if(status === 'completed') { 
+              setMissionDone(true); 
+              alert("Luar biasa! Misi selesai. Cek WhatsApp untuk laporan lengkap."); 
+              fetchData(); 
+          }
+          if(status === 'pending') { 
+              alert("Oke, pengingat telah diset untuk jam 19:00 WIB!"); 
+          }
+      } catch(e){ 
+          alert(e.response?.data?.message || "Gagal check-in."); 
+      } 
       finally { setIsSubmitting(false); } 
   };
   
@@ -490,64 +522,112 @@ const UserDashboard = () => {
                       <div>
                         <h2 className="heading-2" style={{ marginBottom: '0.3rem', fontSize: '1.3rem', fontWeight: 'bold' }}>{overview?.user?.name}</h2>
                         <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div>
-                        {/* NO REFERRAL REMOVED FROM HERE */}
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Check-in (Misi Hari Ini) MOVED HERE - UNDER PROFILE */}
+                  {/* MISI HARI INI - 3 OPSI */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize: '1.1rem', color: darkMode ? 'white' : 'black'}}>
-                          <Activity size={20} color={currentTheme.text}/> Misi Hari Ini
+                          <Activity size={20} color={currentTheme.text}/> Misi Hari Ke-{dailyData?.day || 1}
                         </CardTitle>
                         {checkinStatus === 'completed' && <span style={{fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><CheckCircle size={12}/> Selesai</span>}
-                        {checkinStatus === 'pending' && <span style={{fontSize: '0.75rem', background: '#fffbeb', color: '#d97706', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><Clock size={12}/> Diingatkan</span>}
+                        {checkinStatus === 'pending' && <span style={{fontSize: '0.75rem', background: '#fffbeb', color: '#d97706', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><Clock size={12}/> Tertunda</span>}
                       </div>
                     </CardHeader>
                     <CardContent>
                       {dailyData && (
                         <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
-                          <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>Info Sehat:</h4>
-                          <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155' }}>{dailyData.fact || dailyData.message}</p>
+                          <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>💡 Fakta Hari Ini:</h4>
+                          <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
                         </div>
                       )}
                       
                       {checkinStatus === 'completed' ? (
-                          <div style={{textAlign:'center', padding:'1.5rem', background: '#f0fdf4', borderRadius:'12px', color:'#166534', fontWeight:'bold'}}>
-                             Misi Selesai! 🎉
+                          <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
+                             <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
+                             <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai! 🎉</h3>
+                             <p style={{fontSize:'0.9rem'}}>Hebat! Kamu sudah satu langkah lebih sehat. Sampai jumpa di misi besok!</p>
+                             {dailyData?.ai_feedback && (
+                                <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', color: darkMode ? '#a7f3d0' : '#15803d'}}>
+                                    "{dailyData.ai_feedback}"
+                                </div>
+                             )}
                           </div>
                       ) : (
                         <div>
-                           {dailyData?.tasks?.map((task, idx) => (
-                             <div key={idx} style={{ padding: '0.8rem', background: darkMode ? '#334155' : '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom:'0.5rem', display:'flex', gap:'0.5rem', alignItems:'center', color: darkMode ? 'white' : 'black' }}>
-                               <div style={{width:'8px', height:'8px', borderRadius:'50%', background: currentTheme.primary}}></div>
-                               {task}
-                             </div>
-                           ))}
-                           <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Tulis jurnal..." style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black' }}></textarea>
+                           <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Jangan lupa selesaikan challengenya! 💪</p>
                            
-                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                             <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Nanti Saja</button>
-                             <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting} style={{ background: currentTheme.primary, color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Selesai</button>
+                           <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
+                               {dailyData?.tasks?.map((task, idx) => (
+                                   <div 
+                                       key={idx} 
+                                       onClick={() => setSelectedOption(task)}
+                                       style={{
+                                           padding:'1rem', 
+                                           borderRadius:'12px', 
+                                           border: selectedOption === task ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0',
+                                           background: selectedOption === task ? currentTheme.light : (darkMode ? '#334155' : 'white'),
+                                           cursor:'pointer',
+                                           display:'flex', alignItems:'center', gap:'0.8rem',
+                                           transition:'all 0.2s',
+                                           color: darkMode ? 'white' : 'black'
+                                       }}
+                                   >
+                                       <div style={{
+                                           width:'20px', height:'20px', borderRadius:'50%', 
+                                           border:`2px solid ${selectedOption === task ? currentTheme.primary : '#cbd5e1'}`,
+                                           display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0
+                                       }}>
+                                           {selectedOption === task && <div style={{width:'10px', height:'10px', borderRadius:'50%', background:currentTheme.primary}}></div>}
+                                       </div>
+                                       <span style={{fontSize:'0.9rem', fontWeight: selectedOption === task ? 'bold' : 'normal'}}>{task}</span>
+                                   </div>
+                               ))}
+                           </div>
+
+                           <textarea 
+                              value={journal} 
+                              onChange={(e) => setJournal(e.target.value)} 
+                              placeholder="Bagaimana perasaanmu? (Opsional)" 
+                              style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1.5rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit' }}
+                           ></textarea>
+                           
+                           <div style={{ marginTop: '1rem' }}>
+                             <button 
+                                onClick={() => handleSubmitCheckin('completed')} 
+                                disabled={isSubmitting || !selectedOption} 
+                                style={{ 
+                                    width: '100%',
+                                    background: selectedOption ? currentTheme.primary : '#cbd5e1', 
+                                    color: 'black', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: selectedOption ? 'pointer' : 'not-allowed',
+                                    display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem',
+                                    boxShadow: selectedOption ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                             >
+                                {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckCircle size={18}/>} Selesaikan Misi Ini
+                             </button>
+                             <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{width:'100%', background:'transparent', border:'none', marginTop:'0.8rem', color:'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti Saja</button>
+                           </div>
+                           
+                           {/* Info Challenge yang diikuti (Footer Card) */}
+                           <div style={{marginTop:'1.5rem', paddingTop:'1rem', borderTop:'1px dashed #cbd5e1', textAlign:'center', fontSize:'0.8rem', color:'#64748b'}}>
+                               Kamu sedang mengikuti: <span style={{fontWeight:'bold', color:currentTheme.text}}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Program Sehat"}</span>
                            </div>
                         </div>
                       )}
                     </CardContent>
                   </Card>
 
-                  {/* Tantangan Aktif */}
+                  {/* Tantangan Aktif (Statistik) */}
                   <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardContent style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                          <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Tantangan Aktif</h3></div>
+                          <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Statistik Progress</h3></div>
                         </div>
                         <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
-                          <div style={{ marginBottom: '0.75rem' }}>
-                              <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: darkMode ? 'white' : '#0f172a' }}>{challenges.find(c => c.id === overview?.user?.challenge_id)?.title || "Belum Ada Challenge"}</h4>
-                              <span style={{ fontSize: '0.75rem', background: currentTheme.light, color: currentTheme.text, padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>Tipe {overview?.user?.group || 'Umum'}</span>
-                          </div>
                           <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'1rem'}}>
                               <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
                                   <div style={{fontSize:'0.7rem', color:'#64748b'}}>Berhasil</div>
@@ -652,7 +732,7 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* REFERRAL CODE SECTION - MOVED HERE (BOTTOM) */}
+              {/* REFERRAL CODE SECTION - PALING BAWAH */}
               <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
                   <div style={{ background: darkMode ? '#334155' : 'white', padding: '1rem 2rem', borderRadius: '12px', border: darkMode ? '1px solid #475569' : '1px solid #e2e8f0', display: 'inline-block', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                       <p style={{ fontSize: '0.8rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.3rem', textTransform:'uppercase', letterSpacing:'1px', fontWeight:'bold' }}>Kode Referral Anda</p>
