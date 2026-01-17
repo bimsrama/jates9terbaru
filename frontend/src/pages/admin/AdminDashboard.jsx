@@ -47,8 +47,6 @@ const AdminDashboard = () => {
   const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [newChallengeTitle, setNewChallengeTitle] = useState("");
-  
-  // STATE BARU: TIPE TAB UNTUK INPUT (A/B/C)
   const [activeTypeTab, setActiveTypeTab] = useState('a'); // 'a', 'b', or 'c'
 
   // EDIT & VIEW CHALLENGE STATE
@@ -61,6 +59,10 @@ const AdminDashboard = () => {
   const [genChallengeName, setGenChallengeName] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
+  // BROADCAST TEST STATE
+  const [testPhone, setTestPhone] = useState("");
+  const [selectedTestUser, setSelectedTestUser] = useState("");
+
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
@@ -69,7 +71,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab === 'challenge_content' && selectedChallengeId) fetchContentMatrix(selectedChallengeId);
-    if (activeTab === 'users') fetchUsers();
+    if (activeTab === 'users' || activeTab === 'broadcast') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
     if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'finance') fetchWithdrawals(); 
@@ -162,19 +164,17 @@ const AdminDashboard = () => {
     try { const payload = { user_id: uid }; if (type === 'role') payload.role = val; if (type === 'badge') payload.badge = val; await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() }); fetchUsers(); alert(`User ${type} berhasil diubah!`); } catch(e) { alert("Gagal update user."); }
   };
   
-  // --- HANDLE MATRIX CHANGE UNTUK ARRAY (3 OPSI) ---
   const handleMatrixChange = (d, typeKey, idx, val) => {
-    // typeKey contoh: 'challenge_a', 'challenge_b', 'challenge_c'
     setContentMatrix(prev => {
         const row = prev[d] || {};
-        const currentArr = row[typeKey] || ["", "", ""]; // Default 3 empty slots
+        const currentArr = row[typeKey] || ["", "", ""];
         const newArr = [...currentArr];
-        newArr[idx] = val; // Update index 0, 1, atau 2
+        newArr[idx] = val; 
         return { ...prev, [d]: { ...row, [typeKey]: newArr } };
     });
   };
 
-  // --- LOGIC GENERATOR CHALLENGE (3 TIPE x 3 OPSI) ---
+  // --- LOGIC GENERATOR CHALLENGE ---
   const generatePrompt = () => {
     if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
     
@@ -218,6 +218,45 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
 
   const handleResetGenerator = () => { setGenChallengeName(""); setGeneratedPrompt(""); };
 
+  // --- BROADCAST HANDLERS ---
+  
+  // 1. Handle Select User
+  const handleSelectTestUser = (e) => {
+      const uid = e.target.value;
+      setSelectedTestUser(uid);
+      // Cari user di state users
+      const user = users.find(u => u.id === parseInt(uid));
+      if (user) {
+          setTestPhone(user.phone);
+      } else {
+          setTestPhone("");
+      }
+  };
+
+  // 2. Handle Send Test
+  const handleTestBroadcast = async () => {
+    if (!testPhone) return alert("Isi nomor HP dulu!");
+    setBtnLoading(true);
+    try {
+        const res = await axios.post(`${BACKEND_URL}/api/admin/broadcast/test`, { phone_number: testPhone }, { headers: getAuthHeader() });
+        alert(res.data.message || "Test sent!");
+    } catch (e) {
+        alert("Gagal kirim test: " + (e.response?.data?.message || e.message));
+    } finally {
+        setBtnLoading(false);
+    }
+  };
+
+  // 3. Handle Manual Trigger
+  const handleManualBroadcast = async (type) => {
+      if(!window.confirm(`Jalankan broadcast ${type} sekarang?`)) return;
+      try {
+          const endpoint = type === 'daily' ? 'daily' : 'reminder';
+          await axios.post(`${BACKEND_URL}/api/admin/broadcast/${endpoint}`, {}, { headers: getAuthHeader() });
+          alert("Broadcast berjalan di background.");
+      } catch(e) { alert("Error trigger broadcast"); }
+  };
+
   const SidebarItem = ({ id, icon: Icon, label }) => (
     <button onClick={() => { setActiveTab(id); if(window.innerWidth<=1024) setSidebarOpen(false); }}
       style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', width: '100%', padding: '0.85rem 1rem', background: activeTab === id ? 'var(--primary)' : 'transparent', border: 'none', color: activeTab === id ? 'white' : '#64748b', fontWeight: activeTab === id ? '600' : '400', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', marginBottom: '0.25rem' }}>
@@ -233,6 +272,7 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
         <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <SidebarItem id="overview" icon={LayoutDashboard} label="Dashboard" />
           <SidebarItem id="orders" icon={ShoppingCart} label="Pesanan Masuk" />
+          <SidebarItem id="broadcast" icon={MessageSquare} label="Broadcast WA" />
           <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
           <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
           <SidebarItem id="challenge_content" icon={Calendar} label="Input Challenge" />
@@ -283,6 +323,59 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                     ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB BROADCAST & WA */}
+          {activeTab === 'broadcast' && (
+            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <h2 className="heading-2" style={{marginBottom:'1.5rem'}}>Broadcast WhatsApp</h2>
+                
+                <Card style={{ padding: '1.5rem', background: 'white', marginBottom:'2rem' }}>
+                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#3b82f6', display:'flex', alignItems:'center', gap:'0.5rem' }}><Smartphone size={20}/> Test Kirim Pesan</h3>
+                    
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={labelStyle}>Pilih User (Otomatis isi nomor)</label>
+                        <select 
+                            value={selectedTestUser} 
+                            onChange={handleSelectTestUser}
+                            style={selectStyle}
+                        >
+                            <option value="">-- Pilih User --</option>
+                            {users.map(u => (
+                                <option key={u.id} value={u.id}>{u.name} - {u.phone}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={labelStyle}>Nomor Tujuan (628...)</label>
+                        <input 
+                            placeholder="628123456789" 
+                            style={inputStyle} 
+                            value={testPhone} 
+                            onChange={(e) => setTestPhone(e.target.value)} 
+                        />
+                    </div>
+                    
+                    <button onClick={handleTestBroadcast} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem' }}>
+                        {btnLoading ? <Loader2 className="animate-spin" /> : <Send size={18}/>} Kirim Test
+                    </button>
+                </Card>
+
+                <Card style={{ padding: '1.5rem', background: 'white' }}>
+                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#f59e0b', display:'flex', alignItems:'center', gap:'0.5rem' }}><AlertTriangle size={20}/> Manual Trigger (Hati-hati)</h3>
+                    <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>Fitur ini akan memaksa pengiriman pesan massal ke SEMUA user aktif. Gunakan jika scheduler macet.</p>
+                    
+                    <div style={{display:'flex', gap:'1rem', flexDirection:'column'}}>
+                        <button onClick={() => handleManualBroadcast('daily')} style={{padding:'0.8rem', background:'#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'#334155'}}>
+                            📢 Jalankan Broadcast Pagi (Misi)
+                        </button>
+                        <button onClick={() => handleManualBroadcast('reminder')} style={{padding:'0.8rem', background:'#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'#334155'}}>
+                            🌙 Jalankan Reminder Malam
+                        </button>
+                    </div>
+                </Card>
             </div>
           )}
 
@@ -462,9 +555,6 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                       <tbody>
                         {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
                             const row = contentMatrix[day] || {};
-                            // key: challenge_a, challenge_b, challenge_c
-                            // Value harus array: ["op1", "op2", "op3"]
-                            // Kita handle default kalau null
                             const currentKey = `challenge_${activeTypeTab}`;
                             const optionsArray = Array.isArray(row[currentKey]) ? row[currentKey] : ["", "", ""];
 
@@ -472,7 +562,6 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                                 <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
                                     
-                                    {/* 3 KOLOM OPSI UNTUK TIPE YANG DIPILIH */}
                                     {[0, 1, 2].map((optIndex) => (
                                         <td key={optIndex} style={{...tdStyle, padding:'0.5rem', background: activeTypeTab==='a'?'#eff6ff': activeTypeTab==='b'?'#f0fdf4':'#faf5ff'}}>
                                             <textarea 
