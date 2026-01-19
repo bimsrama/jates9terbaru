@@ -3,9 +3,10 @@ import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { 
   Users, ShoppingCart, Wallet, LayoutDashboard, 
-  FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
-  MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink, RefreshCw, Zap
+  FileText, Check, X, Loader2, Bot, LogOut, 
+  MessageSquare, Send, Smartphone, Calendar, 
+  Trash2, Clock, Save, Eye, Package, Bell, 
+  AlertTriangle, RefreshCw, Zap, Sparkles, Menu
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -31,7 +32,6 @@ const AdminDashboard = () => {
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]); 
   const [orders, setOrders] = useState([]);
-  const [notifications, setNotifications] = useState([]);
   
   // FORM STATES
   const [productForm, setProductForm] = useState({ name: '', price: '', description: '', fake_sales: 0, image: null });
@@ -67,7 +67,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchChallengeCards();
-    fetchNotifications();
   }, []);
 
   useEffect(() => {
@@ -89,7 +88,6 @@ const AdminDashboard = () => {
   
   const fetchWithdrawals = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/finance/withdrawals`, { headers: getAuthHeader() }); setWithdrawals(res.data); } catch(e){} };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/orders`, { headers: getAuthHeader() }); setOrders(res.data); } catch(e){} };
-  const fetchNotifications = async () => {};
 
   const fetchParticipants = async (challengeId) => {
     setLoadingParticipants(true);
@@ -225,7 +223,6 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
   const handleSelectTestUser = (e) => {
       const uid = e.target.value;
       setSelectedTestUser(uid);
-      // Cari user di state users
       const user = users.find(u => u.id === parseInt(uid));
       if (user) {
           setTestPhone(user.phone);
@@ -437,22 +434,30 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                     </button>
                 </Card>
 
-                {/* 3. TEST KIRIM */}
+                {/* 3. TEST KONEKSI & KIRIM (FITUR YANG DIPERBAHARUI) */}
                 <Card style={{ padding: '1.5rem', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
-                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#64748b', display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem' }}>Test Kirim (Satu Nomor)</h3>
+                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#64748b', display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem' }}>
+                        <Zap size={18} /> Test Koneksi (AppScript & WA)
+                    </h3>
                     
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={labelStyle}>Pilih User</label>
+                        <label style={labelStyle}>Pilih User (untuk target)</label>
                         <select value={selectedTestUser} onChange={handleSelectTestUser} style={selectStyle}>
                             <option value="">-- Pilih User --</option>
                             {users.map(u => (<option key={u.id} value={u.id}>{u.name} - {u.phone}</option>))}
                         </select>
                     </div>
 
-                    <div style={{ display:'flex', gap:'0.5rem' }}>
-                        <input placeholder="628..." style={{...inputStyle, flex:1}} value={testPhone} onChange={(e) => setTestPhone(e.target.value)} />
-                        <button onClick={handleTestBroadcast} disabled={btnLoading} style={{ padding:'0.8rem 1.5rem', background:'#3b82f6', color:'white', border:'none', borderRadius:'6px', cursor:'pointer' }}>Test</button>
+                    <div style={{ display:'flex', gap:'0.5rem', alignItems:'flex-end' }}>
+                        <div style={{flex:1}}>
+                            <label style={labelStyle}>Nomor WhatsApp</label>
+                            <input placeholder="628..." style={inputStyle} value={testPhone} onChange={(e) => setTestPhone(e.target.value)} />
+                        </div>
+                        <button onClick={handleTestBroadcast} disabled={btnLoading} style={{ padding:'0.7rem 1.5rem', background:'#3b82f6', color:'white', border:'none', borderRadius:'6px', cursor:'pointer', fontWeight:'bold', height:'fit-content', marginBottom:'2px' }}>
+                            {btnLoading ? 'Sending...' : 'Kirim Test'}
+                        </button>
                     </div>
+                    <p style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'0.5rem'}}>* Ini akan mengirim pesan "Tes Broadcast" untuk memastikan Python terhubung ke AppScript/Watzap.</p>
                 </Card>
             </div>
           )}
@@ -566,14 +571,14 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                    </Card>
                    {generatedPrompt && (
                       <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
-                         <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
-                         <CardContent>
-                           <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
-                           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                              <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
-                              <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
-                           </div>
-                         </CardContent>
+                          <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
+                          <CardContent>
+                            <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
+                               <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
+                             </div>
+                          </CardContent>
                       </Card>
                    )}
                 </div>
