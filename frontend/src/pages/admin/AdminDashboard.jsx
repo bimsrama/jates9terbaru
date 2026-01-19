@@ -5,7 +5,7 @@ import {
   Users, ShoppingCart, Wallet, LayoutDashboard, 
   FileText, PenTool, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Download, FileSpreadsheet, Send, 
-  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink, RefreshCw
+  Smartphone, DollarSign, Calendar, Plus, Award, Menu, Sparkles, Trash2, Clock, Save, Image as ImageIcon, CheckCircle, Edit3, Eye, Package, Receipt, Bell, Truck, AlertTriangle, ExternalLink, RefreshCw, Zap
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -59,9 +59,10 @@ const AdminDashboard = () => {
   const [genChallengeName, setGenChallengeName] = useState("");
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
-  // BROADCAST TEST STATE
+  // BROADCAST STATE
   const [testPhone, setTestPhone] = useState("");
   const [selectedTestUser, setSelectedTestUser] = useState("");
+  const [customBroadcastMsg, setCustomBroadcastMsg] = useState(""); 
 
   useEffect(() => {
     fetchStats();
@@ -247,14 +248,41 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
     }
   };
 
-  // 3. Handle Manual Trigger
+  // 3. Handle Manual Trigger (Kirim Challenge Macet)
   const handleManualBroadcast = async (type) => {
-      if(!window.confirm(`Jalankan broadcast ${type} sekarang?`)) return;
+      const msg = type === 'daily' 
+        ? "Yakin ingin mengirim CHALLENGE HARI INI ke SEMUA USER sekarang?" 
+        : "Yakin ingin mengirim REMINDER MALAM sekarang?";
+      
+      if(!window.confirm(msg)) return;
+      
+      setBtnLoading(true);
       try {
           const endpoint = type === 'daily' ? 'daily' : 'reminder';
           await axios.post(`${BACKEND_URL}/api/admin/broadcast/${endpoint}`, {}, { headers: getAuthHeader() });
-          alert("Broadcast berjalan di background.");
-      } catch(e) { alert("Error trigger broadcast"); }
+          alert(`Sukses! Pesan ${type} sedang dikirim di background.`);
+      } catch(e) { 
+          alert("Gagal memicu broadcast."); 
+      } finally {
+          setBtnLoading(false);
+      }
+  };
+
+  // 4. Handle Custom Broadcast (Pengumuman)
+  const handleCustomBroadcast = async () => {
+      if (!customBroadcastMsg) return alert("Pesan tidak boleh kosong!");
+      if (!window.confirm("Kirim pesan ini ke SEMUA user? Aksi ini tidak bisa dibatalkan.")) return;
+      
+      setBtnLoading(true);
+      try {
+          await axios.post(`${BACKEND_URL}/api/admin/broadcast/custom`, { message: customBroadcastMsg }, { headers: getAuthHeader() });
+          alert("Pesan sedang dikirim ke semua user via background process.");
+          setCustomBroadcastMsg("");
+      } catch (e) {
+          alert("Gagal mengirim broadcast: " + (e.response?.data?.message || e.message));
+      } finally {
+          setBtnLoading(false);
+      }
   };
 
   const SidebarItem = ({ id, icon: Icon, label }) => (
@@ -331,49 +359,99 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <h2 className="heading-2" style={{marginBottom:'1.5rem'}}>Broadcast WhatsApp</h2>
                 
-                <Card style={{ padding: '1.5rem', background: 'white', marginBottom:'2rem' }}>
-                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#3b82f6', display:'flex', alignItems:'center', gap:'0.5rem' }}><Smartphone size={20}/> Test Kirim Pesan</h3>
+                {/* 1. MANUAL TRIGGER (FITUR UTAMA YANG DIMINTA) */}
+                <Card style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom:'2rem', boxShadow:'0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                    <div style={{display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.5rem'}}>
+                        <AlertTriangle size={24} color="#dc2626"/>
+                        <h3 style={{ fontWeight: 'bold', fontSize:'1.1rem', color:'#dc2626' }}>Darurat: Kirim Challenge Manual</h3>
+                    </div>
+                    <p style={{fontSize:'0.9rem', color:'#475569', marginBottom:'1.5rem', lineHeight:'1.5'}}>
+                        Gunakan tombol di bawah <b>HANYA JIKA</b> pesan otomatis jam 09:00 pagi <b>TIDAK TERKIRIM (MACET)</b>.
+                    </p>
                     
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={labelStyle}>Pilih User (Otomatis isi nomor)</label>
-                        <select 
-                            value={selectedTestUser} 
-                            onChange={handleSelectTestUser}
-                            style={selectStyle}
+                    <div style={{display:'flex', gap:'1rem', flexDirection:'column'}}>
+                        <button 
+                            onClick={() => handleManualBroadcast('daily')} 
+                            disabled={btnLoading}
+                            style={{
+                                padding:'1rem', 
+                                background:'linear-gradient(to right, #dc2626, #b91c1c)', 
+                                border:'none', 
+                                borderRadius:'8px', 
+                                cursor:'pointer', 
+                                fontWeight:'bold', 
+                                color:'white',
+                                display:'flex',
+                                alignItems:'center',
+                                justifyContent:'center',
+                                gap:'0.5rem',
+                                fontSize:'1rem',
+                                boxShadow:'0 4px 6px -1px rgba(220, 38, 38, 0.3)'
+                            }}
                         >
-                            <option value="">-- Pilih User --</option>
-                            {users.map(u => (
-                                <option key={u.id} value={u.id}>{u.name} - {u.phone}</option>
-                            ))}
-                        </select>
+                            {btnLoading ? <Loader2 className="animate-spin" /> : <Zap size={20}/>}
+                            KIRIM CHALLENGE HARI INI SEKARANG
+                        </button>
+                        
+                        <button 
+                            onClick={() => handleManualBroadcast('reminder')} 
+                            disabled={btnLoading}
+                            style={{
+                                padding:'0.8rem', 
+                                background:'white', 
+                                border:'2px solid #f59e0b', 
+                                borderRadius:'8px', 
+                                cursor:'pointer', 
+                                fontWeight:'bold', 
+                                color:'#b45309',
+                                display:'flex',
+                                alignItems:'center',
+                                justifyContent:'center',
+                                gap:'0.5rem'
+                            }}
+                        >
+                            <Clock size={18}/>
+                            Kirim Reminder Malam (Manual)
+                        </button>
                     </div>
+                </Card>
 
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label style={labelStyle}>Nomor Tujuan (628...)</label>
-                        <input 
-                            placeholder="628123456789" 
-                            style={inputStyle} 
-                            value={testPhone} 
-                            onChange={(e) => setTestPhone(e.target.value)} 
-                        />
-                    </div>
+                {/* 2. CUSTOM BROADCAST (ANNOUNCEMENT) */}
+                <Card style={{ padding: '1.5rem', background: 'white', border: '1px solid #e2e8f0', marginBottom:'2rem' }}>
+                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#16a34a', display:'flex', alignItems:'center', gap:'0.5rem' }}>
+                        <MessageSquare size={20}/> Broadcast Pengumuman (Custom)
+                    </h3>
+                    <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>
+                        Kirim pesan bebas ke <b>SEMUA USER</b> (Info Promo / Maintenance / Update).
+                    </p>
                     
-                    <button onClick={handleTestBroadcast} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem' }}>
-                        {btnLoading ? <Loader2 className="animate-spin" /> : <Send size={18}/>} Kirim Test
+                    <textarea 
+                        style={{ ...inputStyle, minHeight:'100px', marginBottom:'1rem' }}
+                        placeholder="Halo guys, ada update baru nih..."
+                        value={customBroadcastMsg}
+                        onChange={(e) => setCustomBroadcastMsg(e.target.value)}
+                    />
+                    
+                    <button onClick={handleCustomBroadcast} disabled={btnLoading} style={{ width: '100%', padding:'0.8rem', background:'#16a34a', color:'white', border:'none', borderRadius:'6px', fontWeight:'bold', cursor:'pointer', display:'flex', justifyContent:'center', gap:'0.5rem' }}>
+                        {btnLoading ? <Loader2 className="animate-spin" /> : <Send size={18}/>} Kirim ke Semua User
                     </button>
                 </Card>
 
-                <Card style={{ padding: '1.5rem', background: 'white' }}>
-                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#f59e0b', display:'flex', alignItems:'center', gap:'0.5rem' }}><AlertTriangle size={20}/> Manual Trigger (Hati-hati)</h3>
-                    <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>Fitur ini akan memaksa pengiriman pesan massal ke SEMUA user aktif. Gunakan jika scheduler macet.</p>
+                {/* 3. TEST KIRIM */}
+                <Card style={{ padding: '1.5rem', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
+                    <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#64748b', display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem' }}>Test Kirim (Satu Nomor)</h3>
                     
-                    <div style={{display:'flex', gap:'1rem', flexDirection:'column'}}>
-                        <button onClick={() => handleManualBroadcast('daily')} style={{padding:'0.8rem', background:'#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'#334155'}}>
-                            📢 Jalankan Broadcast Pagi (Misi)
-                        </button>
-                        <button onClick={() => handleManualBroadcast('reminder')} style={{padding:'0.8rem', background:'#f8fafc', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'#334155'}}>
-                            🌙 Jalankan Reminder Malam
-                        </button>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={labelStyle}>Pilih User</label>
+                        <select value={selectedTestUser} onChange={handleSelectTestUser} style={selectStyle}>
+                            <option value="">-- Pilih User --</option>
+                            {users.map(u => (<option key={u.id} value={u.id}>{u.name} - {u.phone}</option>))}
+                        </select>
+                    </div>
+
+                    <div style={{ display:'flex', gap:'0.5rem' }}>
+                        <input placeholder="628..." style={{...inputStyle, flex:1}} value={testPhone} onChange={(e) => setTestPhone(e.target.value)} />
+                        <button onClick={handleTestBroadcast} disabled={btnLoading} style={{ padding:'0.8rem 1.5rem', background:'#3b82f6', color:'white', border:'none', borderRadius:'6px', cursor:'pointer' }}>Test</button>
                     </div>
                 </Card>
             </div>
@@ -490,11 +568,11 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                       <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
                          <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
                          <CardContent>
-                            <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
-                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
-                               <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
-                            </div>
+                           <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
+                           <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                              <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
+                              <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
+                           </div>
                          </CardContent>
                       </Card>
                    )}
@@ -624,65 +702,65 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
       {editingChallenge && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }} onClick={() => setEditingChallenge(null)}>
            <div style={{ background: 'white', padding: '0', borderRadius: '12px', width: '90%', maxWidth: '800px', height:'85vh', display:'flex', flexDirection:'column' }} onClick={e => e.stopPropagation()}>
-              
-              <div style={{padding:'1.5rem', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                  <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Detail Challenge</h3>
-                  <button onClick={() => setEditingChallenge(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20}/></button>
-              </div>
+             
+             <div style={{padding:'1.5rem', borderBottom:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                 <h3 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>Detail Challenge</h3>
+                 <button onClick={() => setEditingChallenge(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20}/></button>
+             </div>
 
-              <div style={{display:'flex', padding:'0 1.5rem', borderBottom:'1px solid #e2e8f0'}}>
-                  <button onClick={() => setViewMode('info')} style={{padding:'1rem', borderBottom: viewMode==='info'?'2px solid var(--primary)':'none', color: viewMode==='info'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Edit Info</button>
-                  <button onClick={() => setViewMode('participants')} style={{padding:'1rem', borderBottom: viewMode==='participants'?'2px solid var(--primary)':'none', color: viewMode==='participants'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Peserta & Laporan ({challengeParticipants.length})</button>
-              </div>
+             <div style={{display:'flex', padding:'0 1.5rem', borderBottom:'1px solid #e2e8f0'}}>
+                 <button onClick={() => setViewMode('info')} style={{padding:'1rem', borderBottom: viewMode==='info'?'2px solid var(--primary)':'none', color: viewMode==='info'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Edit Info</button>
+                 <button onClick={() => setViewMode('participants')} style={{padding:'1rem', borderBottom: viewMode==='participants'?'2px solid var(--primary)':'none', color: viewMode==='participants'?'var(--primary)':'#64748b', fontWeight:'bold', cursor:'pointer'}}>Peserta & Laporan ({challengeParticipants.length})</button>
+             </div>
 
-              <div style={{padding:'1.5rem', overflowY:'auto', flex:1}}>
-                  {viewMode === 'info' ? (
-                      <>
-                          <div style={{ marginBottom: '1rem' }}>
-                              <label style={labelStyle}>Judul Challenge</label>
-                              <input style={inputStyle} value={editingChallenge.title} onChange={(e) => setEditingChallenge({...editingChallenge, title: e.target.value})} />
-                          </div>
-                          <div style={{ marginBottom: '1.5rem' }}>
-                              <label style={labelStyle}>Deskripsi & Tipe (A/B/C)</label>
-                              <textarea style={{ ...inputStyle, minHeight: '200px' }} value={editingChallenge.description} onChange={(e) => setEditingChallenge({...editingChallenge, description: e.target.value})} placeholder="Jelaskan tantangan ini..." />
-                          </div>
-                          <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ width:'100%', padding: '0.8rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>{btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
-                      </>
-                  ) : (
-                      <div style={{overflowX:'auto'}}>
-                          {loadingParticipants ? <div style={{textAlign:'center', padding:'2rem'}}>Loading data peserta...</div> : (
-                            <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
-                                <thead style={{background:'#f8fafc'}}>
-                                    <tr>
-                                        <th style={thStyle}>Nama User</th>
-                                        <th style={thStyle}>Tipe</th>
-                                        <th style={thStyle}>Hari Ke</th>
-                                        <th style={thStyle}>Status Hari Ini</th>
-                                        <th style={thStyle}>Total Check-in</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {challengeParticipants.length > 0 ? challengeParticipants.map(p => (
-                                        <tr key={p.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                                            <td style={tdStyle}><b>{p.name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{p.phone}</span></td>
-                                            <td style={tdStyle}><span style={{background:'#eff6ff', color:'#1e40af', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>{p.group}</span></td>
-                                            <td style={tdStyle}>{p.day}</td>
-                                            <td style={tdStyle}>
-                                                {p.today_status === 'completed' && <span style={{color:'#16a34a', fontWeight:'bold', display:'flex', alignItems:'center', gap:'4px'}}><CheckCircle size={14}/> Selesai</span>}
-                                                {p.today_status === 'skipped' && <span style={{color:'#dc2626', fontWeight:'bold'}}>Skip</span>}
-                                                {p.today_status === 'pending' && <span style={{color:'#d97706', fontWeight:'bold'}}>Belum</span>}
-                                            </td>
-                                            <td style={tdStyle}>{p.total_completed}x</td>
-                                        </tr>
-                                    )) : (
-                                        <tr><td colSpan="5" style={{padding:'2rem', textAlign:'center', color:'#64748b'}}>Belum ada peserta di challenge ini.</td></tr>
-                                    )}
-                                </tbody>
-                            </table>
-                          )}
-                      </div>
-                  )}
-              </div>
+             <div style={{padding:'1.5rem', overflowY:'auto', flex:1}}>
+                 {viewMode === 'info' ? (
+                     <>
+                         <div style={{ marginBottom: '1rem' }}>
+                             <label style={labelStyle}>Judul Challenge</label>
+                             <input style={inputStyle} value={editingChallenge.title} onChange={(e) => setEditingChallenge({...editingChallenge, title: e.target.value})} />
+                         </div>
+                         <div style={{ marginBottom: '1.5rem' }}>
+                             <label style={labelStyle}>Deskripsi & Tipe (A/B/C)</label>
+                             <textarea style={{ ...inputStyle, minHeight: '200px' }} value={editingChallenge.description} onChange={(e) => setEditingChallenge({...editingChallenge, description: e.target.value})} placeholder="Jelaskan tantangan ini..." />
+                         </div>
+                         <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ width:'100%', padding: '0.8rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>{btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+                     </>
+                 ) : (
+                     <div style={{overflowX:'auto'}}>
+                         {loadingParticipants ? <div style={{textAlign:'center', padding:'2rem'}}>Loading data peserta...</div> : (
+                           <table style={{width:'100%', borderCollapse:'collapse', fontSize:'0.9rem'}}>
+                               <thead style={{background:'#f8fafc'}}>
+                                   <tr>
+                                       <th style={thStyle}>Nama User</th>
+                                       <th style={thStyle}>Tipe</th>
+                                       <th style={thStyle}>Hari Ke</th>
+                                       <th style={thStyle}>Status Hari Ini</th>
+                                       <th style={thStyle}>Total Check-in</th>
+                                   </tr>
+                               </thead>
+                               <tbody>
+                                   {challengeParticipants.length > 0 ? challengeParticipants.map(p => (
+                                       <tr key={p.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                                           <td style={tdStyle}><b>{p.name}</b><br/><span style={{fontSize:'0.75rem', color:'#94a3b8'}}>{p.phone}</span></td>
+                                           <td style={tdStyle}><span style={{background:'#eff6ff', color:'#1e40af', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>{p.group}</span></td>
+                                           <td style={tdStyle}>{p.day}</td>
+                                           <td style={tdStyle}>
+                                               {p.today_status === 'completed' && <span style={{color:'#16a34a', fontWeight:'bold', display:'flex', alignItems:'center', gap:'4px'}}><CheckCircle size={14}/> Selesai</span>}
+                                               {p.today_status === 'skipped' && <span style={{color:'#dc2626', fontWeight:'bold'}}>Skip</span>}
+                                               {p.today_status === 'pending' && <span style={{color:'#d97706', fontWeight:'bold'}}>Belum</span>}
+                                           </td>
+                                           <td style={tdStyle}>{p.total_completed}x</td>
+                                       </tr>
+                                   )) : (
+                                       <tr><td colSpan="5" style={{padding:'2rem', textAlign:'center', color:'#64748b'}}>Belum ada peserta di challenge ini.</td></tr>
+                                   )}
+                               </tbody>
+                           </table>
+                         )}
+                     </div>
+                 )}
+             </div>
            </div>
         </div>
       )}
