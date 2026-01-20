@@ -6,7 +6,7 @@ import {
   Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
-  MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp 
+  MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap 
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -534,7 +534,7 @@ const UserDashboard = () => {
                             <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Coach Kesehatan Pribadi Anda</p> 
                         </div>
                       </div>
-                      <div style={{flex:1, overflowY:'auto', padding:'1rem'}}> {chatHistory.map((msg, i) => ( <div key={i} style={{ padding:'0.6rem 1rem', background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), borderRadius:'12px', marginBottom:'0.8rem', maxWidth:'85%', alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', marginLeft: msg.role==='user' ? 'auto' : '0', color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'), fontSize: '0.9rem' }}> {msg.content} </div> ))} {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Dr. Alva sedang mengetik...</div>} <div ref={chatEndRef}></div> </div>
+                      <div style={{flex:1, overflowY:'auto', padding:'1rem'}}> {chatHistory.map((msg, i) => ( <div key={i} style={{ padding:'0.6rem 1rem', background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), borderRadius:'12px', marginBottom:'0.8rem', maxWidth:'85%', alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', marginLeft: msg.role==='user' ? 'auto' : '0', color: msg.role==='user' ? '#1e3a8a' : (darkMode?'e2e8f0':'#334155'), fontSize: '0.9rem' }}> {msg.content} </div> ))} {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Dr. Alva sedang mengetik...</div>} <div ref={chatEndRef}></div> </div>
                       <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}> <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." /> <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button> </form>
                   </Card>
                   <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
