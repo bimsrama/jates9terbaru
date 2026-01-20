@@ -3,22 +3,16 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { 
-  Activity, TrendingUp, Users, Wallet, MessageCircle, Send, X, 
-  Home, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, Search, 
-  Package, ShoppingBag, ChevronLeft, Lightbulb, Clock, AlertCircle, CheckCircle, Calendar, RefreshCw, FileText,
-  Moon, Sun, Shield, Smartphone, Check, Palette, Edit2, Camera,
-  Bot, Sparkles, MapPin, Truck, Box, TicketPercent, AlertTriangle, Plus, Map, CreditCard, Heart,
-  ShoppingCart, Bell, Target, ArrowRight, Printer
+  Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
+  Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
+  Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- KONFIGURASI TOKO ---
-const STORE_LOCATION = { lat: -6.175392, lng: 106.827153 }; 
-const PRICE_PER_KM = 5000;
-
+// --- KONFIGURASI TEMA ---
 const THEMES = {
   green: { id: 'green', name: 'Hijau Alami', primary: '#8fec78', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#fca5a5', light: '#fee2e2', text: '#991b1b', gradient: 'linear-gradient(135deg, #ffffff 0%, #fca5a5 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
@@ -35,7 +29,8 @@ const UserDashboard = () => {
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
   const [challenges, setChallenges] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Loading halaman utama
+  const [dailyLoading, setDailyLoading] = useState(true); // Loading khusus Misi Harian
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
@@ -49,12 +44,7 @@ const UserDashboard = () => {
   const [subdistricts, setSubdistricts] = useState([]);
   
   const [newAddr, setNewAddr] = useState({
-      label:'Rumah', name:'', phone:'',
-      prov_id:'', prov_name:'',
-      city_id:'', city_name:'',
-      dis_id:'', dis_name:'',
-      subdis_id:'', subdis_name:'',
-      address:'', zip:''
+      label:'Rumah', name:'', phone:'', prov_id:'', prov_name:'', city_id:'', city_name:'', dis_id:'', dis_name:'', subdis_id:'', subdis_name:'', address:'', zip:''
   });
 
   // --- STATE CHECKOUT & ORDER ---
@@ -67,11 +57,8 @@ const UserDashboard = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
-  
-  // --- STATE INVOICE ---
   const [showInvoice, setShowInvoice] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
-
   const [snapLoaded, setSnapLoaded] = useState(false);
 
   // --- STATE HISTORY CHECKIN ---
@@ -82,7 +69,6 @@ const UserDashboard = () => {
   const [dailyData, setDailyData] = useState(null);
   const [journal, setJournal] = useState("");
   const [checkinStatus, setCheckinStatus] = useState(null);
-  const [quote, setQuote] = useState("Sehat itu investasi, bukan pengeluaran.");
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
@@ -97,7 +83,6 @@ const UserDashboard = () => {
   const [friendCode, setFriendCode] = useState("");
   const [showFriendProfile, setShowFriendProfile] = useState(false);
   const [friendData, setFriendData] = useState(null);
-  const [installPrompt, setInstallPrompt] = useState(null);
   
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -108,28 +93,27 @@ const UserDashboard = () => {
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
 
-  const [selectedOption, setSelectedOption] = useState(null);
+  // --- STATE BARU UNTUK PILIHAN MISI ---
+  const [selectedTasks, setSelectedTasks] = useState([]); // Ganti selectedOption jadi Array
   const [missionDone, setMissionDone] = useState(false);
 
   useEffect(() => {
     const handleResize = () => { setIsDesktop(window.innerWidth > 1024); if(window.innerWidth > 1024) setSidebarOpen(false); };
     window.addEventListener('resize', handleResize);
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); setInstallPrompt(e); });
     if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
     
     fetchData(); 
     fetchDailyContent(); 
     fetchArticles(); 
     fetchProducts(); 
-    fetchAddresses(); // Load address early
-    setQuote(getRandomQuote());
+    fetchAddresses(); 
     
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
 
     const snapScriptUrl = "https://app.midtrans.com/snap/snap.js";
     const clientKey = "Mid-client-dXaTaEerstu_IviP";
     const script = document.createElement('script'); script.src = snapScriptUrl; script.setAttribute('data-client-key', clientKey);
-    script.onload = () => { console.log("Snap Loaded"); setSnapLoaded(true); }; script.async = true; document.body.appendChild(script);
+    script.onload = () => { setSnapLoaded(true); }; script.async = true; document.body.appendChild(script);
     
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
   }, []);
@@ -144,54 +128,36 @@ const UserDashboard = () => {
   
   // --- LOCATION HANDLERS ---
   const handleProvChange = (e) => {
-      const id = e.target.value;
-      const name = e.target.options[e.target.selectedIndex].text;
+      const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text;
       setNewAddr({...newAddr, prov_id: id, prov_name: name, city_id:'', dis_id:'', subdis_id:''});
       axios.get(`${BACKEND_URL}/api/location/cities?prov_id=${id}`).then(res => setCities(res.data));
   };
   const handleCityChange = (e) => {
-      const id = e.target.value;
-      const name = e.target.options[e.target.selectedIndex].text;
+      const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text;
       setNewAddr({...newAddr, city_id: id, city_name: name, dis_id:'', subdis_id:''});
       axios.get(`${BACKEND_URL}/api/location/districts?city_id=${id}`).then(res => setDistricts(res.data));
   };
   const handleDistrictChange = (e) => {
-      const id = e.target.value;
-      const name = e.target.options[e.target.selectedIndex].text;
+      const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text;
       setNewAddr({...newAddr, dis_id: id, dis_name: name, subdis_id:''});
       axios.get(`${BACKEND_URL}/api/location/subdistricts?dis_id=${id}`).then(res => setSubdistricts(res.data));
   };
   const handleSubDistrictChange = (e) => {
-      const id = e.target.value;
-      const name = e.target.options[e.target.selectedIndex].text;
+      const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text;
       const zip = subdistricts.find(s => s.id == id)?.zip || '';
       setNewAddr({...newAddr, subdis_id: id, subdis_name: name, zip: zip});
   };
 
-  const fetchAddresses = async () => { 
-      try { 
-          const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); 
-          setAddresses(res.data); 
-      } catch(e){} 
-  };
+  const fetchAddresses = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); setAddresses(res.data); } catch(e){} };
+  const handleSaveAddress = async () => { try { await axios.post(`${BACKEND_URL}/api/user/address`, newAddr, { headers: getAuthHeader() }); fetchAddresses(); setShowAddressModal(false); alert("Alamat tersimpan!"); } catch(e){ alert("Gagal simpan alamat"); } };
 
-  const handleSaveAddress = async () => {
-      try { await axios.post(`${BACKEND_URL}/api/user/address`, newAddr, { headers: getAuthHeader() }); fetchAddresses(); setShowAddressModal(false); alert("Alamat tersimpan!"); } catch(e){ alert("Gagal simpan alamat"); }
-  };
-
-  const getGreeting = () => {
-    const hours = new Date().getHours();
-    if (hours < 11) return "Selamat Pagi";
-    if (hours < 15) return "Selamat Siang";
-    if (hours < 18) return "Selamat Sore";
-    return "Selamat Malam";
-  };
+  const getGreeting = () => { const h = new Date().getHours(); return h < 11 ? "Selamat Pagi" : h < 15 ? "Selamat Siang" : h < 18 ? "Selamat Sore" : "Selamat Malam"; };
 
   const fetchData = async () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
-      const tip = "💡 Jaga kesehatan!";
+      const tip = "庁 Jaga kesehatan!";
       setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Ada keluhan apa hari ini?" }]);
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
@@ -200,74 +166,92 @@ const UserDashboard = () => {
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
   
+  // --- FETCH DAILY CONTENT DENGAN LOADING ANIMATION ---
   const fetchDailyContent = async () => { 
+      setDailyLoading(true); // Mulai Loading
       try { 
           const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); 
           setDailyData(res.data); 
           setCheckinStatus(res.data.today_status || null);
           if(res.data.today_status === 'completed') setMissionDone(true); else setMissionDone(false);
-      } catch (e) {} 
+      } catch (e) {
+          console.error("Gagal load daily content", e);
+      } finally {
+          // Tambahkan delay sedikit agar animasi terlihat halus
+          setTimeout(() => setDailyLoading(false), 600);
+      }
   };
 
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
-  
-  // FETCH ORDERS (Untuk History & Banner)
-  const fetchOrders = async () => { 
-      try { 
-          const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); 
-          setMyOrders(res.data); 
-      } catch (e) {} 
-  };
-  
+  const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
-  const getRandomQuote = () => "Kesehatan adalah investasi terbaik.";
-  const handleRefresh = async () => { setIsRefreshing(true); await Promise.all([fetchData(), fetchDailyContent(), fetchArticles(), fetchProducts(), fetchOrders()]); setIsRefreshing(false); };
-  
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
   const handleScrollToChat = () => { setActiveTab('dashboard'); if(!isDesktop) setSidebarOpen(false); setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); };
 
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
+  // --- LOGIC MULTI-SELECT ---
+  const toggleTaskSelection = (task) => {
+    if (selectedTasks.includes(task)) {
+      setSelectedTasks(prev => prev.filter(t => t !== task));
+    } else {
+      if (selectedTasks.length < 3) {
+        setSelectedTasks(prev => [...prev, task]);
+      }
+    }
+  };
+
   const handleSubmitCheckin = async (status) => { 
       if(isSubmitting) return; 
+      // Validasi: Harus pilih minimal 1 jika status completed
+      if(status === 'completed' && selectedTasks.length === 0) {
+          alert("Pilih minimal 1 aktivitas untuk diselesaikan.");
+          return;
+      }
+
       setIsSubmitting(true); 
       try { 
-          await axios.post(`${BACKEND_URL}/api/checkin`, { journal, status, chosen_option: selectedOption }, {headers:getAuthHeader()}); 
+          // Kirim completed_tasks sebagai array
+          await axios.post(`${BACKEND_URL}/api/checkin`, { 
+              journal, 
+              status, 
+              completed_tasks: selectedTasks 
+          }, {headers:getAuthHeader()}); 
+          
           setCheckinStatus(status); 
-          if(status === 'completed') { setMissionDone(true); alert("Luar biasa! Misi selesai. Cek WhatsApp untuk laporan lengkap."); fetchData(); }
+          if(status === 'completed') { 
+              setMissionDone(true); 
+              alert("Luar biasa! Misi selesai. Cek WhatsApp untuk laporan progress AI."); 
+              fetchData(); 
+          }
           if(status === 'pending') { alert("Oke, pengingat telah diset untuk jam 19:00 WIB!"); }
-      } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } 
-      finally { setIsSubmitting(false); } 
+      } catch(e){ 
+          alert(e.response?.data?.message || "Gagal check-in."); 
+      } finally { 
+          setIsSubmitting(false); 
+      } 
   };
   
-  const handleSwitchChallenge = async (id) => { if(window.confirm("Ganti challenge akan mereset progress ke hari 1. Lanjut?")) { try { await axios.post(`${BACKEND_URL}/api/user/select-challenge`, {challenge_id: id}, {headers: getAuthHeader()}); alert("Berhasil ganti challenge!"); handleRefresh(); } catch(e){alert("Gagal.");} } };
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
   const triggerFileInput = () => fileInputRef.current.click();
 
-  const handleAddFriend = async () => {
-      if(!friendCode) return alert("Masukkan kode teman!");
-      try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); }
-  };
-
+  const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
   const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
 
   // --- CALENDAR LOGIC ---
   const renderCalendar = () => {
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const year = calendarDate.getFullYear(); const month = calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
     const startDay = firstDay === 0 ? 6 : firstDay - 1;
     const days = [];
     for (let i = 0; i < startDay; i++) { days.push(<div key={`empty-${i}`} style={{ height: '40px' }}></div>); }
     for (let d = 1; d <= daysInMonth; d++) {
         const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         const log = checkinHistory.find(h => h.date === currentDateStr);
-        let statusColor = darkMode ? '#334155' : '#f1f5f9';
-        let textColor = darkMode ? '#94a3b8' : '#64748b';
+        let statusColor = darkMode ? '#334155' : '#f1f5f9'; let textColor = darkMode ? '#94a3b8' : '#64748b';
         if (log) { if (log.status === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; } else if (log.status === 'skipped') { statusColor = '#fee2e2'; textColor = '#991b1b'; } }
         days.push(<div key={d} style={{ height: '40px', width:'40px', background: statusColor, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: textColor, cursor: 'pointer', margin:'0 auto' }}>{d}</div>);
     }
@@ -277,75 +261,21 @@ const UserDashboard = () => {
 
   // --- CHECKOUT LOGIC ---
   const openCheckout = async (product) => {
-      setSelectedProduct(product);
-      setShippingCost(0);
-      setShippingMethod("jne");
-      setAppliedCoupon(null);
-      setCouponCode("");
-      setShowCheckoutModal(true);
-      
-      // AUTO LOAD ADDRESS & SELECT FIRST IF EXISTS
-      try {
-          const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() });
-          setAddresses(res.data);
-          if (res.data.length > 0) {
-              handleSelectAddrCheckout(res.data[0].id); // Auto select first
-          } else {
-              setSelectedAddrId("");
-          }
-      } catch(e){}
+      setSelectedProduct(product); setShippingCost(0); setShippingMethod("jne"); setAppliedCoupon(null); setCouponCode(""); setShowCheckoutModal(true);
+      try { const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); setAddresses(res.data); if (res.data.length > 0) { handleSelectAddrCheckout(res.data[0].id); } else { setSelectedAddrId(""); } } catch(e){}
   };
-
-  const handleMethodChange = (method) => {
-      setShippingMethod(method);
-      if (method === 'pickup') setShippingCost(0);
-      else if (selectedAddrId) handleSelectAddrCheckout(selectedAddrId);
-  };
-
-  const handleSelectAddrCheckout = async (addrId) => {
-      setSelectedAddrId(addrId);
-      if (shippingMethod === 'pickup') return;
-      const addr = addresses.find(a => a.id === Number(addrId));
-      if(addr) {
-          const res = await axios.post(`${BACKEND_URL}/api/location/rate`, { city_id: addr.city_id }, { headers: getAuthHeader() });
-          setShippingCost(res.data.cost);
-      }
-  };
-
+  const handleMethodChange = (method) => { setShippingMethod(method); if (method === 'pickup') setShippingCost(0); else if (selectedAddrId) handleSelectAddrCheckout(selectedAddrId); };
+  const handleSelectAddrCheckout = async (addrId) => { setSelectedAddrId(addrId); if (shippingMethod === 'pickup') return; const addr = addresses.find(a => a.id === Number(addrId)); if(addr) { const res = await axios.post(`${BACKEND_URL}/api/location/rate`, { city_id: addr.city_id }, { headers: getAuthHeader() }); setShippingCost(res.data.cost); } };
   const handleProcessPayment = async () => {
       if (!snapLoaded) { alert("Sistem pembayaran belum siap."); return; }
       if (shippingMethod === 'jne' && !selectedAddrId) { alert("Pilih alamat pengiriman."); return; }
-
       const addr = addresses.find(a => a.id === Number(selectedAddrId)) || {};
-
       try {
-          const response = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, {
-              item_name: selectedProduct.name,
-              shipping_cost: shippingMethod === 'pickup' ? 0 : shippingCost,
-              address_detail: addr, 
-              shipping_method: shippingMethod === 'pickup' ? 'Ambil di Toko' : 'JNE Regular',
-              coupon: appliedCoupon?.code || "",
-              discount: appliedCoupon?.amount || 0
-          }, { headers: getAuthHeader() });
- 
-          if (response.data.success) {
-              setShowCheckoutModal(false);
-              window.snap.pay(response.data.token, {
-                  onSuccess: function(result) { alert("Pembayaran Berhasil!"); fetchOrders(); },
-                  onPending: function(result) { alert("Menunggu pembayaran!"); fetchOrders(); },
-                  onError: function(result) { alert("Pembayaran gagal!"); }
-              });
-          }
-      } catch (error) { 
-          alert("Gagal memproses transaksi: " + (error.response?.data?.message || "Server Error")); 
-      }
+          const response = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, { item_name: selectedProduct.name, shipping_cost: shippingMethod === 'pickup' ? 0 : shippingCost, address_detail: addr, shipping_method: shippingMethod === 'pickup' ? 'Ambil di Toko' : 'JNE Regular', coupon: appliedCoupon?.code || "", discount: appliedCoupon?.amount || 0 }, { headers: getAuthHeader() });
+          if (response.data.success) { setShowCheckoutModal(false); window.snap.pay(response.data.token, { onSuccess: function(result) { alert("Pembayaran Berhasil!"); fetchOrders(); }, onPending: function(result) { alert("Menunggu pembayaran!"); fetchOrders(); }, onError: function(result) { alert("Pembayaran gagal!"); } }); }
+      } catch (error) { alert("Gagal memproses transaksi: " + (error.response?.data?.message || "Server Error")); }
   };
-
-  // --- INVOICE LOGIC ---
-  const handleOpenInvoice = (order) => {
-      setSelectedInvoice(order);
-      setShowInvoice(true);
-  };
+  const handleOpenInvoice = (order) => { setSelectedInvoice(order); setShowInvoice(true); };
 
   const badgeStyle = { background: 'linear-gradient(45deg, #FFD700, #FDB931)', color: '#7B3F00', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', border: '1px solid #FFF' };
 
@@ -353,31 +283,20 @@ const UserDashboard = () => {
   const ShopBanner = () => (
       <div style={{ marginBottom: '2rem', position:'relative', borderRadius: '16px', overflow:'hidden', boxShadow:'0 10px 20px rgba(0,0,0,0.1)' }}>
           <div style={{ background: 'linear-gradient(135deg, #059669 0%, #34d399 100%)', padding: '2.5rem 2rem', color: 'white', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div>
-                  <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom:'0.5rem' }}>Belanja Sehat, Hidup Kuat 🌿</h2>
-                  <p style={{ opacity: 0.9 }}>Suplemen herbal terbaik untuk pencernaan Anda.</p>
-              </div>
-              <div style={{ background:'rgba(255,255,255,0.2)', padding:'1rem', borderRadius:'50%' }}>
-                  <ShoppingBag size={48} color="white"/>
-              </div>
+              <div> <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom:'0.5rem' }}>Belanja Sehat, Hidup Kuat 諺</h2> <p style={{ opacity: 0.9 }}>Suplemen herbal terbaik untuk pencernaan Anda.</p> </div>
+              <div style={{ background:'rgba(255,255,255,0.2)', padding:'1rem', borderRadius:'50%' }}> <ShoppingBag size={48} color="white"/> </div>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', background:'white', borderTop:'1px solid #eee' }}>
-              <button onClick={()=>{fetchAddresses(); setShowAddressModal(true)}} style={{ padding:'1rem', borderRight:'1px solid #eee', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color:'#059669' }}>
-                  <MapPin size={18}/> Alamat Saya
-              </button>
-              {/* BUTTON STATUS PESANAN (DIPERBAIKI) */}
-              <button onClick={()=>{fetchOrders(); setShowOrderHistory(true)}} style={{ padding:'1rem', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color:'#059669' }}>
-                  <Truck size={18}/> Status Pesanan
-              </button>
+              <button onClick={()=>{fetchAddresses(); setShowAddressModal(true)}} style={{ padding:'1rem', borderRight:'1px solid #eee', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color:'#059669' }}> <MapPin size={18}/> Alamat Saya </button>
+              <button onClick={()=>{fetchOrders(); setShowOrderHistory(true)}} style={{ padding:'1rem', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color:'#059669' }}> <Truck size={18}/> Status Pesanan </button>
           </div>
       </div>
   );
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat dashboard...</div>;
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black' }}><Loader className="animate-spin" size={40}/><p style={{marginTop:'1rem'}}>Memuat Dashboard...</p></div>;
 
   return (
     <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
-      
       <style>{`
         header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }
         body { padding-top: 0 !important; margin-top: 0 !important; }
@@ -385,19 +304,16 @@ const UserDashboard = () => {
         .dark { --theme-gradient: ${currentTheme.darkGradient}; }
         .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; }
         .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 600; }
-        .scroll-hide::-webkit-scrollbar { display: none; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; alignItems: center; justifyContent: center; z-index: 99999; }
         .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; maxWidth: 500px; width: 90%; maxHeight: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }
       `}</style>
 
       {/* SIDEBAR */}
       <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
-        <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2>
-        </div>
+        <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}> <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2> </div>
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Home size={20}/> Dashboard</button></li>
+            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Activity size={20}/> Dashboard</button></li>
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => handleNavClick('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
@@ -409,7 +325,7 @@ const UserDashboard = () => {
       </aside>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
-        {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white' }}><button onClick={()=>setSidebarOpen(true)} style={{background:'none', border:'none', color:darkMode?'white':'black'}}><Home/></button><span style={{fontWeight:'bold'}}>VITALYST</span></header>}
+        {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white' }}><button onClick={()=>setSidebarOpen(true)} style={{background:'none', border:'none', color:darkMode?'white':'black'}}><Activity/></button><span style={{fontWeight:'bold'}}>VITALYST</span></header>}
         
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
           {/* DASHBOARD CONTENT */}
@@ -457,7 +373,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', minHeight: '300px' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize: '1.1rem', color: darkMode ? 'white' : 'black'}}> <Activity size={20} color={currentTheme.text}/> Misi Hari Ke-{dailyData?.day || 1} </CardTitle>
@@ -466,37 +382,105 @@ const UserDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {dailyData && (
-                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
-                          <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>💡 Fakta Hari Ini:</h4>
-                          <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
+                      {/* === LOADING ANIMATION (KEHILANGAN DATA SEMENTARA) === */}
+                      {dailyLoading ? (
+                        <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'2rem 0', gap:'1rem'}}>
+                            <Loader className="animate-spin" size={32} color={currentTheme.text} />
+                            <p style={{fontSize:'0.9rem', color:'#64748b'}}>Sedang mengambil misi harian...</p>
                         </div>
-                      )}
-                      
-                      {checkinStatus === 'completed' ? (
-                          <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
-                             <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
-                             <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai! 🎉</h3>
-                             <p style={{fontSize:'0.9rem'}}>Hebat! Kamu sudah satu langkah lebih sehat.</p>
-                             {dailyData?.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', color: darkMode ? '#a7f3d0' : '#15803d'}}>"{dailyData.ai_feedback}"</div>}
-                          </div>
                       ) : (
-                        <div>
-                           <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Jangan lupa selesaikan challengenya! 💪</p>
-                           <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                               {dailyData?.tasks?.map((task, idx) => (
-                                   <div key={idx} onClick={() => setSelectedOption(task)} style={{ padding:'1rem', borderRadius:'12px', border: selectedOption === task ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', background: selectedOption === task ? currentTheme.light : (darkMode ? '#334155' : 'white'), cursor:'pointer', display:'flex', alignItems:'center', gap:'0.8rem', transition:'all 0.2s', color: darkMode ? 'white' : 'black' }}>
-                                       <div style={{ width:'20px', height:'20px', borderRadius:'50%', border:`2px solid ${selectedOption === task ? currentTheme.primary : '#cbd5e1'}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}> {selectedOption === task && <div style={{width:'10px', height:'10px', borderRadius:'50%', background:currentTheme.primary}}></div>} </div>
-                                       <span style={{fontSize:'0.9rem', fontWeight: selectedOption === task ? 'bold' : 'normal'}}>{task}</span>
-                                   </div>
-                               ))}
-                           </div>
-                           <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Bagaimana perasaanmu? (Opsional)" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1.5rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit' }} ></textarea>
-                           <div style={{ marginTop: '1rem' }}>
-                             <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting || !selectedOption} style={{ width: '100%', background: selectedOption ? currentTheme.primary : '#cbd5e1', color: 'black', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: selectedOption ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: selectedOption ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none' }}> {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckCircle size={18}/>} Selesaikan Misi Ini </button>
-                             <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{width:'100%', background:'transparent', border:'none', marginTop:'0.8rem', color:'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti Saja</button>
-                           </div>
-                        </div>
+                        <>
+                          {dailyData && (
+                            <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
+                              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>庁 Fakta Hari Ini:</h4>
+                              <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
+                            </div>
+                          )}
+                          
+                          {checkinStatus === 'completed' ? (
+                              <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
+                                <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
+                                <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai! 脂</h3>
+                                <p style={{fontSize:'0.9rem'}}>Hebat! Kamu sudah satu langkah lebih sehat.</p>
+                                {dailyData?.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', color: darkMode ? '#a7f3d0' : '#15803d'}}>"{dailyData.ai_feedback}"</div>}
+                              </div>
+                          ) : (
+                            <div>
+                              <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Pilih 1-3 Misi untuk Dijalankan: 潮</p>
+                              
+                              {/* LOGIC MULTI SELECT RENDER */}
+                              <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
+                                  {dailyData?.tasks?.map((task, idx) => {
+                                      const isSelected = selectedTasks.includes(task);
+                                      return (
+                                          <div 
+                                              key={idx} 
+                                              onClick={() => toggleTaskSelection(task)} 
+                                              style={{ 
+                                                  padding:'1rem', 
+                                                  borderRadius:'12px', 
+                                                  border: isSelected ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', 
+                                                  background: isSelected ? currentTheme.light : (darkMode ? '#334155' : 'white'), 
+                                                  cursor:'pointer', 
+                                                  display:'flex', 
+                                                  alignItems:'center', 
+                                                  gap:'0.8rem', 
+                                                  transition:'all 0.2s', 
+                                                  color: darkMode ? 'white' : 'black' 
+                                              }}
+                                          >
+                                              <div style={{ 
+                                                  width:'24px', 
+                                                  height:'24px', 
+                                                  borderRadius:'6px', 
+                                                  border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, 
+                                                  background: isSelected ? currentTheme.primary : 'transparent',
+                                                  display:'flex', 
+                                                  alignItems:'center', 
+                                                  justifyContent:'center', 
+                                                  flexShrink: 0,
+                                                  color: 'white'
+                                              }}> 
+                                                  {isSelected && <Check size={16} strokeWidth={3}/>} 
+                                              </div>
+                                              <span style={{fontSize:'0.9rem', fontWeight: isSelected ? 'bold' : 'normal'}}>{task}</span>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+
+                              <div style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#64748b', textAlign:'right'}}>
+                                  {selectedTasks.length}/3 Misi Dipilih
+                              </div>
+
+                              <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Bagaimana perasaanmu? (Opsional)" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit' }} ></textarea>
+                              
+                              <div style={{ marginTop: '1rem' }}>
+                                <button 
+                                    onClick={() => handleSubmitCheckin('completed')} 
+                                    disabled={isSubmitting || selectedTasks.length === 0} 
+                                    style={{ 
+                                        width: '100%', 
+                                        background: selectedTasks.length > 0 ? currentTheme.primary : '#cbd5e1', 
+                                        color: 'black', 
+                                        border: 'none', 
+                                        padding: '1rem', 
+                                        borderRadius: '8px', 
+                                        fontWeight: 'bold', 
+                                        cursor: selectedTasks.length > 0 ? 'pointer' : 'not-allowed', 
+                                        display:'flex', 
+                                        justifyContent:'center', 
+                                        alignItems:'center', 
+                                        gap:'0.5rem', 
+                                        boxShadow: selectedTasks.length > 0 ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none' 
+                                    }}> 
+                                    {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckCircle size={18}/>} Selesaikan {selectedTasks.length} Misi 
+                                </button>
+                                <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{width:'100%', background:'transparent', border:'none', marginTop:'0.8rem', color:'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti Saja</button>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </CardContent>
                   </Card>
@@ -575,7 +559,7 @@ const UserDashboard = () => {
               </div>
           )}
 
-          {/* TAB FRIENDS & SETTINGS - (Isi sama seperti sebelumnya) */}
+          {/* TAB FRIENDS */}
           {activeTab === 'friends' && (
               <div style={{maxWidth:'600px', margin:'0 auto'}}>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1> </div>
@@ -615,13 +599,7 @@ const UserDashboard = () => {
                 {shippingMethod === 'jne' && (
                     <div style={{marginBottom:'1rem'}}>
                         <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}><span>Kirim ke:</span><button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer'}}>+ Alamat Baru</button></div>
-                        
-                        {/* FIX ALAMAT: DROPDOWN */}
-                        <select 
-                            onChange={e=>handleSelectAddrCheckout(e.target.value)} 
-                            value={selectedAddrId}
-                            style={{width:'100%', padding:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}
-                        >
+                        <select onChange={e=>handleSelectAddrCheckout(e.target.value)} value={selectedAddrId} style={{width:'100%', padding:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}>
                             <option value="" disabled>Pilih Alamat...</option>
                             {addresses.map(a=><option key={a.id} value={a.id}>{a.label} - {a.address}</option>)}
                         </select>
@@ -643,7 +621,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL ORDER HISTORY (BARU DITAMBAHKAN) */}
+      {/* MODAL ORDER HISTORY */}
       {showOrderHistory && (
         <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)}>
             <div className="modal-content" style={{background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}} onClick={e=>e.stopPropagation()}>
@@ -674,7 +652,7 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL INVOICE (BARU DITAMBAHKAN) */}
+      {/* MODAL INVOICE */}
       {showInvoice && selectedInvoice && (
         <div className="modal-overlay" onClick={()=>setShowInvoice(false)}>
             <div className="modal-content" style={{background:'white', color:'black', width:'100%', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}>
@@ -710,13 +688,6 @@ const UserDashboard = () => {
                         <span style={{fontSize:'0.9rem'}}>{selectedInvoice.product_name}</span>
                         <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>Rp {selectedInvoice.amount.toLocaleString()}</span>
                     </div>
-                </div>
-
-                <div style={{textAlign:'center', marginBottom:'1rem'}}>
-                    <p style={{fontSize:'0.8rem', color:'#64748b', marginBottom:'0.5rem'}}>Terima kasih sudah berbelanja sehat!</p>
-                    <button onClick={()=>window.print()} style={{background:'transparent', border:'1px solid #ccc', padding:'0.5rem 1rem', borderRadius:'20px', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'0.5rem'}}>
-                        <Printer size={16}/> Cetak / Simpan PDF
-                    </button>
                 </div>
 
                 <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup</button>
