@@ -6,7 +6,7 @@ import {
   Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
-  MessageSquareQuote // Icon baru untuk feedback
+  MessageSquareQuote, ShoppingCart, Zap, Target, TrendingUp // <--- IMPORT LENGKAP
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -65,7 +65,8 @@ const UserDashboard = () => {
   // --- STATE HISTORY CHECKIN ---
   const [checkinHistory, setCheckinHistory] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [selectedLogDetail, setSelectedLogDetail] = useState(null); // Log yang dipilih untuk dilihat detailnya
+  const [selectedLogDetail, setSelectedLogDetail] = useState(null);
+  const [progressStats, setProgressStats] = useState({ completed: 0, streak: 0, percentage: 0, message: "" });
 
   // --- STATE LAINNYA ---
   const [dailyData, setDailyData] = useState(null);
@@ -121,8 +122,32 @@ const UserDashboard = () => {
 
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
-  useEffect(() => { if (activeTab === 'checkin') fetchCheckinHistory(); }, [activeTab]);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
+  useEffect(() => { 
+      if (activeTab === 'checkin') {
+          fetchCheckinHistory(); 
+      }
+  }, [activeTab]);
+
+  // Kalkulasi Statistik saat checkinHistory berubah
+  useEffect(() => {
+      if (checkinHistory.length > 0) {
+          const completed = checkinHistory.filter(h => h.status === 'completed').length;
+          const percentage = Math.round((completed / 30) * 100); // Asumsi challenge 30 hari
+          
+          // Hitung Streak Sederhana
+          let currentStreak = 0;
+          // (Logic streak sederhana bisa dikembangkan lebih lanjut)
+          if(completed > 0) currentStreak = 1; // Placeholder logic
+
+          let msg = "Ayo mulai langkah pertamamu!";
+          if (percentage >= 80) msg = "Luar biasa! Konsistensi kamu di level elit. Pertahankan ritme ini!";
+          else if (percentage >= 50) msg = "Kerja bagus! Kamu sudah separuh jalan. Jangan kendor sekarang.";
+          else if (percentage >= 20) msg = "Start yang baik. Jadikan kesehatan sebagai kebiasaan harianmu.";
+          else msg = "Setiap langkah kecil berharga. Ayo lebih rajin check-in!";
+
+          setProgressStats({ completed, streak: currentStreak, percentage, message: msg });
+      }
+  }, [checkinHistory]);
 
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
   const changeThemeColor = (k) => { setThemeColor(k); localStorage.setItem('colorTheme', k); };
@@ -158,7 +183,7 @@ const UserDashboard = () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
-      const tip = "Jaga kesehatan!"; // HAPUS KARAKTER CINA
+      const tip = "Jaga kesehatan!";
       setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Ada keluhan apa hari ini?" }]);
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
@@ -587,40 +612,84 @@ const UserDashboard = () => {
                     <p style={{textAlign:'center', fontSize:'0.8rem', color:'#64748b', marginTop:'1rem'}}>*Klik tanggal hijau untuk melihat Laporan AI.</p>
                   </div>
 
-                  {/* DETAIL LOG (REKAP AI) */}
-                  {selectedLogDetail && (
-                      <div style={{marginTop:'1.5rem', maxWidth:'500px', margin:'1.5rem auto 0 auto'}}>
-                          <Card style={{background: darkMode ? '#1e293b' : 'white', border: `2px solid ${currentTheme.primary}`}}>
-                              <CardHeader style={{paddingBottom:'0.5rem', background: currentTheme.light, borderTopLeftRadius:'12px', borderTopRightRadius:'12px'}}>
-                                  <CardTitle style={{fontSize:'1.1rem', color: '#166534', display:'flex', alignItems:'center', gap:'0.5rem'}}>
-                                      <Bot size={20}/> Laporan Coach AI - {selectedLogDetail.date}
-                                  </CardTitle>
-                              </CardHeader>
-                              <CardContent style={{paddingTop:'1rem'}}>
-                                  <div style={{marginBottom:'1rem'}}>
-                                      <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem'}}>🎯 Misi yang Diselesaikan:</h4>
-                                      <ul style={{paddingLeft:'1.2rem', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#334155'}}>
-                                          {selectedLogDetail.chosen_option ? selectedLogDetail.chosen_option.split(', ').map((m, i) => (
-                                              <li key={i}>{m}</li>
-                                          )) : <li>Misi Harian</li>}
-                                      </ul>
-                                  </div>
-                                  
-                                  {selectedLogDetail.notes && (
-                                      <div style={{marginBottom:'1rem'}}>
-                                          <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem'}}>📝 Jurnal Kamu:</h4>
-                                          <p style={{fontSize:'0.9rem', fontStyle:'italic', color: darkMode?'#94a3b8':'#64748b'}}>"{selectedLogDetail.notes}"</p>
-                                      </div>
-                                  )}
+                  {/* REKAPAN PERKEMBANGAN & COACH */}
+                  <div style={{maxWidth:'500px', margin:'2rem auto 0 auto'}}>
+                      <h3 style={{fontSize:'1.1rem', fontWeight:'bold', marginBottom:'1rem', color: currentTheme.text}}>Statistik & Evaluasi</h3>
+                      
+                      {/* Grid Statistik */}
+                      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.8rem', marginBottom:'1.5rem'}}>
+                          <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border:'1px solid #e2e8f0', textAlign:'center'}}>
+                              <div style={{background: currentTheme.light, width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 0.5rem auto'}}><CheckCircle size={16} color={currentTheme.text}/></div>
+                              <div style={{fontSize:'1.2rem', fontWeight:'bold', color: currentTheme.text}}>{progressStats.completed}</div>
+                              <div style={{fontSize:'0.7rem', color:'#64748b'}}>Misi Tuntas</div>
+                          </div>
+                          <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border:'1px solid #e2e8f0', textAlign:'center'}}>
+                              <div style={{background: '#fee2e2', width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 0.5rem auto'}}><Zap size={16} color='#ef4444'/></div>
+                              <div style={{fontSize:'1.2rem', fontWeight:'bold', color: '#ef4444'}}>{progressStats.streak}</div>
+                              <div style={{fontSize:'0.7rem', color:'#64748b'}}>Streak Hari</div>
+                          </div>
+                          <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border:'1px solid #e2e8f0', textAlign:'center'}}>
+                              <div style={{background: '#dbeafe', width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 0.5rem auto'}}><Target size={16} color='#2563eb'/></div>
+                              <div style={{fontSize:'1.2rem', fontWeight:'bold', color: '#2563eb'}}>{progressStats.percentage}%</div>
+                              <div style={{fontSize:'0.7rem', color:'#64748b'}}>Penyelesaian</div>
+                          </div>
+                      </div>
 
-                                  <div style={{background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'8px', borderLeft:`4px solid ${currentTheme.primary}`}}>
-                                      <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><MessageSquareQuote size={16}/> Komentar Coach:</h4>
-                                      <p style={{fontSize:'0.9rem', lineHeight:'1.5', color: darkMode?'#e2e8f0':'#334155'}}>
-                                          {selectedLogDetail.ai_feedback || "Belum ada laporan untuk hari ini."}
-                                      </p>
+                      {/* Kartu Evaluasi Coach */}
+                      <Card style={{background: darkMode ? '#1e293b' : 'white', borderLeft: `4px solid ${currentTheme.primary}`, overflow:'hidden'}}>
+                          <div style={{padding:'1.2rem', display:'flex', gap:'1rem', alignItems:'flex-start'}}>
+                              <div style={{background: currentTheme.light, padding:'0.5rem', borderRadius:'50%', flexShrink:0}}>
+                                  <Bot size={32} color={currentTheme.text}/>
+                              </div>
+                              <div>
+                                  <h4 style={{fontSize:'1rem', fontWeight:'bold', marginBottom:'0.3rem', color: currentTheme.text}}>Evaluasi Dr. Alva</h4>
+                                  <p style={{fontSize:'0.9rem', lineHeight:'1.5', color: darkMode ? '#e2e8f0' : '#334155'}}>
+                                      "{progressStats.message}"
+                                  </p>
+                              </div>
+                          </div>
+                      </Card>
+                  </div>
+
+                  {/* DETAIL LOG MODAL (Saat tanggal diklik) */}
+                  {selectedLogDetail && (
+                      <div className="modal-overlay" onClick={()=>setSelectedLogDetail(null)}>
+                          <div className="modal-content" style={{background: darkMode?'#1e293b':'white', color: darkMode?'white':'black', maxWidth:'450px'}} onClick={e=>e.stopPropagation()}>
+                              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                                  <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Laporan Harian</h3>
+                                  <button onClick={()=>setSelectedLogDetail(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20} color={darkMode?'white':'black'}/></button>
+                              </div>
+                              
+                              <div style={{marginBottom:'1.5rem', padding:'1rem', background: currentTheme.light, borderRadius:'12px', color:'#1e3a8a'}}>
+                                  <div style={{fontSize:'0.8rem', textTransform:'uppercase', opacity:0.8, marginBottom:'0.3rem'}}>Tanggal</div>
+                                  <div style={{fontWeight:'bold', fontSize:'1.1rem'}}>{selectedLogDetail.date} (Hari ke-{selectedLogDetail.day})</div>
+                              </div>
+
+                              <div style={{marginBottom:'1.5rem'}}>
+                                  <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><CheckCircle size={18} color={currentTheme.primary}/> Misi Tuntas:</div>
+                                  <ul style={{paddingLeft:'1.5rem', margin:0, color: darkMode?'#cbd5e1':'#475569'}}>
+                                      {selectedLogDetail.chosen_option ? selectedLogDetail.chosen_option.split(', ').map((opt, i) => (
+                                          <li key={i}>{opt}</li>
+                                      )) : <li>Misi Harian</li>}
+                                  </ul>
+                              </div>
+
+                              {selectedLogDetail.notes && (
+                                  <div style={{marginBottom:'1.5rem'}}>
+                                      <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Edit2 size={18} color={currentTheme.primary}/> Jurnal Kamu:</div>
+                                      <div style={{fontSize:'0.9rem', fontStyle:'italic', color: darkMode?'#94a3b8':'#64748b', background: darkMode?'#334155':'#f8fafc', padding:'0.8rem', borderRadius:'8px'}}>
+                                          "{selectedLogDetail.notes}"
+                                      </div>
                                   </div>
-                              </CardContent>
-                          </Card>
+                              )}
+
+                              <div style={{borderTop: darkMode?'1px solid #334155':'1px solid #e2e8f0', paddingTop:'1rem'}}>
+                                  <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem', color: currentTheme.text}}><Bot size={18}/> Ulasan Coach AI:</div>
+                                  <div style={{lineHeight:'1.5', fontSize:'0.9rem', color: darkMode?'#e2e8f0':'#334155'}}>
+                                      {selectedLogDetail.ai_feedback || "Belum ada ulasan AI untuk hari ini."}
+                                  </div>
+                              </div>
+                          </div>
                       </div>
                   )}
               </div>
