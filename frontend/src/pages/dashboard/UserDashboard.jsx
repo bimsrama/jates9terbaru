@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { 
   Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
-  Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader
+  Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
+  MessageSquareQuote // Icon baru untuk feedback
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -29,8 +30,8 @@ const UserDashboard = () => {
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
   const [challenges, setChallenges] = useState([]);
-  const [loading, setLoading] = useState(true); // Loading halaman utama
-  const [dailyLoading, setDailyLoading] = useState(true); // Loading khusus Misi Harian
+  const [loading, setLoading] = useState(true);
+  const [dailyLoading, setDailyLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
@@ -64,6 +65,7 @@ const UserDashboard = () => {
   // --- STATE HISTORY CHECKIN ---
   const [checkinHistory, setCheckinHistory] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedLogDetail, setSelectedLogDetail] = useState(null); // Log yang dipilih untuk dilihat detailnya
 
   // --- STATE LAINNYA ---
   const [dailyData, setDailyData] = useState(null);
@@ -72,7 +74,6 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
@@ -93,8 +94,8 @@ const UserDashboard = () => {
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
 
-  // --- STATE BARU UNTUK PILIHAN MISI ---
-  const [selectedTasks, setSelectedTasks] = useState([]); // Ganti selectedOption jadi Array
+  // --- STATE PILIHAN MISI (MULTI) ---
+  const [selectedTasks, setSelectedTasks] = useState([]);
   const [missionDone, setMissionDone] = useState(false);
 
   useEffect(() => {
@@ -157,7 +158,7 @@ const UserDashboard = () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
-      const tip = "庁 Jaga kesehatan!";
+      const tip = "Jaga kesehatan!"; // HAPUS KARAKTER CINA
       setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Ada keluhan apa hari ini?" }]);
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
@@ -166,24 +167,37 @@ const UserDashboard = () => {
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
   
-  // --- FETCH DAILY CONTENT DENGAN LOADING ANIMATION ---
+  // --- FETCH DAILY CONTENT (WITH LOADING) ---
   const fetchDailyContent = async () => { 
-      setDailyLoading(true); // Mulai Loading
+      setDailyLoading(true); 
       try { 
           const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); 
           setDailyData(res.data); 
           setCheckinStatus(res.data.today_status || null);
           if(res.data.today_status === 'completed') setMissionDone(true); else setMissionDone(false);
       } catch (e) {
-          console.error("Gagal load daily content", e);
+          console.error(e);
       } finally {
-          // Tambahkan delay sedikit agar animasi terlihat halus
           setTimeout(() => setDailyLoading(false), 600);
       }
   };
 
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
-  const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); setProducts(res.data); } catch(e){} };
+  
+  // --- FIX BELANJA BLANK ---
+  const fetchProducts = async () => { 
+      try { 
+          const res = await axios.get(`${BACKEND_URL}/api/products`); 
+          if (Array.isArray(res.data)) {
+              setProducts(res.data); 
+          } else {
+              setProducts([]); 
+          }
+      } catch(e) { 
+          setProducts([]); 
+      } 
+  };
+  
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
@@ -193,7 +207,7 @@ const UserDashboard = () => {
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
-  // --- LOGIC MULTI-SELECT ---
+  // --- LOGIC MULTI SELECT ---
   const toggleTaskSelection = (task) => {
     if (selectedTasks.includes(task)) {
       setSelectedTasks(prev => prev.filter(t => t !== task));
@@ -206,7 +220,6 @@ const UserDashboard = () => {
 
   const handleSubmitCheckin = async (status) => { 
       if(isSubmitting) return; 
-      // Validasi: Harus pilih minimal 1 jika status completed
       if(status === 'completed' && selectedTasks.length === 0) {
           alert("Pilih minimal 1 aktivitas untuk diselesaikan.");
           return;
@@ -214,7 +227,6 @@ const UserDashboard = () => {
 
       setIsSubmitting(true); 
       try { 
-          // Kirim completed_tasks sebagai array
           await axios.post(`${BACKEND_URL}/api/checkin`, { 
               journal, 
               status, 
@@ -224,7 +236,7 @@ const UserDashboard = () => {
           setCheckinStatus(status); 
           if(status === 'completed') { 
               setMissionDone(true); 
-              alert("Luar biasa! Misi selesai. Cek WhatsApp untuk laporan progress AI."); 
+              alert("Luar biasa! Misi selesai. Cek laporan progress AI di tab History."); 
               fetchData(); 
           }
           if(status === 'pending') { alert("Oke, pengingat telah diset untuk jam 19:00 WIB!"); }
@@ -241,7 +253,15 @@ const UserDashboard = () => {
   const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
   const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
 
-  // --- CALENDAR LOGIC ---
+  // --- CALENDAR & HISTORY DETAIL ---
+  const handleDateClick = (log) => {
+      if (log && log.status === 'completed') {
+          setSelectedLogDetail(log);
+      } else {
+          setSelectedLogDetail(null);
+      }
+  };
+
   const renderCalendar = () => {
     const year = calendarDate.getFullYear(); const month = calendarDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -252,8 +272,30 @@ const UserDashboard = () => {
         const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         const log = checkinHistory.find(h => h.date === currentDateStr);
         let statusColor = darkMode ? '#334155' : '#f1f5f9'; let textColor = darkMode ? '#94a3b8' : '#64748b';
-        if (log) { if (log.status === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; } else if (log.status === 'skipped') { statusColor = '#fee2e2'; textColor = '#991b1b'; } }
-        days.push(<div key={d} style={{ height: '40px', width:'40px', background: statusColor, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: textColor, cursor: 'pointer', margin:'0 auto' }}>{d}</div>);
+        let cursorStyle = 'default';
+
+        if (log) { 
+            if (log.status === 'completed') { 
+                statusColor = '#dcfce7'; textColor = '#166534'; cursorStyle = 'pointer';
+            } else if (log.status === 'skipped') { 
+                statusColor = '#fee2e2'; textColor = '#991b1b'; 
+            } 
+        }
+        
+        days.push(
+            <div 
+                key={d} 
+                onClick={() => handleDateClick(log)}
+                style={{ 
+                    height: '40px', width:'40px', background: statusColor, borderRadius: '8px', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    fontWeight: 'bold', fontSize: '0.9rem', color: textColor, 
+                    cursor: cursorStyle, margin:'0 auto', transition:'transform 0.1s' 
+                }}
+            >
+                {d}
+            </div>
+        );
     }
     return days;
   };
@@ -283,7 +325,7 @@ const UserDashboard = () => {
   const ShopBanner = () => (
       <div style={{ marginBottom: '2rem', position:'relative', borderRadius: '16px', overflow:'hidden', boxShadow:'0 10px 20px rgba(0,0,0,0.1)' }}>
           <div style={{ background: 'linear-gradient(135deg, #059669 0%, #34d399 100%)', padding: '2.5rem 2rem', color: 'white', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div> <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom:'0.5rem' }}>Belanja Sehat, Hidup Kuat 諺</h2> <p style={{ opacity: 0.9 }}>Suplemen herbal terbaik untuk pencernaan Anda.</p> </div>
+              <div> <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom:'0.5rem' }}>Belanja Sehat, Hidup Kuat</h2> <p style={{ opacity: 0.9 }}>Suplemen herbal terbaik untuk pencernaan Anda.</p> </div>
               <div style={{ background:'rgba(255,255,255,0.2)', padding:'1rem', borderRadius:'50%' }}> <ShoppingBag size={48} color="white"/> </div>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', background:'white', borderTop:'1px solid #eee' }}>
@@ -392,7 +434,7 @@ const UserDashboard = () => {
                         <>
                           {dailyData && (
                             <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
-                              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>庁 Fakta Hari Ini:</h4>
+                              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>Fakta Hari Ini:</h4>
                               <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
                             </div>
                           )}
@@ -400,13 +442,13 @@ const UserDashboard = () => {
                           {checkinStatus === 'completed' ? (
                               <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
                                 <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
-                                <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai! 脂</h3>
+                                <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai!</h3>
                                 <p style={{fontSize:'0.9rem'}}>Hebat! Kamu sudah satu langkah lebih sehat.</p>
                                 {dailyData?.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', color: darkMode ? '#a7f3d0' : '#15803d'}}>"{dailyData.ai_feedback}"</div>}
                               </div>
                           ) : (
                             <div>
-                              <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Pilih 1-3 Misi untuk Dijalankan: 潮</p>
+                              <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Pilih 1-3 Misi untuk Dijalankan:</p>
                               
                               {/* LOGIC MULTI SELECT RENDER */}
                               <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
@@ -537,11 +579,50 @@ const UserDashboard = () => {
                     <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
                     <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Kalender</h1>
                   </div>
+                  
                   <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1.5rem', borderRadius:'16px', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', maxWidth:'500px', margin:'0 auto'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <button onClick={()=>changeMonth(-1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronLeft/></button> <h3 style={{fontWeight:'bold', fontSize:'1.2rem', color: darkMode?'white':'black'}}> {calendarDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} </h3> <button onClick={()=>changeMonth(1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronRight/></button> </div>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', textAlign:'center', marginBottom:'0.5rem'}}> {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d => ( <div key={d} style={{fontSize:'0.8rem', fontWeight:'bold', color:'#64748b'}}>{d}</div> ))} </div>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'0.5rem'}}> {renderCalendar()} </div>
+                    <p style={{textAlign:'center', fontSize:'0.8rem', color:'#64748b', marginTop:'1rem'}}>*Klik tanggal hijau untuk melihat Laporan AI.</p>
                   </div>
+
+                  {/* DETAIL LOG (REKAP AI) */}
+                  {selectedLogDetail && (
+                      <div style={{marginTop:'1.5rem', maxWidth:'500px', margin:'1.5rem auto 0 auto'}}>
+                          <Card style={{background: darkMode ? '#1e293b' : 'white', border: `2px solid ${currentTheme.primary}`}}>
+                              <CardHeader style={{paddingBottom:'0.5rem', background: currentTheme.light, borderTopLeftRadius:'12px', borderTopRightRadius:'12px'}}>
+                                  <CardTitle style={{fontSize:'1.1rem', color: '#166534', display:'flex', alignItems:'center', gap:'0.5rem'}}>
+                                      <Bot size={20}/> Laporan Coach AI - {selectedLogDetail.date}
+                                  </CardTitle>
+                              </CardHeader>
+                              <CardContent style={{paddingTop:'1rem'}}>
+                                  <div style={{marginBottom:'1rem'}}>
+                                      <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem'}}>🎯 Misi yang Diselesaikan:</h4>
+                                      <ul style={{paddingLeft:'1.2rem', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#334155'}}>
+                                          {selectedLogDetail.chosen_option ? selectedLogDetail.chosen_option.split(', ').map((m, i) => (
+                                              <li key={i}>{m}</li>
+                                          )) : <li>Misi Harian</li>}
+                                      </ul>
+                                  </div>
+                                  
+                                  {selectedLogDetail.notes && (
+                                      <div style={{marginBottom:'1rem'}}>
+                                          <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem'}}>📝 Jurnal Kamu:</h4>
+                                          <p style={{fontSize:'0.9rem', fontStyle:'italic', color: darkMode?'#94a3b8':'#64748b'}}>"{selectedLogDetail.notes}"</p>
+                                      </div>
+                                  )}
+
+                                  <div style={{background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'8px', borderLeft:`4px solid ${currentTheme.primary}`}}>
+                                      <h4 style={{fontSize:'0.9rem', fontWeight:'bold', color: currentTheme.text, marginBottom:'0.3rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><MessageSquareQuote size={16}/> Komentar Coach:</h4>
+                                      <p style={{fontSize:'0.9rem', lineHeight:'1.5', color: darkMode?'#e2e8f0':'#334155'}}>
+                                          {selectedLogDetail.ai_feedback || "Belum ada laporan untuk hari ini."}
+                                      </p>
+                                  </div>
+                              </CardContent>
+                          </Card>
+                      </div>
+                  )}
               </div>
           )}
 
@@ -553,9 +634,18 @@ const UserDashboard = () => {
                 </div>
                 <ShopBanner />
                 <h3 style={{marginTop:'2rem', marginBottom:'1rem', fontWeight:'bold', fontSize:'1.2rem'}}>Katalog Produk</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                    {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))}
-                </div>
+                
+                {/* FIX BELANJA BLANK */}
+                {products.length === 0 ? (
+                    <div style={{padding:'3rem', textAlign:'center', color:'#64748b', background: darkMode?'#1e293b':'#f8fafc', borderRadius:'12px', border:'1px dashed #cbd5e1'}}>
+                        <Package size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
+                        <p>Belum ada produk tersedia saat ini.</p>
+                    </div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                        {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))}
+                    </div>
+                )}
               </div>
           )}
 
