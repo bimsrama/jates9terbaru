@@ -462,7 +462,20 @@ const UserDashboard = () => {
                         ) : (
                             <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
                                 {activeChallenges.map(chal => (
-                                    <div key={chal.id} style={{padding:'1rem', borderRadius:'12px', background: darkMode?'#334155':'#f8fafc', border:'1px solid #eee'}}>
+                                    <div 
+                                        key={chal.id} 
+                                        onClick={() => handleNavClick('checkin')} 
+                                        style={{
+                                            padding:'1rem', 
+                                            borderRadius:'12px', 
+                                            background: darkMode?'#334155':'#f8fafc', 
+                                            border:'1px solid #eee',
+                                            cursor: 'pointer',
+                                            transition: 'transform 0.1s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.01)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
                                         <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
                                             <span style={{fontWeight:'bold', color: currentTheme.text}}>{chal.title}</span>
                                             <span style={{fontSize:'0.8rem', padding:'2px 8px', borderRadius:'10px', background: chal.status==='active'?'#dcfce7':'#fee2e2', color: chal.status==='active'?'#166534':'#991b1b'}}>
@@ -477,8 +490,8 @@ const UserDashboard = () => {
                                         <div style={{height:'6px', background:'#e2e8f0', borderRadius:'4px', overflow:'hidden', marginBottom:'1rem'}}>
                                             <div style={{width:`${chal.progress}%`, height:'100%', background: currentTheme.primary}}></div>
                                         </div>
-                                        {/* Action Buttons */}
-                                        <div style={{display:'flex', gap:'0.5rem'}}>
+                                        {/* Action Buttons - Stop Propagation agar tombol tidak memicu navigasi */}
+                                        <div style={{display:'flex', gap:'0.5rem'}} onClick={(e) => e.stopPropagation()}>
                                             {chal.status === 'active' ? (
                                                 <button onClick={()=>handleChallengeAction(chal.id, 'pause')} style={{flex:1, padding:'6px', borderRadius:'6px', border:'1px solid #cbd5e1', background:'white', fontSize:'0.8rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', color:'black'}}>
                                                     <Pause size={14}/> Pause
