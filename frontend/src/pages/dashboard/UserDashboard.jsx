@@ -43,7 +43,11 @@ const UserDashboard = () => {
   const [activeChallenges, setActiveChallenges] = useState([]); 
   const [recommendedChallenges, setRecommendedChallenges] = useState([]); 
   
-  const [challenges, setChallenges] = useState([]);
+  // --- STATE KHUSUS MULTI CHALLENGE ---
+  const [allDailyData, setAllDailyData] = useState([]); // Array data harian untuk setiap challenge
+  const [selectedTasksMap, setSelectedTasksMap] = useState({}); // { challengeId: [task1, task2] }
+  const [journalsMap, setJournalsMap] = useState({}); // { challengeId: "isi jurnal" }
+
   const [loading, setLoading] = useState(true);
   const [dailyLoading, setDailyLoading] = useState(true);
   const [myFriends, setMyFriends] = useState([]);
@@ -83,9 +87,6 @@ const UserDashboard = () => {
   const [progressStats, setProgressStats] = useState({ completed: 0, streak: 0, percentage: 0, message: "" });
 
   // --- STATE LAINNYA ---
-  const [dailyData, setDailyData] = useState(null);
-  const [journal, setJournal] = useState("");
-  const [checkinStatus, setCheckinStatus] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
@@ -109,10 +110,6 @@ const UserDashboard = () => {
   const chatEndRef = useRef(null);
   const chatSectionRef = useRef(null);
 
-  // --- STATE PILIHAN MISI (MULTI) ---
-  const [selectedTasks, setSelectedTasks] = useState([]);
-  const [missionDone, setMissionDone] = useState(false);
-
   // --- STATE BARU: Tutorial & Privacy & Refresh ---
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -133,7 +130,6 @@ const UserDashboard = () => {
     }
 
     fetchData(); 
-    fetchDailyContent(); 
     fetchArticles(); 
     fetchProducts(); 
     fetchAddresses(); 
@@ -147,6 +143,15 @@ const UserDashboard = () => {
     
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
   }, []);
+
+  // Fetch Daily Content ketika Active Challenges berubah
+  useEffect(() => {
+      if (activeChallenges.length > 0) {
+          fetchAllDailyContents();
+      } else {
+          setDailyLoading(false);
+      }
+  }, [activeChallenges]);
 
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
@@ -170,7 +175,6 @@ const UserDashboard = () => {
 
   // --- PULL TO REFRESH LOGIC ---
   const handleTouchStart = (e) => {
-      // Hanya aktifkan jika scroll di posisi paling atas
       if (mainContentRef.current.scrollTop === 0) {
           startY.current = e.touches[0].clientY;
       }
@@ -181,7 +185,7 @@ const UserDashboard = () => {
       const currentY = e.touches[0].clientY;
       const diff = currentY - startY.current;
       if (diff > 50 && mainContentRef.current.scrollTop === 0) {
-          // Indikasi visual mau refresh (opsional, bisa tambah CSS transform)
+          // Indikasi visual mau refresh
       }
   };
 
@@ -193,8 +197,7 @@ const UserDashboard = () => {
           const randomMotivation = MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
           setMotivationText(randomMotivation);
           
-          // Refresh semua data
-          await Promise.all([fetchData(), fetchDailyContent(), fetchArticles()]);
+          await Promise.all([fetchData(), fetchAllDailyContents(), fetchArticles()]);
           
           setTimeout(() => {
               setRefreshing(false);
@@ -238,27 +241,28 @@ const UserDashboard = () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
-      // Data Baru: Challenge Aktif & Rekomendasi
       setActiveChallenges(overviewRes.data.active_challenges || []);
       setRecommendedChallenges(overviewRes.data.recommendations || []);
       
       const tip = "Jaga kesehatan!";
       setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva. Bagaimana perkembangan challenge kamu hari ini?" }]);
-      
-      const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
-      setChallenges(challengeRes.data);
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
   
-  const fetchDailyContent = async () => { 
+  // --- FETCH MULTIPLE DAILY CONTENT ---
+  const fetchAllDailyContents = async () => { 
       setDailyLoading(true); 
       try { 
-          const res = await axios.get(`${BACKEND_URL}/api/daily-content`, { headers: getAuthHeader() }); 
-          setDailyData(res.data); 
-          setCheckinStatus(res.data.today_status || null);
-          if(res.data.today_status === 'completed') setMissionDone(true); else setMissionDone(false);
+          const promises = activeChallenges.map(chal => 
+              axios.get(`${BACKEND_URL}/api/daily-content?challenge_id=${chal.id}`, { headers: getAuthHeader() })
+          );
+          
+          const results = await Promise.all(promises);
+          // Filter hanya yang success/found
+          const validData = results.map(r => r.data).filter(d => d.found);
+          setAllDailyData(validData);
       } catch (e) { console.error(e); } 
       finally { setTimeout(() => setDailyLoading(false), 600); }
   };
@@ -281,37 +285,68 @@ const UserDashboard = () => {
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
-  const toggleTaskSelection = (task) => {
-    if (selectedTasks.includes(task)) { setSelectedTasks(prev => prev.filter(t => t !== task)); } else { if (selectedTasks.length < 3) { setSelectedTasks(prev => [...prev, task]); } }
+  // --- MULTI CHALLENGE TASK HANDLER ---
+  const toggleTaskSelection = (challengeId, task) => {
+    const currentTasks = selectedTasksMap[challengeId] || [];
+    let newTasks;
+    if (currentTasks.includes(task)) {
+        newTasks = currentTasks.filter(t => t !== task);
+    } else {
+        if (currentTasks.length < 3) newTasks = [...currentTasks, task];
+        else newTasks = currentTasks;
+    }
+    setSelectedTasksMap(prev => ({ ...prev, [challengeId]: newTasks }));
   };
 
-  const handleSubmitCheckin = async (status) => { 
+  const handleJournalChange = (challengeId, text) => {
+      setJournalsMap(prev => ({ ...prev, [challengeId]: text }));
+  };
+
+  const handleSubmitCheckin = async (challengeId, status) => { 
       if(isSubmitting) return; 
-      if(status === 'completed' && selectedTasks.length === 0) { alert("Pilih minimal 1 aktivitas untuk diselesaikan."); return; }
+      const tasks = selectedTasksMap[challengeId] || [];
+      const journal = journalsMap[challengeId] || "";
+
+      if(status === 'completed' && tasks.length === 0) { alert("Pilih minimal 1 aktivitas untuk diselesaikan."); return; }
+      
       setIsSubmitting(true); 
       try { 
-          await axios.post(`${BACKEND_URL}/api/checkin`, { journal, status, completed_tasks: selectedTasks, challenge_id: dailyData?.challenge_id }, {headers:getAuthHeader()}); 
-          setCheckinStatus(status); 
-          if(status === 'completed') { setMissionDone(true); alert("Luar biasa! Misi selesai. Cek laporan progress AI di tab History."); fetchData(); }
-          if(status === 'pending') { alert("Oke, pengingat telah diset untuk jam 19:00 WIB!"); }
+          await axios.post(`${BACKEND_URL}/api/checkin`, { 
+              journal: journal, 
+              status: status, 
+              completed_tasks: tasks, 
+              challenge_id: challengeId 
+          }, {headers:getAuthHeader()}); 
+          
+          if(status === 'completed') { alert("Luar biasa! Misi selesai."); }
+          if(status === 'pending') { alert("Oke, pengingat telah diset."); }
+          
+          // Refresh Data
+          fetchAllDailyContents();
+          fetchData();
       } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
   };
   
-  // --- MANAGE CHALLENGE ACTIONS (Pause/Resume/Stop) ---
   const handleChallengeAction = async (id, action) => {
       if(!window.confirm(`Yakin ingin ${action} challenge ini?`)) return;
       try {
           await axios.post(`${BACKEND_URL}/api/user/challenge/action`, { challenge_id: id, action: action }, { headers: getAuthHeader() });
-          fetchData(); // Refresh list
+          fetchData(); 
       } catch(e) { alert("Gagal update status"); }
   };
 
   const handleJoinChallenge = async (id) => {
+      if (activeChallenges.length >= 2) {
+          alert("Maksimal 2 Challenge Aktif! Selesaikan atau hentikan salah satu challenge dulu.");
+          return;
+      }
+      if(!window.confirm("Gabung challenge ini?")) return;
+
       try {
           await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: id }, { headers: getAuthHeader() });
           alert("Berhasil bergabung!");
           fetchData();
-      } catch(e) { alert("Gagal bergabung"); }
+      } catch(e) { alert(e.response?.data?.message || "Gagal bergabung"); }
   };
 
   const closeTutorial = () => {
@@ -319,7 +354,6 @@ const UserDashboard = () => {
       localStorage.setItem('hasSeenTutorial', 'true');
   };
 
-  // ... (Upload Foto, Add Friend, Calendar Logic tetap sama) ...
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
   const triggerFileInput = () => fileInputRef.current.click();
   const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
@@ -374,6 +408,66 @@ const UserDashboard = () => {
           </div>
       </div>
   );
+
+  // --- RENDER HELPER FOR DAILY CARD ---
+  const renderDailyCard = (data) => {
+      const isCompleted = data.today_status === 'completed';
+      const isPending = data.today_status === 'pending';
+      const selected = selectedTasksMap[data.challenge_id] || [];
+      const journal = journalsMap[data.challenge_id] || "";
+
+      return (
+          <Card key={data.challenge_id} style={{ marginBottom: '1.5rem', background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+              <CardHeader style={{paddingBottom:'0.5rem', background: currentTheme.light}}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                      <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize: '1rem', color: currentTheme.text}}> 
+                          <Activity size={18}/> {data.challenge_title} - Hari {data.day} 
+                      </CardTitle>
+                      {isCompleted && <span style={{fontSize: '0.75rem', background: '#166534', color: 'white', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold'}}>Selesai</span>}
+                  </div>
+              </CardHeader>
+              <CardContent style={{paddingTop:'1rem'}}>
+                  {data.fact && (
+                      <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '0.8rem', borderRadius: '8px', borderLeft: `3px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
+                          <p style={{ fontSize: '0.85rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{data.fact}"</p>
+                      </div>
+                  )}
+
+                  {isCompleted ? (
+                      <div style={{textAlign:'center', padding:'1.5rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
+                          <CheckCircle size={32} style={{margin:'0 auto 0.5rem auto'}} />
+                          <h3 style={{fontSize:'1.1rem', fontWeight:'bold'}}>Misi Tuntas!</h3>
+                          {data.ai_feedback && <div style={{marginTop:'0.5rem', fontStyle:'italic', fontSize:'0.8rem'}}>"{data.ai_feedback}"</div>}
+                      </div>
+                  ) : (
+                      <>
+                          <p style={{marginBottom:'0.8rem', fontWeight:'bold', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Checklist Aktivitas:</p>
+                          <div style={{display:'flex', flexDirection:'column', gap:'0.6rem'}}>
+                              {data.tasks?.map((task, idx) => {
+                                  const isSelected = selected.includes(task);
+                                  return (
+                                      <div key={idx} onClick={() => toggleTaskSelection(data.challenge_id, task)} style={{ padding:'0.8rem', borderRadius:'10px', border: isSelected ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', background: isSelected ? currentTheme.light : (darkMode ? '#334155' : 'white'), cursor:'pointer', display:'flex', alignItems:'center', gap:'0.8rem', transition:'all 0.2s', color: darkMode ? 'white' : 'black' }}>
+                                          <div style={{ width:'20px', height:'20px', borderRadius:'4px', border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, background: isSelected ? currentTheme.primary : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0, color: 'white' }}> {isSelected && <Check size={14} strokeWidth={3}/>} </div>
+                                          <span style={{fontSize:'0.85rem', fontWeight: isSelected ? 'bold' : 'normal'}}>{task}</span>
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                          
+                          <textarea value={journal} onChange={(e) => handleJournalChange(data.challenge_id, e.target.value)} placeholder={`Jurnal untuk ${data.challenge_title}...`} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit', fontSize:'0.9rem' }} ></textarea>
+                          
+                          <div style={{ marginTop: '1rem', display:'flex', gap:'0.5rem' }}>
+                              <button onClick={() => handleSubmitCheckin(data.challenge_id, 'completed')} disabled={isSubmitting || selected.length === 0} style={{ flex:2, background: selected.length > 0 ? currentTheme.primary : '#cbd5e1', color: 'black', border: 'none', padding: '0.8rem', borderRadius: '8px', fontWeight: 'bold', cursor: selected.length > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem' }}> 
+                                  {isSubmitting ? <RefreshCw className="animate-spin" size={16}/> : <CheckCircle size={16}/>} Selesai 
+                              </button>
+                              <button onClick={() => handleSubmitCheckin(data.challenge_id, 'pending')} disabled={isSubmitting} style={{flex:1, background:'transparent', border:'1px solid #ccc', borderRadius:'8px', color: darkMode?'white':'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti</button>
+                          </div>
+                      </>
+                  )}
+              </CardContent>
+          </Card>
+      );
+  };
 
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black' }}><Loader className="animate-spin" size={40}/><p style={{marginTop:'1rem'}}>Memuat Dashboard...</p></div>;
 
@@ -483,13 +577,13 @@ const UserDashboard = () => {
                                 <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
                                 {overview?.notifications?.length > 0 ? (
                                     <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                                        {overview.notifications.map((n, i) => (
-                                            <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
-                                                <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
-                                                <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
-                                                <div style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:'2px'}}>{n.date}</div>
-                                            </div>
-                                        ))}
+                                            {overview.notifications.map((n, i) => (
+                                                <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
+                                                    <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
+                                                    <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
+                                                    <div style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:'2px'}}>{n.date}</div>
+                                                </div>
+                                            ))}
                                     </div>
                                 ) : (<div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>)}
                             </div>
@@ -515,70 +609,28 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* KARTU MISI HARIAN (DEFAULT) */}
-                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', minHeight: '300px' }}>
-                    <CardHeader style={{paddingBottom:'0.5rem'}}>
-                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize: '1.1rem', color: darkMode ? 'white' : 'black'}}> <Activity size={20} color={currentTheme.text}/> Misi Hari Ke-{dailyData?.day || 1} </CardTitle>
-                        {checkinStatus === 'completed' && <span style={{fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><CheckCircle size={12}/> Selesai</span>}
-                        {checkinStatus === 'pending' && <span style={{fontSize: '0.75rem', background: '#fffbeb', color: '#d97706', padding: '4px 8px', borderRadius: '20px', fontWeight: 'bold'}}><Clock size={12}/> Tertunda</span>}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
+                  {/* KARTU MISI HARIAN (LOOPING BERDASARKAN ACTIVE CHALLENGES) */}
+                  <div>
                       {dailyLoading ? (
-                        <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'2rem 0', gap:'1rem'}}>
-                            <Loader className="animate-spin" size={32} color={currentTheme.text} />
-                            <p style={{fontSize:'0.9rem', color:'#64748b'}}>Sedang mengambil misi harian...</p>
-                        </div>
+                          <div style={{textAlign:'center', padding:'2rem', background: darkMode?'#1e293b':'white', borderRadius:'12px'}}>
+                              <Loader className="animate-spin" size={32} color={currentTheme.text} style={{margin:'0 auto'}}/>
+                              <p style={{marginTop:'1rem', fontSize:'0.9rem'}}>Memuat Misi...</p>
+                          </div>
+                      ) : allDailyData.length === 0 ? (
+                          <Card style={{ padding:'2rem', textAlign:'center', background: darkMode?'#1e293b':'white' }}>
+                              <p style={{color:'#64748b'}}>Kamu belum mengikuti challenge apapun.</p>
+                              <p style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>Pilih rekomendasi di bawah untuk mulai!</p>
+                          </Card>
                       ) : (
-                        <>
-                          {dailyData && (
-                            <div style={{ background: darkMode ? '#334155' : '#f8fafc', padding: '1rem', borderRadius: '8px', borderLeft: `4px solid ${currentTheme.text}`, marginBottom: '1rem' }}>
-                              <h4 style={{ fontSize: '0.9rem', fontWeight: 'bold', color: currentTheme.text, marginBottom: '0.2rem' }}>Fakta Hari Ini:</h4>
-                              <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
-                            </div>
-                          )}
-                          {checkinStatus === 'completed' ? (
-                              <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
-                                <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
-                                <h3 style={{fontSize:'1.2rem', fontWeight:'bold', marginBottom:'0.5rem'}}>Misi Selesai!</h3>
-                                <p style={{fontSize:'0.9rem'}}>Hebat! Kamu sudah satu langkah lebih sehat.</p>
-                                {dailyData?.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', color: darkMode ? '#a7f3d0' : '#15803d'}}>"{dailyData.ai_feedback}"</div>}
-                              </div>
-                          ) : (
-                            <div>
-                              <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Pilih 1-3 Misi untuk Dijalankan:</p>
-                              <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                                  {dailyData?.tasks?.map((task, idx) => {
-                                      const isSelected = selectedTasks.includes(task);
-                                      return (
-                                          <div key={idx} onClick={() => toggleTaskSelection(task)} style={{ padding:'1rem', borderRadius:'12px', border: isSelected ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', background: isSelected ? currentTheme.light : (darkMode ? '#334155' : 'white'), cursor:'pointer', display:'flex', alignItems:'center', gap:'0.8rem', transition:'all 0.2s', color: darkMode ? 'white' : 'black' }}>
-                                              <div style={{ width:'24px', height:'24px', borderRadius:'6px', border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, background: isSelected ? currentTheme.primary : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0, color: 'white' }}> {isSelected && <Check size={16} strokeWidth={3}/>} </div>
-                                              <span style={{fontSize:'0.9rem', fontWeight: isSelected ? 'bold' : 'normal'}}>{task}</span>
-                                          </div>
-                                      );
-                                  })}
-                              </div>
-                              <div style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#64748b', textAlign:'right'}}>{selectedTasks.length}/3 Misi Dipilih</div>
-                              <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Bagaimana perasaanmu? (Opsional)" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit' }} ></textarea>
-                              <div style={{ marginTop: '1rem' }}>
-                                <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting || selectedTasks.length === 0} style={{ width: '100%', background: selectedTasks.length > 0 ? currentTheme.primary : '#cbd5e1', color: 'black', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: selectedTasks.length > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: selectedTasks.length > 0 ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none' }}> 
-                                    {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckCircle size={18}/>} Selesaikan {selectedTasks.length} Misi 
-                                </button>
-                                <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{width:'100%', background:'transparent', border:'none', marginTop:'0.8rem', color:'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti Saja</button>
-                              </div>
-                            </div>
-                          )}
-                        </>
+                          allDailyData.map(data => renderDailyCard(data))
                       )}
-                    </CardContent>
-                  </Card>
+                  </div>
 
-                  {/* SECTION BARU: STATISTIK & MANAJEMEN CHALLENGE */}
+                  {/* SECTION: CHALLENGE SAYA (PROGRESS) */}
                   <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
                     <CardHeader>
                         <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem'}}>
-                            <TrendingUp size={18} /> Challenge Saya
+                            <TrendingUp size={18} /> Challenge Saya ({activeChallenges.length}/2)
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -649,19 +701,32 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  {/* SECTION BARU: REKOMENDASI CHALLENGE */}
+                  {/* SECTION: REKOMENDASI CHALLENGE */}
                   {recommendedChallenges.length > 0 && (
                       <div style={{marginTop:'1rem'}}>
                           <h3 style={{fontSize:'1rem', fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Rekomendasi Challenge</h3>
                           <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1rem'}}>
                               {recommendedChallenges.map(rec => (
-                                  <Card key={rec.id} style={{background: darkMode?'#1e293b':'white', border:'1px solid #e2e8f0', cursor:'pointer', overflow:'hidden'}} onClick={()=>handleJoinChallenge(rec.id)}>
+                                  <Card key={rec.id} style={{background: darkMode?'#1e293b':'white', border:'1px solid #e2e8f0', overflow:'hidden'}}>
                                       <div style={{height:'100px', background: currentTheme.light, display:'flex', alignItems:'center', justifyContent:'center'}}>
                                           <Target size={32} color={currentTheme.text}/>
                                       </div>
                                       <div style={{padding:'1rem'}}>
                                           <h4 style={{fontWeight:'bold', fontSize:'0.9rem', marginBottom:'0.3rem', color: darkMode?'white':'black'}}>{rec.title}</h4>
-                                          <button style={{width:'100%', marginTop:'0.5rem', background: currentTheme.primary, border:'none', padding:'6px', borderRadius:'6px', color:'white', fontSize:'0.8rem', fontWeight:'bold', cursor:'pointer'}}>Ikuti</button>
+                                          <button 
+                                            onClick={()=>handleJoinChallenge(rec.id)} 
+                                            disabled={activeChallenges.length >= 2}
+                                            style={{
+                                                width:'100%', marginTop:'0.5rem', 
+                                                background: activeChallenges.length >= 2 ? '#cbd5e1' : currentTheme.primary, 
+                                                border:'none', padding:'6px', borderRadius:'6px', 
+                                                color: activeChallenges.length >= 2 ? '#64748b' : 'white', 
+                                                fontSize:'0.8rem', fontWeight:'bold', 
+                                                cursor: activeChallenges.length >= 2 ? 'not-allowed' : 'pointer'
+                                            }}
+                                          >
+                                              {activeChallenges.length >= 2 ? "Slot Penuh" : "Ikuti"}
+                                          </button>
                                       </div>
                                   </Card>
                               ))}
@@ -714,7 +779,6 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* ... (TAB LAIN: CHECKIN, SHOP, FRIENDS, SETTINGS TETAP SAMA SEPERTI SEBELUMNYA) ... */}
           {activeTab === 'checkin' && (
               <div>
                   <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
