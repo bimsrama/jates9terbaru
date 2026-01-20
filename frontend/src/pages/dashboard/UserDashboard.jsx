@@ -6,7 +6,8 @@ import {
   Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
-  MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap 
+  MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
+  Home, BookOpen, Shield 
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -22,6 +23,16 @@ const THEMES = {
   purple: { id: 'purple', name: 'Ungu Misteri', primary: '#d8b4fe', light: '#f3e8ff', text: '#6b21a8', gradient: 'linear-gradient(135deg, #ffffff 0%, #d8b4fe 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #581c87 100%)' },
 };
 
+// --- KALIMAT MOTIVASI ---
+const MOTIVATIONS = [
+  "Kesehatan adalah investasi terbaikmu.",
+  "Setiap langkah kecil membawamu lebih dekat ke tujuan.",
+  "Tubuhmu adalah satu-satunya tempat kamu tinggal, jagalah!",
+  "Jangan menyerah, proses tidak akan mengkhianati hasil.",
+  "Hari ini sulit, besok akan lebih baik, lusa kamu juara!",
+  "Disiplin adalah jembatan antara tujuan dan pencapaian."
+];
+
 const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate();
@@ -29,8 +40,8 @@ const UserDashboard = () => {
   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
-  const [activeChallenges, setActiveChallenges] = useState([]); // List challenge aktif
-  const [recommendedChallenges, setRecommendedChallenges] = useState([]); // List rekomendasi
+  const [activeChallenges, setActiveChallenges] = useState([]); 
+  const [recommendedChallenges, setRecommendedChallenges] = useState([]); 
   
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,11 +113,25 @@ const UserDashboard = () => {
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [missionDone, setMissionDone] = useState(false);
 
+  // --- STATE BARU: Tutorial & Privacy & Refresh ---
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [motivationText, setMotivationText] = useState("");
+  const mainContentRef = useRef(null);
+  const startY = useRef(0);
+
   useEffect(() => {
     const handleResize = () => { setIsDesktop(window.innerWidth > 1024); if(window.innerWidth > 1024) setSidebarOpen(false); };
     window.addEventListener('resize', handleResize);
     if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
     
+    // Cek apakah user baru (logika sederhana: cek localStorage)
+    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+    if (!hasSeenTutorial) {
+        setShowTutorial(true);
+    }
+
     fetchData(); 
     fetchDailyContent(); 
     fetchArticles(); 
@@ -142,6 +167,42 @@ const UserDashboard = () => {
           setProgressStats({ completed, streak: currentStreak, percentage, message: msg });
       }
   }, [checkinHistory]);
+
+  // --- PULL TO REFRESH LOGIC ---
+  const handleTouchStart = (e) => {
+      // Hanya aktifkan jika scroll di posisi paling atas
+      if (mainContentRef.current.scrollTop === 0) {
+          startY.current = e.touches[0].clientY;
+      }
+  };
+
+  const handleTouchMove = (e) => {
+      if (startY.current === 0) return;
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - startY.current;
+      if (diff > 50 && mainContentRef.current.scrollTop === 0) {
+          // Indikasi visual mau refresh (opsional, bisa tambah CSS transform)
+      }
+  };
+
+  const handleTouchEnd = async (e) => {
+      const currentY = e.changedTouches[0].clientY;
+      const diff = currentY - startY.current;
+      if (diff > 100 && mainContentRef.current.scrollTop === 0 && !refreshing) {
+          setRefreshing(true);
+          const randomMotivation = MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
+          setMotivationText(randomMotivation);
+          
+          // Refresh semua data
+          await Promise.all([fetchData(), fetchDailyContent(), fetchArticles()]);
+          
+          setTimeout(() => {
+              setRefreshing(false);
+              startY.current = 0;
+          }, 1500);
+      }
+      startY.current = 0;
+  };
 
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
   const changeThemeColor = (k) => { setThemeColor(k); localStorage.setItem('colorTheme', k); };
@@ -182,7 +243,7 @@ const UserDashboard = () => {
       setRecommendedChallenges(overviewRes.data.recommendations || []);
       
       const tip = "Jaga kesehatan!";
-      setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Bagaimana perkembangan challenge kamu hari ini?" }]);
+      setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva. Bagaimana perkembangan challenge kamu hari ini?" }]);
       
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
@@ -253,6 +314,11 @@ const UserDashboard = () => {
       } catch(e) { alert("Gagal bergabung"); }
   };
 
+  const closeTutorial = () => {
+      setShowTutorial(false);
+      localStorage.setItem('hasSeenTutorial', 'true');
+  };
+
   // ... (Upload Foto, Add Friend, Calendar Logic tetap sama) ...
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
   const triggerFileInput = () => fileInputRef.current.click();
@@ -312,20 +378,54 @@ const UserDashboard = () => {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100vh', background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black' }}><Loader className="animate-spin" size={40}/><p style={{marginTop:'1rem'}}>Memuat Dashboard...</p></div>;
 
   return (
-    <div style={{ display: 'flex', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       <style>{`
         header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }
         body { padding-top: 0 !important; margin-top: 0 !important; }
         :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }
         .dark { --theme-gradient: ${currentTheme.darkGradient}; }
+        /* Style untuk Sidebar Desktop */
         .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; }
         .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 600; }
+        
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; alignItems: center; justifyContent: center; z-index: 99999; }
         .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; maxWidth: 500px; width: 90%; maxHeight: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }
+        
+        /* Style untuk Bottom Navbar (Mobile Only) */
+        .mobile-navbar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: ${darkMode ? '#1e293b' : 'white'};
+            border-top: 1px solid ${darkMode ? '#334155' : '#e2e8f0'};
+            padding: 0.8rem 0;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .mobile-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            font-size: 0.7rem;
+            color: ${darkMode ? '#94a3b8' : '#64748b'};
+            cursor: pointer;
+        }
+        .mobile-nav-item.active {
+            color: ${currentTheme.primary};
+            font-weight: bold;
+        }
       `}</style>
 
-      {/* SIDEBAR */}
-      <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', position: isDesktop ? 'relative' : 'fixed', top: 0, left: 0, zIndex: 50, display: 'flex', flexDirection: 'column', transition: 'transform 0.3s ease', transform: (isDesktop || isSidebarOpen) ? 'translateX(0)' : 'translateX(-100%)', flexShrink: 0 }}>
+      {/* SIDEBAR (DESKTOP ONLY) */}
+      {isDesktop && (
+      <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ padding: '1.5rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}> <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: currentTheme.text }}>VITALYST</h2> </div>
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -333,44 +433,69 @@ const UserDashboard = () => {
             <li><button className={`nav-item ${activeTab==='checkin'?'active':''}`} onClick={() => handleNavClick('checkin')}><Calendar size={20}/> Riwayat Check-in</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
-            <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva AI</button></li>
+            <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => handleNavClick('settings')}><Settings size={20}/> Pengaturan</button></li>
           </ul>
         </nav>
         <div style={{ padding: '1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}><button onClick={logout} className="nav-item" style={{ color: '#ef4444' }}><LogOut size={20} /> Keluar</button></div>
       </aside>
+      )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto' }}>
-        {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white' }}><button onClick={()=>setSidebarOpen(true)} style={{background:'none', border:'none', color:darkMode?'white':'black'}}><Activity/></button><span style={{fontWeight:'bold'}}>VITALYST</span></header>}
+      {/* MAIN CONTENT AREA */}
+      <div 
+        ref={mainContentRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto', paddingBottom: isDesktop ? 0 : '80px' }}
+      >
+        {/* Mobile Header */}
+        {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white', position: 'sticky', top: 0, zIndex: 50 }}>
+            <span style={{fontWeight:'bold', fontSize:'1.2rem'}}>VITALYST</span>
+            <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', position:'relative'}}>
+                <Bell size={24} color={darkMode?'white':'#1e293b'}/>
+                {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:0, right:0, width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></span>}
+            </button>
+        </header>}
         
+        {/* Pull to Refresh Indicator */}
+        {refreshing && (
+            <div style={{textAlign: 'center', padding: '1rem', background: currentTheme.light, color: currentTheme.text}}>
+                <RefreshCw className="animate-spin" size={20} style={{display:'inline-block', marginRight:'8px'}}/>
+                Memuat ulang data...
+            </div>
+        )}
+
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
           {activeTab === 'dashboard' && (
             <>
-              {/* HEADER GREETING */}
+              {/* HEADER GREETING (Desktop Only / Below Header Mobile) */}
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
-                <div style={{position:'relative'}}>
-                    <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', cursor:'pointer', position:'relative'}}>
-                        <Bell size={24} color={darkMode?'white':'#1e293b'}/>
-                        {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:-2, right:-2, width:'10px', height:'10px', background:'red', borderRadius:'50%'}}></span>}
-                    </button>
-                    {showNotifDropdown && (
-                        <div style={{position:'absolute', top:'100%', right:0, width:'280px', background: darkMode?'#334155':'white', boxShadow:'0 5px 15px rgba(0,0,0,0.2)', borderRadius:'12px', padding:'1rem', zIndex:100, border: '1px solid #e2e8f0'}}>
-                            <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
-                            {overview?.notifications?.length > 0 ? (
-                                <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                                    {overview.notifications.map((n, i) => (
-                                        <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
-                                            <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
-                                            <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
-                                            <div style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:'2px'}}>{n.date}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (<div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>)}
-                        </div>
-                    )}
-                </div>
+                {isDesktop && (
+                    <div style={{position:'relative'}}>
+                        <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', cursor:'pointer', position:'relative'}}>
+                            <Bell size={24} color={darkMode?'white':'#1e293b'}/>
+                            {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:-2, right:-2, width:'10px', height:'10px', background:'red', borderRadius:'50%'}}></span>}
+                        </button>
+                        {showNotifDropdown && (
+                            <div style={{position:'absolute', top:'100%', right:0, width:'280px', background: darkMode?'#334155':'white', boxShadow:'0 5px 15px rgba(0,0,0,0.2)', borderRadius:'12px', padding:'1rem', zIndex:100, border: '1px solid #e2e8f0'}}>
+                                <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
+                                {overview?.notifications?.length > 0 ? (
+                                    <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
+                                        {overview.notifications.map((n, i) => (
+                                            <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
+                                                <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
+                                                <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
+                                                <div style={{fontSize:'0.7rem', color:'#94a3b8', marginTop:'2px'}}>{n.date}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (<div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>)}
+                            </div>
+                        )}
+                    </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
@@ -554,7 +679,7 @@ const UserDashboard = () => {
                         </div>
                         <div> 
                             <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> 
-                                Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/> 
+                                Dr. Alva <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/> 
                             </h3> 
                             <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Coach Kesehatan Pribadi Anda</p> 
                         </div>
@@ -579,6 +704,13 @@ const UserDashboard = () => {
                       </div>
                   </div>
               </div>
+
+              {/* MOTIVASI DI BAWAH REFERRAL */}
+              {motivationText && (
+                  <div style={{marginTop:'2rem', textAlign:'center', padding:'1rem', fontStyle:'italic', color: darkMode?'#cbd5e1':'#64748b', animation:'fadeIn 0.5s ease'}}>
+                      "{motivationText}"
+                  </div>
+              )}
             </>
           )}
 
@@ -666,6 +798,10 @@ const UserDashboard = () => {
                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}> <div style={{ position: 'relative', width:'80px', height:'80px' }}> <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}> {overview?.user?.profile_picture ? <img src={`${BACKEND_URL}${overview.user.profile_picture}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>} </div> <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleProfilePictureUpload} /> </div> <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>{uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>} {uploadingImage ? "Mengupload..." : "Ganti Foto"}</button> </div> </CardContent> </Card>
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Ubah Tema</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}> {Object.values(THEMES).map((theme) => ( <div key={theme.id} onClick={() => changeThemeColor(theme.id)} style={{ cursor: 'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem' }}> <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: theme.gradient, border: themeColor === theme.id ? `3px solid ${darkMode?'white':'#1e293b'}` : '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}> {themeColor === theme.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>} </div> </div> ))} </div> </CardContent> </Card>
+                  
+                  {/* TOMBOL KEBIJAKAN PRIVASI */}
+                  <button onClick={() => setShowPrivacy(true)} style={{ width: '100%', padding: '1rem', border: '1px solid #e2e8f0', background: darkMode?'#334155':'white', borderRadius: '8px', color: darkMode?'white':'#1e293b', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><Shield size={20}/> Kebijakan Privasi</button>
+                  
                   <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><LogOut size={20}/> Keluar dari Aplikasi</button>
                </div>
             </div>
@@ -673,7 +809,77 @@ const UserDashboard = () => {
         </main>
       </div>
 
+      {/* --- MOBILE NAVBAR --- */}
+      {!isDesktop && (
+          <nav className="mobile-navbar">
+              <button className={`mobile-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleNavClick('dashboard')}>
+                  <Home size={22} />
+                  <span>Home</span>
+              </button>
+              <button className={`mobile-nav-item ${activeTab === 'checkin' ? 'active' : ''}`} onClick={() => handleNavClick('checkin')}>
+                  <Calendar size={22} />
+                  <span>History</span>
+              </button>
+              <button className={`mobile-nav-item ${activeTab === 'shop' ? 'active' : ''}`} onClick={() => handleNavClick('shop')}>
+                  <ShoppingBag size={22} />
+                  <span>Shop</span>
+              </button>
+              <button className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => handleNavClick('settings')}>
+                  <User size={22} />
+                  <span>Profil</span>
+              </button>
+          </nav>
+      )}
+
       {/* --- MODALS --- */}
+      
+      {/* WELCOME TUTORIAL MODAL */}
+      {showTutorial && (
+        <div className="modal-overlay" onClick={closeTutorial}>
+            <div className="modal-content" style={{background:'white', color:'black', textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}>
+                <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}>
+                    <Sparkles size={32} color={currentTheme.text}/>
+                </div>
+                <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2>
+                <div style={{textAlign:'left', fontSize:'0.95rem', color:'#475569', lineHeight:'1.6', marginBottom:'2rem'}}>
+                    <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p>
+                    <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}>
+                        <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li>
+                        <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li>
+                        <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li>
+                        <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li>
+                    </ul>
+                    <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p>
+                </div>
+                <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button>
+            </div>
+        </div>
+      )}
+
+      {/* PRIVACY POLICY MODAL */}
+      {showPrivacy && (
+        <div className="modal-overlay" onClick={()=>setShowPrivacy(false)}>
+            <div className="modal-content" style={{background: darkMode?'#1e293b':'white', color: darkMode?'white':'black', maxWidth:'500px', maxHeight:'80vh', overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                    <h2 style={{fontSize:'1.3rem', fontWeight:'bold'}}>Kebijakan Privasi</h2>
+                    <button onClick={()=>setShowPrivacy(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button>
+                </div>
+                <div style={{lineHeight:'1.6', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#475569'}}>
+                    <p style={{marginBottom:'1rem'}}>Terakhir diperbarui: Januari 2026</p>
+                    <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>1. Informasi yang Kami Kumpulkan</h4>
+                    <p style={{marginBottom:'1rem'}}>Kami mengumpulkan informasi seperti nama, nomor telepon (untuk verifikasi WhatsApp), dan data kesehatan yang Anda masukkan untuk personalisasi challenge.</p>
+                    <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>2. Penggunaan Data</h4>
+                    <p style={{marginBottom:'1rem'}}>Data Anda digunakan untuk memantau progres kesehatan, mengirimkan pengingat misi harian, dan rekomendasi produk kesehatan yang relevan.</p>
+                    <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>3. Keamanan Data</h4>
+                    <p style={{marginBottom:'1rem'}}>Kami menjaga kerahasiaan data Anda dan tidak akan membagikannya kepada pihak ketiga tanpa persetujuan Anda, kecuali diwajibkan oleh hukum.</p>
+                    <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>4. Hubungi Kami</h4>
+                    <p>Jika ada pertanyaan mengenai privasi ini, silakan hubungi tim support kami.</p>
+                </div>
+                <button onClick={()=>setShowPrivacy(false)} style={{width:'100%', marginTop:'2rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black', fontWeight:'bold'}}>Tutup</button>
+            </div>
+        </div>
+      )}
+
       {showCheckoutModal && selectedProduct && (
         <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)}>
             <div className="modal-content" style={{background:'white', color:'black'}} onClick={e=>e.stopPropagation()}>
