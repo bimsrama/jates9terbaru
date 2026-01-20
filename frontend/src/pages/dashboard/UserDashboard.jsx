@@ -6,7 +6,7 @@ import {
   Activity, Users, LogOut, Settings, User, Medal, Copy, ChevronRight, QrCode, 
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
-  MessageSquareQuote, ShoppingCart, Zap, Target, TrendingUp // <--- IMPORT LENGKAP
+  MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp 
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -29,6 +29,9 @@ const UserDashboard = () => {
   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
+  const [activeChallenges, setActiveChallenges] = useState([]); // List challenge aktif
+  const [recommendedChallenges, setRecommendedChallenges] = useState([]); // List rekomendasi
+  
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyLoading, setDailyLoading] = useState(true);
@@ -122,29 +125,20 @@ const UserDashboard = () => {
 
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
-  useEffect(() => { 
-      if (activeTab === 'checkin') {
-          fetchCheckinHistory(); 
-      }
-  }, [activeTab]);
+  useEffect(() => { if (activeTab === 'checkin') fetchCheckinHistory(); }, [activeTab]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
   // Kalkulasi Statistik saat checkinHistory berubah
   useEffect(() => {
       if (checkinHistory.length > 0) {
           const completed = checkinHistory.filter(h => h.status === 'completed').length;
-          const percentage = Math.round((completed / 30) * 100); // Asumsi challenge 30 hari
-          
-          // Hitung Streak Sederhana
-          let currentStreak = 0;
-          // (Logic streak sederhana bisa dikembangkan lebih lanjut)
-          if(completed > 0) currentStreak = 1; // Placeholder logic
-
+          const percentage = Math.round((completed / 30) * 100); 
+          let currentStreak = completed > 0 ? 1 : 0; // Simplified streak
           let msg = "Ayo mulai langkah pertamamu!";
           if (percentage >= 80) msg = "Luar biasa! Konsistensi kamu di level elit. Pertahankan ritme ini!";
           else if (percentage >= 50) msg = "Kerja bagus! Kamu sudah separuh jalan. Jangan kendor sekarang.";
           else if (percentage >= 20) msg = "Start yang baik. Jadikan kesehatan sebagai kebiasaan harianmu.";
           else msg = "Setiap langkah kecil berharga. Ayo lebih rajin check-in!";
-
           setProgressStats({ completed, streak: currentStreak, percentage, message: msg });
       }
   }, [checkinHistory]);
@@ -183,8 +177,13 @@ const UserDashboard = () => {
     try {
       const overviewRes = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() });
       setOverview(overviewRes.data);
+      // Data Baru: Challenge Aktif & Rekomendasi
+      setActiveChallenges(overviewRes.data.active_challenges || []);
+      setRecommendedChallenges(overviewRes.data.recommendations || []);
+      
       const tip = "Jaga kesehatan!";
-      setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Ada keluhan apa hari ini?" }]);
+      setChatHistory([{ role: "system_tip", content: tip }, { role: "assistant", content: "Halo! Saya Dr. Alva AI. Bagaimana perkembangan challenge kamu hari ini?" }]);
+      
       const challengeRes = await axios.get(`${BACKEND_URL}/api/challenges`);
       setChallenges(challengeRes.data);
     } catch (error) { console.error(error); } finally { setLoading(false); }
@@ -192,7 +191,6 @@ const UserDashboard = () => {
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
   
-  // --- FETCH DAILY CONTENT (WITH LOADING) ---
   const fetchDailyContent = async () => { 
       setDailyLoading(true); 
       try { 
@@ -200,27 +198,17 @@ const UserDashboard = () => {
           setDailyData(res.data); 
           setCheckinStatus(res.data.today_status || null);
           if(res.data.today_status === 'completed') setMissionDone(true); else setMissionDone(false);
-      } catch (e) {
-          console.error(e);
-      } finally {
-          setTimeout(() => setDailyLoading(false), 600);
-      }
+      } catch (e) { console.error(e); } 
+      finally { setTimeout(() => setDailyLoading(false), 600); }
   };
 
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   
-  // --- FIX BELANJA BLANK ---
   const fetchProducts = async () => { 
       try { 
           const res = await axios.get(`${BACKEND_URL}/api/products`); 
-          if (Array.isArray(res.data)) {
-              setProducts(res.data); 
-          } else {
-              setProducts([]); 
-          }
-      } catch(e) { 
-          setProducts([]); 
-      } 
+          if(Array.isArray(res.data)) { setProducts(res.data); } else { setProducts([]); }
+      } catch(e){ setProducts([]); } 
   };
   
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
@@ -232,61 +220,46 @@ const UserDashboard = () => {
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
-  // --- LOGIC MULTI SELECT ---
   const toggleTaskSelection = (task) => {
-    if (selectedTasks.includes(task)) {
-      setSelectedTasks(prev => prev.filter(t => t !== task));
-    } else {
-      if (selectedTasks.length < 3) {
-        setSelectedTasks(prev => [...prev, task]);
-      }
-    }
+    if (selectedTasks.includes(task)) { setSelectedTasks(prev => prev.filter(t => t !== task)); } else { if (selectedTasks.length < 3) { setSelectedTasks(prev => [...prev, task]); } }
   };
 
   const handleSubmitCheckin = async (status) => { 
       if(isSubmitting) return; 
-      if(status === 'completed' && selectedTasks.length === 0) {
-          alert("Pilih minimal 1 aktivitas untuk diselesaikan.");
-          return;
-      }
-
+      if(status === 'completed' && selectedTasks.length === 0) { alert("Pilih minimal 1 aktivitas untuk diselesaikan."); return; }
       setIsSubmitting(true); 
       try { 
-          await axios.post(`${BACKEND_URL}/api/checkin`, { 
-              journal, 
-              status, 
-              completed_tasks: selectedTasks 
-          }, {headers:getAuthHeader()}); 
-          
+          await axios.post(`${BACKEND_URL}/api/checkin`, { journal, status, completed_tasks: selectedTasks, challenge_id: dailyData?.challenge_id }, {headers:getAuthHeader()}); 
           setCheckinStatus(status); 
-          if(status === 'completed') { 
-              setMissionDone(true); 
-              alert("Luar biasa! Misi selesai. Cek laporan progress AI di tab History."); 
-              fetchData(); 
-          }
+          if(status === 'completed') { setMissionDone(true); alert("Luar biasa! Misi selesai. Cek laporan progress AI di tab History."); fetchData(); }
           if(status === 'pending') { alert("Oke, pengingat telah diset untuk jam 19:00 WIB!"); }
-      } catch(e){ 
-          alert(e.response?.data?.message || "Gagal check-in."); 
-      } finally { 
-          setIsSubmitting(false); 
-      } 
+      } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
   };
   
-  const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
-  const triggerFileInput = () => fileInputRef.current.click();
-
-  const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
-  const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
-
-  // --- CALENDAR & HISTORY DETAIL ---
-  const handleDateClick = (log) => {
-      if (log && log.status === 'completed') {
-          setSelectedLogDetail(log);
-      } else {
-          setSelectedLogDetail(null);
-      }
+  // --- MANAGE CHALLENGE ACTIONS (Pause/Resume/Stop) ---
+  const handleChallengeAction = async (id, action) => {
+      if(!window.confirm(`Yakin ingin ${action} challenge ini?`)) return;
+      try {
+          await axios.post(`${BACKEND_URL}/api/user/challenge/action`, { challenge_id: id, action: action }, { headers: getAuthHeader() });
+          fetchData(); // Refresh list
+      } catch(e) { alert("Gagal update status"); }
   };
 
+  const handleJoinChallenge = async (id) => {
+      try {
+          await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: id }, { headers: getAuthHeader() });
+          alert("Berhasil bergabung!");
+          fetchData();
+      } catch(e) { alert("Gagal bergabung"); }
+  };
+
+  // ... (Upload Foto, Add Friend, Calendar Logic tetap sama) ...
+  const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if (!file) return; setUploadingImage(true); const formData = new FormData(); formData.append('image', file); try { const res = await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, formData, { headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' } }); setOverview(prev => ({ ...prev, user: { ...prev.user, profile_picture: res.data.image_url } })); alert("Foto berhasil diubah!"); } catch (err) { alert("Gagal upload foto."); } finally { setUploadingImage(false); } };
+  const triggerFileInput = () => fileInputRef.current.click();
+  const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
+  const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
+  const handleDateClick = (log) => { if (log && log.status === 'completed') { setSelectedLogDetail(log); } else { setSelectedLogDetail(null); } };
+  
   const renderCalendar = () => {
     const year = calendarDate.getFullYear(); const month = calendarDate.getMonth();
     const firstDay = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -298,39 +271,17 @@ const UserDashboard = () => {
         const log = checkinHistory.find(h => h.date === currentDateStr);
         let statusColor = darkMode ? '#334155' : '#f1f5f9'; let textColor = darkMode ? '#94a3b8' : '#64748b';
         let cursorStyle = 'default';
-
         if (log) { 
-            if (log.status === 'completed') { 
-                statusColor = '#dcfce7'; textColor = '#166534'; cursorStyle = 'pointer';
-            } else if (log.status === 'skipped') { 
-                statusColor = '#fee2e2'; textColor = '#991b1b'; 
-            } 
+            if (log.status === 'completed') { statusColor = '#dcfce7'; textColor = '#166534'; cursorStyle = 'pointer'; } 
+            else if (log.status === 'skipped') { statusColor = '#fee2e2'; textColor = '#991b1b'; } 
         }
-        
-        days.push(
-            <div 
-                key={d} 
-                onClick={() => handleDateClick(log)}
-                style={{ 
-                    height: '40px', width:'40px', background: statusColor, borderRadius: '8px', 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    fontWeight: 'bold', fontSize: '0.9rem', color: textColor, 
-                    cursor: cursorStyle, margin:'0 auto', transition:'transform 0.1s' 
-                }}
-            >
-                {d}
-            </div>
-        );
+        days.push( <div key={d} onClick={() => handleDateClick(log)} style={{ height: '40px', width:'40px', background: statusColor, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: textColor, cursor: cursorStyle, margin:'0 auto', transition:'transform 0.1s' }}> {d} </div> );
     }
     return days;
   };
   const changeMonth = (offset) => { const newDate = new Date(calendarDate.setMonth(calendarDate.getMonth() + offset)); setCalendarDate(new Date(newDate)); };
 
-  // --- CHECKOUT LOGIC ---
-  const openCheckout = async (product) => {
-      setSelectedProduct(product); setShippingCost(0); setShippingMethod("jne"); setAppliedCoupon(null); setCouponCode(""); setShowCheckoutModal(true);
-      try { const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); setAddresses(res.data); if (res.data.length > 0) { handleSelectAddrCheckout(res.data[0].id); } else { setSelectedAddrId(""); } } catch(e){}
-  };
+  const openCheckout = async (product) => { setSelectedProduct(product); setShippingCost(0); setShippingMethod("jne"); setAppliedCoupon(null); setCouponCode(""); setShowCheckoutModal(true); try { const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); setAddresses(res.data); if (res.data.length > 0) { handleSelectAddrCheckout(res.data[0].id); } else { setSelectedAddrId(""); } } catch(e){} };
   const handleMethodChange = (method) => { setShippingMethod(method); if (method === 'pickup') setShippingCost(0); else if (selectedAddrId) handleSelectAddrCheckout(selectedAddrId); };
   const handleSelectAddrCheckout = async (addrId) => { setSelectedAddrId(addrId); if (shippingMethod === 'pickup') return; const addr = addresses.find(a => a.id === Number(addrId)); if(addr) { const res = await axios.post(`${BACKEND_URL}/api/location/rate`, { city_id: addr.city_id }, { headers: getAuthHeader() }); setShippingCost(res.data.cost); } };
   const handleProcessPayment = async () => {
@@ -343,10 +294,8 @@ const UserDashboard = () => {
       } catch (error) { alert("Gagal memproses transaksi: " + (error.response?.data?.message || "Server Error")); }
   };
   const handleOpenInvoice = (order) => { setSelectedInvoice(order); setShowInvoice(true); };
-
   const badgeStyle = { background: 'linear-gradient(45deg, #FFD700, #FDB931)', color: '#7B3F00', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px', boxShadow: '0 2px 5px rgba(0,0,0,0.2)', border: '1px solid #FFF' };
-
-  // --- COMPONENT: SHOP BANNER ---
+  
   const ShopBanner = () => (
       <div style={{ marginBottom: '2rem', position:'relative', borderRadius: '16px', overflow:'hidden', boxShadow:'0 10px 20px rgba(0,0,0,0.1)' }}>
           <div style={{ background: 'linear-gradient(135deg, #059669 0%, #34d399 100%)', padding: '2.5rem 2rem', color: 'white', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -395,10 +344,9 @@ const UserDashboard = () => {
         {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white' }}><button onClick={()=>setSidebarOpen(true)} style={{background:'none', border:'none', color:darkMode?'white':'black'}}><Activity/></button><span style={{fontWeight:'bold'}}>VITALYST</span></header>}
         
         <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
-          {/* DASHBOARD CONTENT */}
           {activeTab === 'dashboard' && (
             <>
-              {/* HEADER: GREETING & NOTIF */}
+              {/* HEADER GREETING */}
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
                 <div style={{position:'relative'}}>
@@ -428,6 +376,8 @@ const UserDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: '1.5rem', paddingBottom: '2rem' }}>
                 {/* KOLOM KIRI */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                  
+                  {/* KARTU PROFIL */}
                   <Card style={{ border: 'none', borderRadius: '16px', background: 'var(--theme-gradient)', color: darkMode ? 'white' : '#1e293b', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
                     <CardContent style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ position: 'relative' }}>
@@ -440,6 +390,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
+                  {/* KARTU MISI HARIAN (DEFAULT) */}
                   <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', minHeight: '300px' }}>
                     <CardHeader style={{paddingBottom:'0.5rem'}}>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -449,7 +400,6 @@ const UserDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      {/* === LOADING ANIMATION (KEHILANGAN DATA SEMENTARA) === */}
                       {dailyLoading ? (
                         <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'2rem 0', gap:'1rem'}}>
                             <Loader className="animate-spin" size={32} color={currentTheme.text} />
@@ -463,7 +413,6 @@ const UserDashboard = () => {
                               <p style={{ fontSize: '0.9rem', color: darkMode ? '#e2e8f0' : '#334155', fontStyle:'italic' }}>"{dailyData.fact}"</p>
                             </div>
                           )}
-                          
                           {checkinStatus === 'completed' ? (
                               <div style={{textAlign:'center', padding:'2rem', background: darkMode ? 'rgba(22, 101, 52, 0.2)' : '#f0fdf4', borderRadius:'12px', color: darkMode ? '#86efac' : '#166534', border: '1px solid #bbb'}}>
                                 <div style={{marginBottom:'0.5rem', display:'flex', justifyContent:'center'}}><CheckCircle size={48} /></div>
@@ -474,73 +423,21 @@ const UserDashboard = () => {
                           ) : (
                             <div>
                               <p style={{textAlign:'center', marginBottom:'1rem', fontWeight:'bold', color: currentTheme.text}}>Pilih 1-3 Misi untuk Dijalankan:</p>
-                              
-                              {/* LOGIC MULTI SELECT RENDER */}
                               <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
                                   {dailyData?.tasks?.map((task, idx) => {
                                       const isSelected = selectedTasks.includes(task);
                                       return (
-                                          <div 
-                                              key={idx} 
-                                              onClick={() => toggleTaskSelection(task)} 
-                                              style={{ 
-                                                  padding:'1rem', 
-                                                  borderRadius:'12px', 
-                                                  border: isSelected ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', 
-                                                  background: isSelected ? currentTheme.light : (darkMode ? '#334155' : 'white'), 
-                                                  cursor:'pointer', 
-                                                  display:'flex', 
-                                                  alignItems:'center', 
-                                                  gap:'0.8rem', 
-                                                  transition:'all 0.2s', 
-                                                  color: darkMode ? 'white' : 'black' 
-                                              }}
-                                          >
-                                              <div style={{ 
-                                                  width:'24px', 
-                                                  height:'24px', 
-                                                  borderRadius:'6px', 
-                                                  border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, 
-                                                  background: isSelected ? currentTheme.primary : 'transparent',
-                                                  display:'flex', 
-                                                  alignItems:'center', 
-                                                  justifyContent:'center', 
-                                                  flexShrink: 0,
-                                                  color: 'white'
-                                              }}> 
-                                                  {isSelected && <Check size={16} strokeWidth={3}/>} 
-                                              </div>
+                                          <div key={idx} onClick={() => toggleTaskSelection(task)} style={{ padding:'1rem', borderRadius:'12px', border: isSelected ? `2px solid ${currentTheme.primary}` : '1px solid #e2e8f0', background: isSelected ? currentTheme.light : (darkMode ? '#334155' : 'white'), cursor:'pointer', display:'flex', alignItems:'center', gap:'0.8rem', transition:'all 0.2s', color: darkMode ? 'white' : 'black' }}>
+                                              <div style={{ width:'24px', height:'24px', borderRadius:'6px', border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, background: isSelected ? currentTheme.primary : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0, color: 'white' }}> {isSelected && <Check size={16} strokeWidth={3}/>} </div>
                                               <span style={{fontSize:'0.9rem', fontWeight: isSelected ? 'bold' : 'normal'}}>{task}</span>
                                           </div>
                                       );
                                   })}
                               </div>
-
-                              <div style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#64748b', textAlign:'right'}}>
-                                  {selectedTasks.length}/3 Misi Dipilih
-                              </div>
-
+                              <div style={{marginTop:'0.5rem', fontSize:'0.8rem', color:'#64748b', textAlign:'right'}}>{selectedTasks.length}/3 Misi Dipilih</div>
                               <textarea value={journal} onChange={(e) => setJournal(e.target.value)} placeholder="Bagaimana perasaanmu? (Opsional)" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop:'1rem', background: darkMode ? '#1e293b' : 'white', color: darkMode ? 'white' : 'black', fontFamily:'inherit' }} ></textarea>
-                              
                               <div style={{ marginTop: '1rem' }}>
-                                <button 
-                                    onClick={() => handleSubmitCheckin('completed')} 
-                                    disabled={isSubmitting || selectedTasks.length === 0} 
-                                    style={{ 
-                                        width: '100%', 
-                                        background: selectedTasks.length > 0 ? currentTheme.primary : '#cbd5e1', 
-                                        color: 'black', 
-                                        border: 'none', 
-                                        padding: '1rem', 
-                                        borderRadius: '8px', 
-                                        fontWeight: 'bold', 
-                                        cursor: selectedTasks.length > 0 ? 'pointer' : 'not-allowed', 
-                                        display:'flex', 
-                                        justifyContent:'center', 
-                                        alignItems:'center', 
-                                        gap:'0.5rem', 
-                                        boxShadow: selectedTasks.length > 0 ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none' 
-                                    }}> 
+                                <button onClick={() => handleSubmitCheckin('completed')} disabled={isSubmitting || selectedTasks.length === 0} style={{ width: '100%', background: selectedTasks.length > 0 ? currentTheme.primary : '#cbd5e1', color: 'black', border: 'none', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', cursor: selectedTasks.length > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: selectedTasks.length > 0 ? '0 4px 6px -1px rgba(0,0,0,0.1)' : 'none' }}> 
                                     {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckCircle size={18}/>} Selesaikan {selectedTasks.length} Misi 
                                 </button>
                                 <button onClick={() => handleSubmitCheckin('pending')} disabled={isSubmitting} style={{width:'100%', background:'transparent', border:'none', marginTop:'0.8rem', color:'#64748b', cursor:'pointer', fontWeight:'500'}}>Nanti Saja</button>
@@ -552,26 +449,90 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
 
+                  {/* SECTION BARU: STATISTIK & MANAJEMEN CHALLENGE */}
                   <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}>
-                    <CardContent style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}> <div><h3 style={{ fontSize: '1rem', fontWeight: 'bold', color: currentTheme.text, display:'flex', alignItems:'center', gap:'0.5rem' }}><Activity size={18} /> Statistik Progress</h3></div> </div>
-                        <div style={{ background: darkMode ? '#334155' : '#f8fafc', borderRadius: '12px', padding: '1rem', border: darkMode ? 'none' : '1px solid #e2e8f0' }}>
-                          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem', marginBottom:'1rem'}}>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}> <div style={{fontSize:'0.7rem', color:'#64748b'}}>Berhasil</div> <div style={{fontSize:'1rem', fontWeight:'bold', color:'#166534'}}>{overview?.financial?.total_checkins || 0} Hari</div> </div>
-                              <div style={{background: darkMode?'#1e293b':'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e2e8f0'}}> <div style={{fontSize:'0.7rem', color:'#64748b'}}>Terlewat</div> <div style={{fontSize:'1rem', fontWeight:'bold', color:'#991b1b'}}>{overview?.user?.missed_days || 0} Hari</div> </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}> <div style={{ flex: 1 }}> <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginBottom: '0.3rem' }}><span>Progress</span><span>{Math.round(Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100))}%</span></div> <div style={{ height: '6px', background: darkMode ? '#475569' : '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${Math.min(((overview?.financial?.total_checkins || 0) / 30) * 100, 100)}%`, height: '100%', background: currentTheme.primary, borderRadius: '4px' }}></div></div> </div> </div>
-                        </div>
+                    <CardHeader>
+                        <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem'}}>
+                            <TrendingUp size={18} /> Challenge Saya
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {activeChallenges.length === 0 ? (
+                            <p style={{fontSize:'0.9rem', color:'#64748b'}}>Belum ada challenge yang diikuti.</p>
+                        ) : (
+                            <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                                {activeChallenges.map(chal => (
+                                    <div key={chal.id} style={{padding:'1rem', borderRadius:'12px', background: darkMode?'#334155':'#f8fafc', border:'1px solid #eee'}}>
+                                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
+                                            <span style={{fontWeight:'bold', color: currentTheme.text}}>{chal.title}</span>
+                                            <span style={{fontSize:'0.8rem', padding:'2px 8px', borderRadius:'10px', background: chal.status==='active'?'#dcfce7':'#fee2e2', color: chal.status==='active'?'#166534':'#991b1b'}}>
+                                                {chal.status === 'active' ? 'Aktif' : 'Paused'}
+                                            </span>
+                                        </div>
+                                        {/* Progress Bar */}
+                                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.75rem', marginBottom:'4px', color:'#64748b'}}>
+                                            <span>Hari {chal.day}/30</span>
+                                            <span>{chal.progress}%</span>
+                                        </div>
+                                        <div style={{height:'6px', background:'#e2e8f0', borderRadius:'4px', overflow:'hidden', marginBottom:'1rem'}}>
+                                            <div style={{width:`${chal.progress}%`, height:'100%', background: currentTheme.primary}}></div>
+                                        </div>
+                                        {/* Action Buttons */}
+                                        <div style={{display:'flex', gap:'0.5rem'}}>
+                                            {chal.status === 'active' ? (
+                                                <button onClick={()=>handleChallengeAction(chal.id, 'pause')} style={{flex:1, padding:'6px', borderRadius:'6px', border:'1px solid #cbd5e1', background:'white', fontSize:'0.8rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', color:'black'}}>
+                                                    <Pause size={14}/> Pause
+                                                </button>
+                                            ) : (
+                                                <button onClick={()=>handleChallengeAction(chal.id, 'resume')} style={{flex:1, padding:'6px', borderRadius:'6px', border:'1px solid #cbd5e1', background:'white', fontSize:'0.8rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', color:'black'}}>
+                                                    <Play size={14}/> Resume
+                                                </button>
+                                            )}
+                                            <button onClick={()=>handleChallengeAction(chal.id, 'stop')} style={{flex:1, padding:'6px', borderRadius:'6px', border:'1px solid #fee2e2', background:'#fef2f2', color:'#ef4444', fontSize:'0.8rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer'}}>
+                                                <Square size={14}/> Berhenti
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                   </Card>
+
+                  {/* SECTION BARU: REKOMENDASI CHALLENGE */}
+                  {recommendedChallenges.length > 0 && (
+                      <div style={{marginTop:'1rem'}}>
+                          <h3 style={{fontSize:'1rem', fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Rekomendasi Challenge</h3>
+                          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1rem'}}>
+                              {recommendedChallenges.map(rec => (
+                                  <Card key={rec.id} style={{background: darkMode?'#1e293b':'white', border:'1px solid #e2e8f0', cursor:'pointer', overflow:'hidden'}} onClick={()=>handleJoinChallenge(rec.id)}>
+                                      <div style={{height:'100px', background: currentTheme.light, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                          <Target size={32} color={currentTheme.text}/>
+                                      </div>
+                                      <div style={{padding:'1rem'}}>
+                                          <h4 style={{fontWeight:'bold', fontSize:'0.9rem', marginBottom:'0.3rem', color: darkMode?'white':'black'}}>{rec.title}</h4>
+                                          <button style={{width:'100%', marginTop:'0.5rem', background: currentTheme.primary, border:'none', padding:'6px', borderRadius:'6px', color:'white', fontSize:'0.8rem', fontWeight:'bold', cursor:'pointer'}}>Ikuti</button>
+                                      </div>
+                                  </Card>
+                              ))}
+                          </div>
+                      </div>
+                  )}
                 </div>
                 
-                {/* KOLOM KANAN */}
+                {/* KOLOM KANAN (CHAT & ARTIKEL) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '450px', display:'flex', flexDirection:'column' }}>
                       <div style={{ padding: '1rem', borderBottom: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.8rem', background: darkMode ? '#1e293b' : '#f8fafc' }}>
-                        <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}> <Bot size={24} color={currentTheme.text} /> </div>
-                        <div> <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/> </h3> <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Tanyakan apa saja kepada Dr. Alva</p> </div>
+                        <div style={{ width: '45px', height: '45px', background: currentTheme.light, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0 }}> 
+                            <Bot size={24} color={currentTheme.text} /> 
+                        </div>
+                        <div> 
+                            <h3 style={{ fontWeight: 'bold', fontSize: '1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> 
+                                Dr. Alva AI <Sparkles size={16} fill={currentTheme.primary} color={currentTheme.text}/> 
+                            </h3> 
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#94a3b8' : '#64748b' }}>Coach Kesehatan Pribadi Anda</p> 
+                        </div>
                       </div>
                       <div style={{flex:1, overflowY:'auto', padding:'1rem'}}> {chatHistory.map((msg, i) => ( <div key={i} style={{ padding:'0.6rem 1rem', background: msg.role==='user' ? currentTheme.light : (darkMode?'#334155':'#f1f5f9'), borderRadius:'12px', marginBottom:'0.8rem', maxWidth:'85%', alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', marginLeft: msg.role==='user' ? 'auto' : '0', color: msg.role==='user' ? '#1e3a8a' : (darkMode?'#e2e8f0':'#334155'), fontSize: '0.9rem' }}> {msg.content} </div> ))} {chatLoading && <div style={{ fontSize:'0.8rem', color:'#94a3b8', marginLeft:'0.5rem' }}>Dr. Alva sedang mengetik...</div>} <div ref={chatEndRef}></div> </div>
                       <form onSubmit={handleSendChat} style={{padding:'1rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', display:'flex', gap:'0.5rem'}}> <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'0.7rem', borderRadius:'20px', border:'1px solid #ccc', color:'black', outline:'none', fontSize:'0.9rem'}} placeholder="Tanya keluhan..." /> <button style={{background: currentTheme.primary, border:'none', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}}><Send size={18}/></button> </form>
@@ -583,7 +544,6 @@ const UserDashboard = () => {
                 </div>
               </div>
 
-              {/* REFERRAL CODE SECTION */}
               <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
                   <div style={{ background: darkMode ? '#334155' : 'white', padding: '1rem 2rem', borderRadius: '12px', border: darkMode ? '1px solid #475569' : '1px solid #e2e8f0', display: 'inline-block', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
                       <p style={{ fontSize: '0.8rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.3rem', textTransform:'uppercase', letterSpacing:'1px', fontWeight:'bold' }}>Kode Referral Anda</p>
@@ -597,26 +557,22 @@ const UserDashboard = () => {
             </>
           )}
 
-          {/* TAB CHECKIN */}
+          {/* ... (TAB LAIN: CHECKIN, SHOP, FRIENDS, SETTINGS TETAP SAMA SEPERTI SEBELUMNYA) ... */}
           {activeTab === 'checkin' && (
               <div>
                   <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button>
                     <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Riwayat Kalender</h1>
                   </div>
-                  
                   <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1.5rem', borderRadius:'16px', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', maxWidth:'500px', margin:'0 auto'}}>
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <button onClick={()=>changeMonth(-1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronLeft/></button> <h3 style={{fontWeight:'bold', fontSize:'1.2rem', color: darkMode?'white':'black'}}> {calendarDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} </h3> <button onClick={()=>changeMonth(1)} style={{background:'transparent', border:'none', cursor:'pointer', color: darkMode?'white':'black'}}><ChevronRight/></button> </div>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', textAlign:'center', marginBottom:'0.5rem'}}> {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d => ( <div key={d} style={{fontSize:'0.8rem', fontWeight:'bold', color:'#64748b'}}>{d}</div> ))} </div>
                     <div style={{display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:'0.5rem'}}> {renderCalendar()} </div>
                     <p style={{textAlign:'center', fontSize:'0.8rem', color:'#64748b', marginTop:'1rem'}}>*Klik tanggal hijau untuk melihat Laporan AI.</p>
                   </div>
-
                   {/* REKAPAN PERKEMBANGAN & COACH */}
                   <div style={{maxWidth:'500px', margin:'2rem auto 0 auto'}}>
                       <h3 style={{fontSize:'1.1rem', fontWeight:'bold', marginBottom:'1rem', color: currentTheme.text}}>Statistik & Evaluasi</h3>
-                      
-                      {/* Grid Statistik */}
                       <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'0.8rem', marginBottom:'1.5rem'}}>
                           <div style={{background: darkMode ? '#1e293b' : 'white', padding:'1rem', borderRadius:'12px', border:'1px solid #e2e8f0', textAlign:'center'}}>
                               <div style={{background: currentTheme.light, width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 0.5rem auto'}}><CheckCircle size={16} color={currentTheme.text}/></div>
@@ -634,68 +590,31 @@ const UserDashboard = () => {
                               <div style={{fontSize:'0.7rem', color:'#64748b'}}>Penyelesaian</div>
                           </div>
                       </div>
-
-                      {/* Kartu Evaluasi Coach */}
                       <Card style={{background: darkMode ? '#1e293b' : 'white', borderLeft: `4px solid ${currentTheme.primary}`, overflow:'hidden'}}>
                           <div style={{padding:'1.2rem', display:'flex', gap:'1rem', alignItems:'flex-start'}}>
-                              <div style={{background: currentTheme.light, padding:'0.5rem', borderRadius:'50%', flexShrink:0}}>
-                                  <Bot size={32} color={currentTheme.text}/>
-                              </div>
+                              <div style={{background: currentTheme.light, padding:'0.5rem', borderRadius:'50%', flexShrink:0}}> <Bot size={32} color={currentTheme.text}/> </div>
                               <div>
                                   <h4 style={{fontSize:'1rem', fontWeight:'bold', marginBottom:'0.3rem', color: currentTheme.text}}>Evaluasi Dr. Alva</h4>
-                                  <p style={{fontSize:'0.9rem', lineHeight:'1.5', color: darkMode ? '#e2e8f0' : '#334155'}}>
-                                      "{progressStats.message}"
-                                  </p>
+                                  <p style={{fontSize:'0.9rem', lineHeight:'1.5', color: darkMode ? '#e2e8f0' : '#334155'}}> "{progressStats.message}" </p>
                               </div>
                           </div>
                       </Card>
                   </div>
-
-                  {/* DETAIL LOG MODAL (Saat tanggal diklik) */}
+                  {/* DETAIL LOG MODAL */}
                   {selectedLogDetail && (
                       <div className="modal-overlay" onClick={()=>setSelectedLogDetail(null)}>
                           <div className="modal-content" style={{background: darkMode?'#1e293b':'white', color: darkMode?'white':'black', maxWidth:'450px'}} onClick={e=>e.stopPropagation()}>
-                              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
-                                  <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Laporan Harian</h3>
-                                  <button onClick={()=>setSelectedLogDetail(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20} color={darkMode?'white':'black'}/></button>
-                              </div>
-                              
-                              <div style={{marginBottom:'1.5rem', padding:'1rem', background: currentTheme.light, borderRadius:'12px', color:'#1e3a8a'}}>
-                                  <div style={{fontSize:'0.8rem', textTransform:'uppercase', opacity:0.8, marginBottom:'0.3rem'}}>Tanggal</div>
-                                  <div style={{fontWeight:'bold', fontSize:'1.1rem'}}>{selectedLogDetail.date} (Hari ke-{selectedLogDetail.day})</div>
-                              </div>
-
-                              <div style={{marginBottom:'1.5rem'}}>
-                                  <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><CheckCircle size={18} color={currentTheme.primary}/> Misi Tuntas:</div>
-                                  <ul style={{paddingLeft:'1.5rem', margin:0, color: darkMode?'#cbd5e1':'#475569'}}>
-                                      {selectedLogDetail.chosen_option ? selectedLogDetail.chosen_option.split(', ').map((opt, i) => (
-                                          <li key={i}>{opt}</li>
-                                      )) : <li>Misi Harian</li>}
-                                  </ul>
-                              </div>
-
-                              {selectedLogDetail.notes && (
-                                  <div style={{marginBottom:'1.5rem'}}>
-                                      <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Edit2 size={18} color={currentTheme.primary}/> Jurnal Kamu:</div>
-                                      <div style={{fontSize:'0.9rem', fontStyle:'italic', color: darkMode?'#94a3b8':'#64748b', background: darkMode?'#334155':'#f8fafc', padding:'0.8rem', borderRadius:'8px'}}>
-                                          "{selectedLogDetail.notes}"
-                                      </div>
-                                  </div>
-                              )}
-
-                              <div style={{borderTop: darkMode?'1px solid #334155':'1px solid #e2e8f0', paddingTop:'1rem'}}>
-                                  <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem', color: currentTheme.text}}><Bot size={18}/> Ulasan Coach AI:</div>
-                                  <div style={{lineHeight:'1.5', fontSize:'0.9rem', color: darkMode?'#e2e8f0':'#334155'}}>
-                                      {selectedLogDetail.ai_feedback || "Belum ada ulasan AI untuk hari ini."}
-                                  </div>
-                              </div>
+                              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Laporan Harian</h3> <button onClick={()=>setSelectedLogDetail(null)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={20} color={darkMode?'white':'black'}/></button> </div>
+                              <div style={{marginBottom:'1.5rem', padding:'1rem', background: currentTheme.light, borderRadius:'12px', color:'#1e3a8a'}}> <div style={{fontSize:'0.8rem', textTransform:'uppercase', opacity:0.8, marginBottom:'0.3rem'}}>Tanggal</div> <div style={{fontWeight:'bold', fontSize:'1.1rem'}}>{selectedLogDetail.date} (Hari ke-{selectedLogDetail.day})</div> </div>
+                              <div style={{marginBottom:'1.5rem'}}> <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><CheckCircle size={18} color={currentTheme.primary}/> Misi Tuntas:</div> <ul style={{paddingLeft:'1.5rem', margin:0, color: darkMode?'#cbd5e1':'#475569'}}> {selectedLogDetail.chosen_option ? selectedLogDetail.chosen_option.split(', ').map((opt, i) => ( <li key={i}>{opt}</li> )) : <li>Misi Harian</li>} </ul> </div>
+                              {selectedLogDetail.notes && ( <div style={{marginBottom:'1.5rem'}}> <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem'}}><Edit2 size={18} color={currentTheme.primary}/> Jurnal Kamu:</div> <div style={{fontSize:'0.9rem', fontStyle:'italic', color: darkMode?'#94a3b8':'#64748b', background: darkMode?'#334155':'#f8fafc', padding:'0.8rem', borderRadius:'8px'}}> "{selectedLogDetail.notes}" </div> </div> )}
+                              <div style={{borderTop: darkMode?'1px solid #334155':'1px solid #e2e8f0', paddingTop:'1rem'}}> <div style={{fontWeight:'bold', marginBottom:'0.5rem', display:'flex', alignItems:'center', gap:'0.5rem', color: currentTheme.text}}><Bot size={18}/> Ulasan Coach AI:</div> <div style={{lineHeight:'1.5', fontSize:'0.9rem', color: darkMode?'#e2e8f0':'#334155'}}> {selectedLogDetail.ai_feedback || "Belum ada ulasan AI untuk hari ini."} </div> </div>
                           </div>
                       </div>
                   )}
               </div>
           )}
 
-          {/* TAB SHOP */}
           {activeTab === 'shop' && (
               <div>
                 <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -703,22 +622,10 @@ const UserDashboard = () => {
                 </div>
                 <ShopBanner />
                 <h3 style={{marginTop:'2rem', marginBottom:'1rem', fontWeight:'bold', fontSize:'1.2rem'}}>Katalog Produk</h3>
-                
-                {/* FIX BELANJA BLANK */}
-                {products.length === 0 ? (
-                    <div style={{padding:'3rem', textAlign:'center', color:'#64748b', background: darkMode?'#1e293b':'#f8fafc', borderRadius:'12px', border:'1px dashed #cbd5e1'}}>
-                        <Package size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
-                        <p>Belum ada produk tersedia saat ini.</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                        {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))}
-                    </div>
-                )}
+                {products.length === 0 ? ( <div style={{padding:'3rem', textAlign:'center', color:'#64748b', background: darkMode?'#1e293b':'#f8fafc', borderRadius:'12px', border:'1px dashed #cbd5e1'}}> <Package size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/> <p>Belum ada produk tersedia saat ini.</p> </div> ) : ( <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}> {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))} </div> )}
               </div>
           )}
 
-          {/* TAB FRIENDS */}
           {activeTab === 'friends' && (
               <div style={{maxWidth:'600px', margin:'0 auto'}}>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1> </div>
@@ -742,19 +649,14 @@ const UserDashboard = () => {
       </div>
 
       {/* --- MODALS --- */}
-      
-      {/* MODAL CHECKOUT */}
       {showCheckoutModal && selectedProduct && (
         <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)}>
             <div className="modal-content" style={{background:'white', color:'black'}} onClick={e=>e.stopPropagation()}>
                 <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Checkout</h3>
-                
-                {/* Method Selector */}
                 <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem'}}>
                     <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.6rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold'}}>JNE (Kirim)</button>
                     <button onClick={()=>handleMethodChange('pickup')} style={{flex:1, padding:'0.6rem', border: shippingMethod==='pickup' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='pickup' ? '#f0fdf4' : 'white', fontWeight:'bold'}}>Ambil di Toko</button>
                 </div>
-
                 {shippingMethod === 'jne' && (
                     <div style={{marginBottom:'1rem'}}>
                         <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}><span>Kirim ke:</span><button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer'}}>+ Alamat Baru</button></div>
@@ -765,13 +667,11 @@ const UserDashboard = () => {
                         {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'4px'}}>Belum ada alamat tersimpan.</p>}
                     </div>
                 )}
-
                 <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem', color:'black'}}>
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Harga</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div>
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Ongkir</span><span>Rp {shippingCost.toLocaleString()}</span></div>
                     <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.2rem', marginTop:'0.5rem'}}><span>Total</span><span>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span></div>
                 </div>
-                
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
                     <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button>
                     <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer'}}>Bayar</button>
@@ -780,7 +680,6 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL ORDER HISTORY */}
       {showOrderHistory && (
         <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)}>
             <div className="modal-content" style={{background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}} onClick={e=>e.stopPropagation()}>
@@ -811,7 +710,6 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL INVOICE */}
       {showInvoice && selectedInvoice && (
         <div className="modal-overlay" onClick={()=>setShowInvoice(false)}>
             <div className="modal-content" style={{background:'white', color:'black', width:'100%', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}>
@@ -820,41 +718,20 @@ const UserDashboard = () => {
                     <p style={{fontSize:'0.9rem', color:'#64748b'}}>VITALYST STORE</p>
                     <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date}</p>
                 </div>
-                
                 <div style={{marginBottom:'1.5rem'}}>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Order ID</span>
-                        <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id}</span>
-                    </div>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Status</span>
-                        <span style={{fontWeight:'bold', fontSize:'0.9rem', textTransform:'uppercase'}}>{selectedInvoice.status}</span>
-                    </div>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Metode</span>
-                        <span style={{fontSize:'0.9rem'}}>{selectedInvoice.shipping_method}</span>
-                    </div>
-                    {selectedInvoice.resi && (
-                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                            <span style={{color:'#64748b', fontSize:'0.9rem'}}>Resi</span>
-                            <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>{selectedInvoice.resi}</span>
-                        </div>
-                    )}
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> <span style={{color:'#64748b', fontSize:'0.9rem'}}>Order ID</span> <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id}</span> </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> <span style={{color:'#64748b', fontSize:'0.9rem'}}>Status</span> <span style={{fontWeight:'bold', fontSize:'0.9rem', textTransform:'uppercase'}}>{selectedInvoice.status}</span> </div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> <span style={{color:'#64748b', fontSize:'0.9rem'}}>Metode</span> <span style={{fontSize:'0.9rem'}}>{selectedInvoice.shipping_method}</span> </div>
+                    {selectedInvoice.resi && ( <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> <span style={{color:'#64748b', fontSize:'0.9rem'}}>Resi</span> <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>{selectedInvoice.resi}</span> </div> )}
                 </div>
-
                 <div style={{borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'1rem 0', marginBottom:'1.5rem'}}>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}>
-                        <span style={{fontSize:'0.9rem'}}>{selectedInvoice.product_name}</span>
-                        <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>Rp {selectedInvoice.amount.toLocaleString()}</span>
-                    </div>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> <span style={{fontSize:'0.9rem'}}>{selectedInvoice.product_name}</span> <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>Rp {selectedInvoice.amount.toLocaleString()}</span> </div>
                 </div>
-
                 <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup</button>
             </div>
         </div>
       )}
 
-      {/* MODAL ALAMAT */}
       {showAddressModal && (
         <div className="modal-overlay" onClick={()=>setShowAddressModal(false)}>
             <div className="modal-content" style={{background:'white', color:'black'}} onClick={e=>e.stopPropagation()}>
@@ -876,7 +753,6 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL ARTIKEL (BACA) */}
       {selectedArticle && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}} onClick={()=>setSelectedArticle(null)}>
             <div style={{background: darkMode?'#1e293b':'white', width:'90%', maxWidth:'600px', maxHeight:'80vh', overflowY:'auto', borderRadius:'16px', padding:'2rem', position:'relative', color: darkMode?'white':'black'}} onClick={e=>e.stopPropagation()}>
@@ -888,7 +764,6 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* MODAL QR CODE */}
       {showQRModal && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:9999}} onClick={()=>setShowQRModal(false)}>
             <div style={{background:'white', padding:'2rem', borderRadius:'16px', textAlign:'center'}} onClick={e=>e.stopPropagation()}>
