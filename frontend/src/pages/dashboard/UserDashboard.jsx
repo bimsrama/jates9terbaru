@@ -482,15 +482,27 @@ const UserDashboard = () => {
                                                 {chal.status === 'active' ? 'Aktif' : 'Paused'}
                                             </span>
                                         </div>
-                                        {/* Progress Bar */}
+                                        
+                                        {/* Progress Bar & Stats */}
                                         <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.75rem', marginBottom:'4px', color:'#64748b'}}>
-                                            <span>Hari {chal.day}/30</span>
-                                            <span>{chal.progress}%</span>
+                                            <span>Hari ke-{chal.day > 30 ? '30+' : chal.day}</span>
+                                            <span style={{fontWeight:'bold'}}>{chal.progress}% Tuntas</span>
                                         </div>
-                                        <div style={{height:'6px', background:'#e2e8f0', borderRadius:'4px', overflow:'hidden', marginBottom:'1rem'}}>
-                                            <div style={{width:`${chal.progress}%`, height:'100%', background: currentTheme.primary}}></div>
+                                        <div style={{height:'8px', background:'#e2e8f0', borderRadius:'4px', overflow:'hidden', marginBottom:'0.5rem'}}>
+                                            <div style={{width:`${chal.progress}%`, height:'100%', background: currentTheme.primary, transition: 'width 0.5s ease-in-out'}}></div>
                                         </div>
-                                        {/* Action Buttons - Stop Propagation agar tombol tidak memicu navigasi */}
+
+                                        {/* Detail Selesai/Terlewat */}
+                                        <div style={{display:'flex', gap:'1rem', fontSize:'0.75rem', marginBottom:'1rem', paddingBottom:'0.5rem', borderBottom:'1px dashed #cbd5e1'}}>
+                                            <div style={{display:'flex', alignItems:'center', gap:'4px', color: darkMode?'#86efac':'#166534'}}>
+                                                <CheckCircle size={12}/> {chal.completed || 0} Selesai
+                                            </div>
+                                            <div style={{display:'flex', alignItems:'center', gap:'4px', color: '#ef4444'}}>
+                                                <X size={12}/> {chal.missed || 0} Terlewat
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Action Buttons */}
                                         <div style={{display:'flex', gap:'0.5rem'}} onClick={(e) => e.stopPropagation()}>
                                             {chal.status === 'active' ? (
                                                 <button onClick={()=>handleChallengeAction(chal.id, 'pause')} style={{flex:1, padding:'6px', borderRadius:'6px', border:'1px solid #cbd5e1', background:'white', fontSize:'0.8rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', cursor:'pointer', color:'black'}}>
