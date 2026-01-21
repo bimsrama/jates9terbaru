@@ -1,10 +1,10 @@
-// File: src/pages/user/LaporanKesehatan.jsx
-// Pastikan path import Card sesuai dengan struktur folder Anda
 import React, { useState, useMemo } from 'react';
 import { Trophy, X, CheckCircle, Zap, Target, Bot, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import { Card } from '../../components/ui/card'; 
+// Pastikan path import Card di atas sesuai dengan struktur folder Anda.
+// Jika error, coba ganti menjadi: import { Card } from 'lucide-react'; (hanya jika Anda tidak punya komponen UI khusus)
 
-const LaporanKesehatan = ({ logs, challengeTitle, onClose, theme, user }) => {
+const HealthReport = ({ logs, challengeTitle, onClose, theme, user }) => {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
 
@@ -12,12 +12,7 @@ const LaporanKesehatan = ({ logs, challengeTitle, onClose, theme, user }) => {
   const stats = useMemo(() => {
     const totalDays = 30; 
     const completed = logs.filter(l => l.status === 'completed').length;
-    // Hitung streak sederhana
-    let currentStreak = 0;
-    // (Logic streak sederhana: menghitung total completed. 
-    // Jika ingin streak berturut-turut perlu logic tanggal yang lebih kompleks, 
-    // tapi untuk sekarang kita pakai total completed sebagai representasi keaktifan)
-    currentStreak = completed; 
+    let currentStreak = completed; 
     
     const percentage = Math.round((completed / totalDays) * 100);
     
@@ -47,11 +42,7 @@ const LaporanKesehatan = ({ logs, challengeTitle, onClose, theme, user }) => {
         days.push(<div key={`empty-${i}`} style={{ height: '40px' }}></div>); 
     }
     for (let d = 1; d <= daysInMonth; d++) {
-        // Format tanggal disesuaikan dengan output backend (misal: "01 Jan 2025" atau format default locale)
-        // Kita gunakan format yang sama dengan UserDashboard: 'en-GB'
         const currentDateStr = new Date(year, month, d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        
-        // Cari log di tanggal tersebut
         const log = logs.find(h => h.date === currentDateStr);
         
         let statusColor = '#f1f5f9'; 
@@ -175,4 +166,4 @@ const LaporanKesehatan = ({ logs, challengeTitle, onClose, theme, user }) => {
   );
 };
 
-export default LaporanKesehatan;
+export default HealthReport;
