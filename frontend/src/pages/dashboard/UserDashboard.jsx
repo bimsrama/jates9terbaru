@@ -12,7 +12,7 @@ import {
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 
-// IMPORT FILE BARU DISINI
+// Pastikan file HealthReport.jsx ada di folder yang sama
 import HealthReport from './HealthReport';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
@@ -26,7 +26,6 @@ const THEMES = {
   purple: { id: 'purple', name: 'Ungu Misteri', primary: '#d8b4fe', light: '#f3e8ff', text: '#6b21a8', gradient: 'linear-gradient(135deg, #ffffff 0%, #d8b4fe 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #581c87 100%)' },
 };
 
-// --- KALIMAT MOTIVASI ---
 const MOTIVATIONS = [
   "Kesehatan adalah investasi terbaikmu.",
   "Setiap langkah kecil membawamu lebih dekat ke tujuan.",
@@ -95,9 +94,7 @@ const UserDashboard = () => {
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [aiSummaryResult, setAiSummaryResult] = useState("");
-  
-  // STATE UNTUK LAPORAN KESEHATAN (BARU)
-  const [showReportData, setShowReportData] = useState(null); // Jika tidak null, tampilkan LaporanKesehatan
+  const [showReportData, setShowReportData] = useState(null); // Jika tidak null, tampilkan HealthReport
 
   // --- STATE LAINNYA ---
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -142,7 +139,7 @@ const UserDashboard = () => {
     fetchArticles(); 
     fetchProducts(); 
     fetchAddresses(); 
-    fetchCheckinHistory(); // Ambil history untuk keperluan laporan
+    fetchCheckinHistory(); 
     
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
 
@@ -225,7 +222,6 @@ const UserDashboard = () => {
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); if(Array.isArray(res.data)) { setProducts(res.data); } else { setProducts([]); } } catch(e){ setProducts([]); } };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
   
-  // Fungsi fetch history yang digunakan untuk Laporan
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
@@ -253,7 +249,7 @@ const UserDashboard = () => {
           await axios.post(`${BACKEND_URL}/api/checkin`, { journal: journal, status: status, completed_tasks: tasks, challenge_id: challengeId }, {headers:getAuthHeader()}); 
           if(status === 'completed') { alert("Luar biasa! Misi selesai."); }
           if(status === 'pending') { alert("Oke, pengingat telah diset."); }
-          fetchAllDailyContents(); fetchData(); fetchCheckinHistory(); // Refresh history setelah checkin
+          fetchAllDailyContents(); fetchData(); fetchCheckinHistory(); 
       } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
   };
   
@@ -265,20 +261,14 @@ const UserDashboard = () => {
       } catch(e) { alert("Gagal update status"); }
   };
 
-  // --- LOGIC MEMBUKA LAPORAN ---
   const handleOpenReport = (challenge) => {
-      // Filter log hanya untuk challenge yang diklik (jika di backend checkinHistory ada challenge_id nya)
-      // Jika checkinHistory backend tidak menyimpan ID challenge (hanya tanggal), maka tampilkan semua.
-      // Asumsi: Kita tampilkan semua history dulu, atau filter jika objek log punya properti challenge_id
       const relevantLogs = checkinHistory.filter(log => log.challenge_id === challenge.id || !log.challenge_id);
-      
       setShowReportData({
           challengeTitle: challenge.title,
-          logs: relevantLogs.length > 0 ? relevantLogs : checkinHistory // Fallback jika filter kosong
+          logs: relevantLogs.length > 0 ? relevantLogs : checkinHistory
       });
   };
 
-  // --- LOGIC JOIN CHALLENGE DENGAN QUIZ ---
   const initiateJoinChallenge = async (challenge) => {
       setTargetJoinChallenge(challenge);
       if (activeChallenges.length >= 2) {
@@ -448,7 +438,7 @@ const UserDashboard = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
-      <style>{`<br>        header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }<br>        body { padding-top: 0 !important; margin-top: 0 !important; }<br>        :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }<br>        .dark { --theme-gradient: ${currentTheme.darkGradient}; }<br>        .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; }<br>        .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 600; }<br>        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; alignItems: center; justifyContent: center; z-index: 99999; }<br>        .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; maxWidth: 500px; width: 90%; maxHeight: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }<br>        .mobile-navbar { display: flex; justify-content: space-around; align-items: center; background: ${darkMode ? '#1e293b' : 'white'}; border-top: 1px solid ${darkMode ? '#334155' : '#e2e8f0'}; padding: 0.8rem 0; position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }<br>        .mobile-nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; font-size: 0.7rem; color: ${darkMode ? '#94a3b8' : '#64748b'}; cursor: pointer; }<br>        .mobile-nav-item.active { color: ${currentTheme.primary}; font-weight: bold; }<br>      `}</style>
+      <style>{`<br>        header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }<br>        body { padding-top: 0 !important; margin-top: 0 !important; }<br>        :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }<br>        .dark { --theme-gradient: ${currentTheme.darkGradient}; }<br>        .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; }<br>        .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 600; }<br>        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; alignItems: center; justifyContent: center; z-index: 99999; }<br>        .modal-content { background: ${darkMode ? '#1e293b' : 'white'}; padding: 2rem; border-radius: 16px; maxWidth: 500px; width: 90%; maxHeight: 90vh; overflow-y: auto; color: ${darkMode ? 'white' : 'black'}; }<br>      `}</style>
 
       {isDesktop && (
       <aside style={{ width: '260px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
@@ -486,7 +476,6 @@ const UserDashboard = () => {
             <>
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
-                {/* Notif Icon Desktop */}
                 {isDesktop && (
                     <div style={{position:'relative'}}>
                         <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', cursor:'pointer', position:'relative'}}>
@@ -574,7 +563,6 @@ const UserDashboard = () => {
                                                 <div style={{display:'flex', alignItems:'center', gap:'4px', color: '#ef4444'}}> <X size={12}/> {chal.missed || 0} Terlewat </div>
                                             </div>
                                             
-                                            {/* --- TOMBOL UNTUK MEMBUKA LAPORAN (TANPA NAVIGATE) --- */}
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
                                                 style={{
@@ -694,25 +682,71 @@ const UserDashboard = () => {
         </main>
       </div>
 
-      {/* --- INI BAGIAN NAVBAR MOBILE (PASTIKAN MUNCUL) --- */}
       {!isDesktop && (
-          <nav className="mobile-navbar">
-              <button className={`mobile-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleNavClick('dashboard')}> <Home size={22} /> <span>Home</span> </button>
-              <button className={`mobile-nav-item ${activeTab === 'shop' ? 'active' : ''}`} onClick={() => handleNavClick('shop')}> <ShoppingBag size={22} /> <span>Shop</span> </button>
-              <button className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => handleNavClick('settings')}> <User size={22} /> <span>Profil</span> </button>
+          <nav className="mobile-navbar" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: darkMode ? '#1e293b' : 'white',
+              borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+              padding: '10px 0',
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+              width: '100%',
+              paddingBottom: 'safe-area-inset-bottom'
+          }}>
+              {/* Home */}
+              <button
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'dashboard' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                  onClick={() => handleNavClick('dashboard')}
+              >
+                  <Home size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
+              </button>
+
+              {/* Teman (Menggantikan History) */}
+              <button
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                  onClick={() => handleNavClick('friends')}
+              >
+                  <Users size={22} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
+              </button>
+
+              {/* Shop */}
+              <button
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'shop' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                  onClick={() => handleNavClick('shop')}
+              >
+                  <ShoppingBag size={22} strokeWidth={activeTab === 'shop' ? 2.5 : 2} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
+              </button>
+
+              {/* Profil */}
+              <button
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'settings' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                  onClick={() => handleNavClick('settings')}
+              >
+                  <User size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Profil</span>
+              </button>
           </nav>
       )}
 
-{/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
-{showReportData && (
-    <HealthReport 
-        logs={showReportData.logs} 
-        challengeTitle={showReportData.challengeTitle} 
-        theme={currentTheme}
-        user={overview?.user}
-        onClose={() => setShowReportData(null)} 
-    />
-)}
+      {/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
+      {showReportData && (
+          <HealthReport 
+            logs={showReportData.logs} 
+            challengeTitle={showReportData.challengeTitle} 
+            theme={currentTheme}
+            user={overview?.user}
+            onClose={() => setShowReportData(null)} 
+          />
+      )}
 
       {/* --- ALL MODALS --- */}
       {showTutorial && ( <div className="modal-overlay" onClick={closeTutorial}> <div className="modal-content" style={{background:'white', color:'black', textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}> <Sparkles size={32} color={currentTheme.text}/> </div> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2> <div style={{textAlign:'left', fontSize:'0.95rem', color:'#475569', lineHeight:'1.6', marginBottom:'2rem'}}> <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p> <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}> <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li> <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li> <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li> <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li> </ul> <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p> </div> <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button> </div> </div> )}
