@@ -13,7 +13,7 @@ import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 
 // IMPORT FILE BARU DISINI
-import LaporanKesehatan from './LaporanKesehatan';
+import HealthReport from './HealthReport';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -703,16 +703,16 @@ const UserDashboard = () => {
           </nav>
       )}
 
-      {/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
-      {showReportData && (
-          <LaporanKesehatan 
-            logs={showReportData.logs} 
-            challengeTitle={showReportData.challengeTitle} 
-            theme={currentTheme}
-            user={overview?.user}
-            onClose={() => setShowReportData(null)} 
-          />
-      )}
+{/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
+{showReportData && (
+    <HealthReport 
+        logs={showReportData.logs} 
+        challengeTitle={showReportData.challengeTitle} 
+        theme={currentTheme}
+        user={overview?.user}
+        onClose={() => setShowReportData(null)} 
+    />
+)}
 
       {/* --- ALL MODALS --- */}
       {showTutorial && ( <div className="modal-overlay" onClick={closeTutorial}> <div className="modal-content" style={{background:'white', color:'black', textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}> <Sparkles size={32} color={currentTheme.text}/> </div> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2> <div style={{textAlign:'left', fontSize:'0.95rem', color:'#475569', lineHeight:'1.6', marginBottom:'2rem'}}> <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p> <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}> <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li> <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li> <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li> <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li> </ul> <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p> </div> <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button> </div> </div> )}
