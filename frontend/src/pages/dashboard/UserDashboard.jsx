@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import HealthReport from './HealthReport'; // IMPORT COMPONENT BARU
+import HealthReport from './HealthReport'; // Pastikan file HealthReport.jsx sudah dibuat
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
 // --- KONFIGURASI TEMA ---
 const THEMES = {
-  green: { id: 'green', name: 'Hijau Alami', primary: '#8fec78', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
+  green: { id: 'green', name: 'Hijau Alami', primary: '#10b981', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#fca5a5', light: '#fee2e2', text: '#991b1b', gradient: 'linear-gradient(135deg, #ffffff 0%, #fca5a5 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
   gold: { id: 'gold', name: 'Emas Mewah', primary: '#fcd34d', light: '#fef3c7', text: '#b45309', gradient: 'linear-gradient(135deg, #ffffff 0%, #fcd34d 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #78350f 100%)' },
   blue: { id: 'blue', name: 'Biru Tenang', primary: '#93c5fd', light: '#dbeafe', text: '#1e40af', gradient: 'linear-gradient(135deg, #ffffff 0%, #93c5fd 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)' },
@@ -66,7 +66,7 @@ const UserDashboard = () => {
   const [checkinHistory, setCheckinHistory] = useState([]); // Data untuk Rapor
   const [showHealthReport, setShowHealthReport] = useState(false); // Toggle Rapor
 
-  // STATE LAIN
+  // STATE KHUSUS NAVIGASI & UI
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 1024);
@@ -74,6 +74,7 @@ const UserDashboard = () => {
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
 
+  // STATE LAINNYA
   const [friendsData, setFriendsData] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
@@ -121,7 +122,11 @@ const UserDashboard = () => {
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth > 1024);
     window.addEventListener('resize', handleResize);
-    fetchData(); fetchMyChallenges(); fetchArticles();
+    
+    // Initial Fetch
+    fetchData(); 
+    fetchMyChallenges(); 
+    fetchArticles();
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
     
     // Load Midtrans
@@ -132,11 +137,15 @@ const UserDashboard = () => {
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
+  // --- API CALLS ---
   const fetchData = async () => {
     try { const res = await axios.get(`${BACKEND_URL}/api/dashboard/user/overview`, { headers: getAuthHeader() }); setOverview(res.data); } catch (e) {}
   };
   const fetchMyChallenges = async () => {
     try { const res = await axios.get(`${BACKEND_URL}/api/user/my-challenges`, { headers: getAuthHeader() }); setMyChallenges(res.data); } catch (e) {}
+  };
+  const fetchArticles = async () => { // [FIX] Fungsi ini ditambahkan kembali
+    try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {}
   };
   const fetchDailyContent = async (challengeId) => {
     setLoading(true);
@@ -158,14 +167,20 @@ const UserDashboard = () => {
   // --- HANDLERS NAVIGASI ---
   const handleNavClick = (tab) => { setActiveTab(tab); setSelectedChallenge(null); setShowHealthReport(false); };
   
-  // --- HANDLER CHALLENGE ---
+  // --- HANDLER CHALLENGE (MODIFIED LOGIC) ---
   const handleOpenChallenge = (chal) => {
       setSelectedChallenge(chal);
       fetchDailyContent(chal.id);
       setShowHealthReport(false); 
-      setActiveTab('challenge'); // Pindah ke tab challenge
+      setActiveTab('challenge'); // Pindah ke tab challenge otomatis
   };
-  const handleBackToChallengeList = () => { setSelectedChallenge(null); setDailyContent(null); setShowHealthReport(false); };
+  
+  const handleBackToChallengeList = () => { 
+      setSelectedChallenge(null); 
+      setDailyContent(null); 
+      setShowHealthReport(false); 
+  };
+
   const handleCheckinSubmit = async () => {
       if(!dailyContent) return;
       try {
@@ -173,6 +188,7 @@ const UserDashboard = () => {
           alert("Laporan terkirim! 🎉"); setShowCheckinModal(false); fetchDailyContent(selectedChallenge.id);
       } catch (e) { alert("Gagal check-in."); }
   };
+
   const initiateJoinChallenge = (c) => { setTargetJoinChallenge(c); if (myChallenges.length >= 2) { setShowLimitModal(true); return; } startQuiz(c.id); };
   const startQuiz = async (id) => { try { const res = await axios.get(`${BACKEND_URL}/api/quiz/questions/${id}`, { headers: getAuthHeader() }); setQuizQuestions(res.data); setCurrentQuizIdx(0); setQuizAnswers({}); setShowQuizModal(true); } catch(e){} };
   const handleQuizAnswer = (cat) => { const qId = quizQuestions[currentQuizIdx].id; setQuizAnswers(p => ({...p, [qId]: cat})); if (currentQuizIdx < quizQuestions.length - 1) setCurrentQuizIdx(p => p+1); else submitQuizResult(cat); };
@@ -189,11 +205,12 @@ const UserDashboard = () => {
   const handleProvChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, prov_id: id, city_id:''}); axios.get(`${BACKEND_URL}/api/location/cities?prov_id=${id}`).then(res => setCities(res.data)); };
   const openCheckout = (prod) => { setSelectedProduct(prod); setShowCheckoutModal(true); fetchAddresses(); };
   const handleProcessPayment = async () => { try { const res = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, { item_name: selectedProduct.name, shipping_cost: 0, address_detail: addresses.find(a=>a.id==selectedAddrId), shipping_method: 'JNE Regular', discount:0 }, { headers: getAuthHeader() }); if(res.data.success) { setShowCheckoutModal(false); window.snap.pay(res.data.token); } } catch(e){} };
+  const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
 
   // --- RENDERERS ---
   const renderChallengeTab = () => {
+    // 1. LIST CHALLENGE (Default view di tab Challenge)
     if (!selectedChallenge) {
-        // VIEW 1: LIST CHALLENGE
         return (
             <div className="animate-fade-in">
                 <h2 style={{fontSize:'1.25rem', fontWeight:'bold', marginBottom:'1.5rem'}}>Pilih Challenge Aktif</h2>
@@ -216,8 +233,8 @@ const UserDashboard = () => {
         );
     }
 
+    // 3. RAPOR / HEALTH REPORT (View Ketiga)
     if (showHealthReport) {
-        // VIEW 3: RAPOR / HEALTH REPORT (Menggantikan tab Riwayat lama)
         return (
             <HealthReport 
                 user={overview?.user}
@@ -229,7 +246,7 @@ const UserDashboard = () => {
         );
     }
 
-    // VIEW 2: DETAIL CHALLENGE
+    // 2. DETAIL CHALLENGE (View Kedua)
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <button onClick={handleBackToChallengeList} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'none', border: 'none', color: '#64748b', fontSize: '0.9rem', cursor: 'pointer' }}>
@@ -275,7 +292,6 @@ const UserDashboard = () => {
       <div style={{ padding: '1.5rem', paddingBottom: '100px' }}>
         {activeTab === 'dashboard' && (
             <div className="animate-fade-in">
-                {/* Header & Banner dari kode lama tetap disini */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <div><h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b' }}>Halo, {overview?.user?.name?.split(' ')[0]}! 👋</h1></div>
                     <div onClick={() => setActiveTab('settings')}><Settings size={24} color="#64748b"/></div>
@@ -317,7 +333,7 @@ const UserDashboard = () => {
                     <p style={{ opacity: 0.9, fontSize: '0.9rem', marginBottom: '0.5rem' }}>Kode Referral Kamu</p>
                     <div style={{ fontSize: '2rem', fontWeight: '900', letterSpacing: '2px', marginBottom: '1rem' }}>{overview?.user?.referral_code || '...'}</div>
                     <div style={{display:'flex', gap:'1rem', justifyContent:'center'}}>
-                        <button onClick={()=>{navigator.clipboard.writeText(overview?.user?.referral_code); alert("Disalin")}} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'8px 16px', borderRadius:'20px', color:'white', cursor:'pointer', display:'flex', gap:'5px', alignItems:'center'}}><Copy size={16}/> Salin</button>
+                        <button onClick={copyReferral} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'8px 16px', borderRadius:'20px', color:'white', cursor:'pointer', display:'flex', gap:'5px', alignItems:'center'}}><Copy size={16}/> Salin</button>
                         <button onClick={()=>setShowQRModal(true)} style={{background:'white', color:'#4f46e5', border:'none', padding:'8px 16px', borderRadius:'20px', cursor:'pointer', display:'flex', gap:'5px', alignItems:'center'}}><QrCode size={16}/> QR</button>
                     </div>
                 </Card>
