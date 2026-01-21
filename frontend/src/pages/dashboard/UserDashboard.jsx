@@ -7,10 +7,13 @@ import {
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
   MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
-  Home, BookOpen, Shield, Trophy, AlertTriangle, BarChart2 
+  Home, BookOpen, Shield, Trophy, AlertTriangle 
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
+
+// IMPORT FILE BARU DISINI
+import LaporanKesehatan from './LaporanKesehatan';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -80,7 +83,10 @@ const UserDashboard = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [snapLoaded, setSnapLoaded] = useState(false);
 
-  // --- STATE BARU: QUIZ & CHALLENGE MANAGEMENT ---
+  // --- STATE HISTORY CHECKIN ---
+  const [checkinHistory, setCheckinHistory] = useState([]);
+
+  // --- STATE BARU: QUIZ, CHALLENGE & REPORT MANAGEMENT ---
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [showAiSummaryModal, setShowAiSummaryModal] = useState(false);
@@ -89,6 +95,9 @@ const UserDashboard = () => {
   const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
   const [quizAnswers, setQuizAnswers] = useState({});
   const [aiSummaryResult, setAiSummaryResult] = useState("");
+  
+  // STATE UNTUK LAPORAN KESEHATAN (BARU)
+  const [showReportData, setShowReportData] = useState(null); // Jika tidak null, tampilkan LaporanKesehatan
 
   // --- STATE LAINNYA ---
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -133,6 +142,7 @@ const UserDashboard = () => {
     fetchArticles(); 
     fetchProducts(); 
     fetchAddresses(); 
+    fetchCheckinHistory(); // Ambil history untuk keperluan laporan
     
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
 
@@ -214,6 +224,9 @@ const UserDashboard = () => {
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); if(Array.isArray(res.data)) { setProducts(res.data); } else { setProducts([]); } } catch(e){ setProducts([]); } };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
+  
+  // Fungsi fetch history yang digunakan untuk Laporan
+  const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
   const handleScrollToChat = () => { setActiveTab('dashboard'); if(!isDesktop) setSidebarOpen(false); setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); };
@@ -240,7 +253,7 @@ const UserDashboard = () => {
           await axios.post(`${BACKEND_URL}/api/checkin`, { journal: journal, status: status, completed_tasks: tasks, challenge_id: challengeId }, {headers:getAuthHeader()}); 
           if(status === 'completed') { alert("Luar biasa! Misi selesai."); }
           if(status === 'pending') { alert("Oke, pengingat telah diset."); }
-          fetchAllDailyContents(); fetchData();
+          fetchAllDailyContents(); fetchData(); fetchCheckinHistory(); // Refresh history setelah checkin
       } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
   };
   
@@ -252,15 +265,26 @@ const UserDashboard = () => {
       } catch(e) { alert("Gagal update status"); }
   };
 
+  // --- LOGIC MEMBUKA LAPORAN ---
+  const handleOpenReport = (challenge) => {
+      // Filter log hanya untuk challenge yang diklik (jika di backend checkinHistory ada challenge_id nya)
+      // Jika checkinHistory backend tidak menyimpan ID challenge (hanya tanggal), maka tampilkan semua.
+      // Asumsi: Kita tampilkan semua history dulu, atau filter jika objek log punya properti challenge_id
+      const relevantLogs = checkinHistory.filter(log => log.challenge_id === challenge.id || !log.challenge_id);
+      
+      setShowReportData({
+          challengeTitle: challenge.title,
+          logs: relevantLogs.length > 0 ? relevantLogs : checkinHistory // Fallback jika filter kosong
+      });
+  };
+
   // --- LOGIC JOIN CHALLENGE DENGAN QUIZ ---
   const initiateJoinChallenge = async (challenge) => {
       setTargetJoinChallenge(challenge);
-      // 1. Cek Limit 2 Challenge
       if (activeChallenges.length >= 2) {
           setShowLimitModal(true);
           return;
       }
-      // 2. Jika aman, load Quiz
       startQuiz(challenge.id);
   };
 
@@ -309,26 +333,22 @@ const UserDashboard = () => {
           setAiSummaryResult(res.data.ai_summary);
           setShowQuizModal(false);
           setShowAiSummaryModal(true);
-          fetchData(); // Refresh active challenges
+          fetchData(); 
       } catch (err) {
           alert(err.response?.data?.message || "Gagal submit kuis");
       }
   };
 
-  // --- LOGIC PAUSE CHALLENGE DARI MODAL ---
   const handlePauseFromModal = async (challengeId) => {
       if(!window.confirm("Pause challenge ini? Kamu bisa melanjutkannya nanti.")) return;
       try {
           await axios.post(`${BACKEND_URL}/api/user/challenge/pause`, { challenge_id: challengeId }, {
-              headers: { getAuthHeader } // Fix: Harusnya pakai headers yang benar, tapi endpoint pause belum dihandle di frontend ini secara explisit selain handleChallengeAction
+              headers: { getAuthHeader } 
           });
-          // Kita pakai handleChallengeAction saja yg sudah ada
           await handleChallengeAction(challengeId, 'pause');
           setShowLimitModal(false);
-          // Setelah pause sukses, langsung mulai quiz untuk challenge baru
           startQuiz(targetJoinChallenge.id);
       } catch (err) {
-          // Error handled in handleChallengeAction usually
       }
   };
 
@@ -436,7 +456,6 @@ const UserDashboard = () => {
         <nav style={{ padding: '1rem', flex: 1, overflowY: 'auto' }}>
           <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Activity size={20}/> Dashboard</button></li>
-            {/* LINK RIWAYAT CHECKIN DIHAPUS DARI SINI */}
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
             <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva</button></li>
@@ -467,6 +486,7 @@ const UserDashboard = () => {
             <>
               <div style={{ marginBottom: '1.5rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <p className="body-medium" style={{ color: '#64748b' }}>{getGreeting()}, <strong>{overview?.user?.name}</strong>!</p>
+                {/* Notif Icon Desktop */}
                 {isDesktop && (
                     <div style={{position:'relative'}}>
                         <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', cursor:'pointer', position:'relative'}}>
@@ -554,9 +574,9 @@ const UserDashboard = () => {
                                                 <div style={{display:'flex', alignItems:'center', gap:'4px', color: '#ef4444'}}> <X size={12}/> {chal.missed || 0} Terlewat </div>
                                             </div>
                                             
-                                            {/* --- TOMBOL BARU: LAPORAN PERKEMBANGAN --- */}
+                                            {/* --- TOMBOL UNTUK MEMBUKA LAPORAN (TANPA NAVIGATE) --- */}
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); navigate('/health-report'); }}
+                                                onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
                                                 style={{
                                                     width: '100%',
                                                     marginBottom: '0.8rem',
@@ -655,7 +675,6 @@ const UserDashboard = () => {
                </div>
             </div>
           )}
-          {/* TAB CHECKIN (Calendar) DIHAPUS */}
           {activeTab === 'shop' && (
               <div>
                 <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}> <div style={{display:'flex', gap:'1rem', alignItems:'center'}}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Belanja Sehat</h1> </div> </div>
@@ -675,13 +694,24 @@ const UserDashboard = () => {
         </main>
       </div>
 
+      {/* --- INI BAGIAN NAVBAR MOBILE (PASTIKAN MUNCUL) --- */}
       {!isDesktop && (
           <nav className="mobile-navbar">
               <button className={`mobile-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleNavClick('dashboard')}> <Home size={22} /> <span>Home</span> </button>
-              {/* LINK HISTORY (Checkin) DIHAPUS DARI SINI */}
               <button className={`mobile-nav-item ${activeTab === 'shop' ? 'active' : ''}`} onClick={() => handleNavClick('shop')}> <ShoppingBag size={22} /> <span>Shop</span> </button>
               <button className={`mobile-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => handleNavClick('settings')}> <User size={22} /> <span>Profil</span> </button>
           </nav>
+      )}
+
+      {/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
+      {showReportData && (
+          <LaporanKesehatan 
+            logs={showReportData.logs} 
+            challengeTitle={showReportData.challengeTitle} 
+            theme={currentTheme}
+            user={overview?.user}
+            onClose={() => setShowReportData(null)} 
+          />
       )}
 
       {/* --- ALL MODALS --- */}
