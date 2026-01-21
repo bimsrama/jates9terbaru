@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import HealthReport from './HealthReport'; // Pastikan file HealthReport.jsx sudah dibuat
+import HealthReport from './HealthReport'; // Pastikan file HealthReport.jsx ada di folder yang sama
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
 // --- KONFIGURASI TEMA ---
 const THEMES = {
-  green: { id: 'green', name: 'Hijau Alami', primary: '#10b981', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
+  green: { id: 'green', name: 'Hijau Alami', primary: '#8fec78', light: '#dcfce7', text: '#166534', gradient: 'linear-gradient(135deg, #ffffff 0%, #8fec78 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#fca5a5', light: '#fee2e2', text: '#991b1b', gradient: 'linear-gradient(135deg, #ffffff 0%, #fca5a5 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
   gold: { id: 'gold', name: 'Emas Mewah', primary: '#fcd34d', light: '#fef3c7', text: '#b45309', gradient: 'linear-gradient(135deg, #ffffff 0%, #fcd34d 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #78350f 100%)' },
   blue: { id: 'blue', name: 'Biru Tenang', primary: '#93c5fd', light: '#dbeafe', text: '#1e40af', gradient: 'linear-gradient(135deg, #ffffff 0%, #93c5fd 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #1e3a8a 100%)' },
@@ -63,8 +63,8 @@ const UserDashboard = () => {
   const [myChallenges, setMyChallenges] = useState([]); 
   const [selectedChallenge, setSelectedChallenge] = useState(null); 
   const [dailyContent, setDailyContent] = useState(null);
-  const [checkinHistory, setCheckinHistory] = useState([]); // Data untuk Rapor
-  const [showHealthReport, setShowHealthReport] = useState(false); // Toggle Rapor
+  const [checkinHistory, setCheckinHistory] = useState([]); 
+  const [showHealthReport, setShowHealthReport] = useState(false); 
 
   // STATE KHUSUS NAVIGASI & UI
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -74,7 +74,6 @@ const UserDashboard = () => {
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
 
-  // STATE LAINNYA
   const [friendsData, setFriendsData] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
@@ -123,13 +122,11 @@ const UserDashboard = () => {
     const handleResize = () => setIsDesktop(window.innerWidth > 1024);
     window.addEventListener('resize', handleResize);
     
-    // Initial Fetch
     fetchData(); 
     fetchMyChallenges(); 
     fetchArticles();
     axios.get(`${BACKEND_URL}/api/location/provinces`).then(res => setProvinces(res.data));
     
-    // Load Midtrans
     const script = document.createElement('script'); script.src = "https://app.midtrans.com/snap/snap.js"; script.setAttribute('data-client-key', "Mid-client-dXaTaEerstu_IviP"); script.async = true; document.body.appendChild(script);
     
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)) document.body.removeChild(script); };
@@ -144,7 +141,7 @@ const UserDashboard = () => {
   const fetchMyChallenges = async () => {
     try { const res = await axios.get(`${BACKEND_URL}/api/user/my-challenges`, { headers: getAuthHeader() }); setMyChallenges(res.data); } catch (e) {}
   };
-  const fetchArticles = async () => { // [FIX] Fungsi ini ditambahkan kembali
+  const fetchArticles = async () => { 
     try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {}
   };
   const fetchDailyContent = async (challengeId) => {
@@ -152,7 +149,6 @@ const UserDashboard = () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/daily-content?challenge_id=${challengeId}`, { headers: getAuthHeader() });
       setDailyContent(res.data);
-      // Ambil history untuk rapor
       const histRes = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() });
       const filtered = histRes.data.filter(log => log.challenge_id === challengeId || !log.challenge_id);
       setCheckinHistory(filtered);
@@ -164,17 +160,26 @@ const UserDashboard = () => {
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch(e){} };
   const fetchAddresses = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/address`, { headers: getAuthHeader() }); setAddresses(res.data); } catch(e){} };
 
-  // --- HANDLERS NAVIGASI ---
+  // --- HANDLERS ---
   const handleNavClick = (tab) => { setActiveTab(tab); setSelectedChallenge(null); setShowHealthReport(false); };
   
-  // --- HANDLER CHALLENGE (MODIFIED LOGIC) ---
+  // Masuk ke Detail Harian
   const handleOpenChallenge = (chal) => {
       setSelectedChallenge(chal);
       fetchDailyContent(chal.id);
       setShowHealthReport(false); 
-      setActiveTab('challenge'); // Pindah ke tab challenge otomatis
+      setActiveTab('challenge');
   };
-  
+
+  // Masuk ke Rapor (Langsung dari Home atau Detail)
+  const handleOpenReport = (e, chal) => {
+      e.stopPropagation(); // Biar gak trigger buka detail
+      setSelectedChallenge(chal);
+      fetchDailyContent(chal.id); // Fetch history juga
+      setShowHealthReport(true);
+      setActiveTab('challenge');
+  };
+
   const handleBackToChallengeList = () => { 
       setSelectedChallenge(null); 
       setDailyContent(null); 
@@ -197,7 +202,6 @@ const UserDashboard = () => {
       try { const res = await axios.post(`${BACKEND_URL}/api/quiz/submit`, { challenge_id: targetJoinChallenge.id, answers: finalAns, score: 100, health_type: "Tipe A" }, { headers: getAuthHeader() }); setAiSummaryResult(res.data.ai_summary); setShowQuizModal(false); setShowAiSummaryModal(true); fetchMyChallenges(); } catch(e){}
   };
   
-  // --- HANDLER LAINNYA ---
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) {} finally { setChatLoading(false); } };
   const handleAddFriend = async () => { if(!friendCode) return; try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Sukses!"); setFriendCode(""); fetchFriendsList(); } catch(e){ alert("Gagal tambah teman"); } };
   const handleProfilePictureUpload = async (e) => { const file = e.target.files[0]; if(!file) return; const fd = new FormData(); fd.append('image', file); try { await axios.post(`${BACKEND_URL}/api/user/upload-profile-picture`, fd, { headers: {...getAuthHeader(), 'Content-Type': 'multipart/form-data'} }); fetchData(); alert("Foto update!"); } catch(e){} };
@@ -207,10 +211,9 @@ const UserDashboard = () => {
   const handleProcessPayment = async () => { try { const res = await axios.post(`${BACKEND_URL}/api/payment/create-transaction`, { item_name: selectedProduct.name, shipping_cost: 0, address_detail: addresses.find(a=>a.id==selectedAddrId), shipping_method: 'JNE Regular', discount:0 }, { headers: getAuthHeader() }); if(res.data.success) { setShowCheckoutModal(false); window.snap.pay(res.data.token); } } catch(e){} };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
 
-  // --- RENDERERS ---
   const renderChallengeTab = () => {
-    // 1. LIST CHALLENGE (Default view di tab Challenge)
     if (!selectedChallenge) {
+        // VIEW LIST CHALLENGE
         return (
             <div className="animate-fade-in">
                 <h2 style={{fontSize:'1.25rem', fontWeight:'bold', marginBottom:'1.5rem'}}>Pilih Challenge Aktif</h2>
@@ -232,9 +235,8 @@ const UserDashboard = () => {
             </div>
         );
     }
-
-    // 3. RAPOR / HEALTH REPORT (View Ketiga)
     if (showHealthReport) {
+        // VIEW RAPOR
         return (
             <HealthReport 
                 user={overview?.user}
@@ -245,14 +247,12 @@ const UserDashboard = () => {
             />
         );
     }
-
-    // 2. DETAIL CHALLENGE (View Kedua)
+    // VIEW DETAIL HARIAN
     return (
         <div className="animate-fade-in" style={{ paddingBottom: '80px' }}>
             <button onClick={handleBackToChallengeList} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', background: 'none', border: 'none', color: '#64748b', fontSize: '0.9rem', cursor: 'pointer' }}>
                 <ChevronLeft size={18} /> Kembali
             </button>
-
             <Card style={{ background: currentTheme.gradient, color: '#064e3b', borderRadius: '20px', padding: '1.5rem', marginBottom: '1.5rem', border: 'none' }}>
                 <h2 style={{ fontSize: '1.3rem', fontWeight: '800', marginBottom: '0.2rem' }}>Hari ke-{dailyContent?.day || 1}</h2>
                 <p style={{ opacity: 0.9, fontSize: '0.9rem' }}>{selectedChallenge.title}</p>
@@ -262,7 +262,6 @@ const UserDashboard = () => {
                     </button>
                 </div>
             </Card>
-
             <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color: '#1e293b' }}>Misi Hari Ini</h3>
             {loading ? <div style={{textAlign:'center'}}><Loader className="animate-spin"/></div> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -283,10 +282,7 @@ const UserDashboard = () => {
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', background: '#f8fafc', minHeight: '100vh', position: 'relative', overflowX: 'hidden' }}>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-      `}</style>
+      <style>{` .animate-fade-in { animation: fadeIn 0.4s ease-out; } @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } `}</style>
 
       {/* Main Content */}
       <div style={{ padding: '1.5rem', paddingBottom: '100px' }}>
@@ -299,17 +295,33 @@ const UserDashboard = () => {
                 
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '1rem' }}>Tantangan Saya</h3>
                 <div style={{display:'grid', gap:'1rem'}}>
-                    {myChallenges.map(chal => (
-                        <Card key={chal.id} onClick={() => handleOpenChallenge(chal)} style={{ padding: '1rem', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                    {myChallenges.length > 0 ? myChallenges.map(chal => (
+                        <Card key={chal.id} onClick={() => handleOpenChallenge(chal)} style={{ padding: '1rem', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer', position: 'relative' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <h4 style={{ fontWeight: 'bold' }}>{chal.title}</h4>
                                 <span style={{ background: currentTheme.light, fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}>Hari {chal.current_day}</span>
                             </div>
-                            <div style={{ width: '100%', background: '#f1f5f9', height: '6px', borderRadius: '3px', marginTop:'0.5rem' }}>
+                            <div style={{ width: '100%', background: '#f1f5f9', height: '6px', borderRadius: '3px', marginTop:'0.5rem', marginBottom:'1rem' }}>
                                 <div style={{ width: `${(chal.current_day / 30) * 100}%`, background: currentTheme.primary, height: '100%', borderRadius: '3px' }}></div>
                             </div>
+                            
+                            {/* --- TOMBOL RAPOR DI SINI (SESUAI REQUEST) --- */}
+                            <button 
+                                onClick={(e) => handleOpenReport(e, chal)}
+                                style={{
+                                    width: '100%', padding: '0.6rem', 
+                                    background: '#f8fafc', border: `1px solid ${currentTheme.light}`, 
+                                    borderRadius: '8px', color: currentTheme.text, 
+                                    fontWeight: 'bold', fontSize: '0.85rem',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                                }}
+                            >
+                                <TrendingUp size={16}/> Rapor Perkembangan
+                            </button>
                         </Card>
-                    ))}
+                    )) : (
+                        <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>Belum ada challenge.</div>
+                    )}
                 </div>
 
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '2rem 0 1rem' }}>Rekomendasi</h3>
@@ -437,7 +449,7 @@ const UserDashboard = () => {
       </ResponsiveModal>
 
       <ResponsiveModal isOpen={showAddressModal} onClose={() => setShowAddressModal(false)} title="Tambah Alamat">
-         <input placeholder="Label" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> </div> <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={e=>setNewAddr({...newAddr, city_id:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}></textarea> <button onClick={handleSaveAddress} style={{width:'100%', padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white'}}>Simpan</button>
+         <input placeholder="Label" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}/> </div> <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={handleCityChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px'}}></textarea> <button onClick={handleSaveAddress} style={{width:'100%', padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white'}}>Simpan</button>
       </ResponsiveModal>
 
       <ResponsiveModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} title="Kode QR Saya">
