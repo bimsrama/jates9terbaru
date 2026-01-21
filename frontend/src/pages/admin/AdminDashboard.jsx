@@ -46,7 +46,6 @@ const AdminDashboard = () => {
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
   const [contentMatrix, setContentMatrix] = useState({});
   const [loadingMatrix, setLoadingMatrix] = useState(false);
-  const [newChallengeTitle, setNewChallengeTitle] = useState("");
   const [activeTypeTab, setActiveTypeTab] = useState('a'); // 'a', 'b', or 'c'
 
   // EDIT & VIEW CHALLENGE STATE
@@ -55,9 +54,10 @@ const AdminDashboard = () => {
   const [viewMode, setViewMode] = useState('info'); 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // GENERATOR CHALLENGE STATE
+  // --- NEW: GENERATOR PREVIEW STATE ---
   const [genChallengeName, setGenChallengeName] = useState("");
-  const [generatedPrompt, setGeneratedPrompt] = useState("");
+  const [previewData, setPreviewData] = useState(null); // Menyimpan hasil JSON dari AI
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // BROADCAST STATE
   const [testPhone, setTestPhone] = useState("");
@@ -148,7 +148,6 @@ const AdminDashboard = () => {
   };
 
   const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Challenge Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
-  const handleGenerateAI = async () => { if(!newChallengeTitle || !window.confirm("Generate?")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/quiz/generate-challenge-auto`, {title:newChallengeTitle}, {headers:getAuthHeader()}); alert("Done!"); setNewChallengeTitle(""); fetchChallengeCards(); } catch(e){alert("Fail");} setBtnLoading(false); };
   
   const handleDeleteChallenge = async (id, e) => { e.stopPropagation(); if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} };
   
@@ -177,149 +176,64 @@ const AdminDashboard = () => {
   const handleResetUserChallenge = async (userId, challengeId, userName) => {
     if (!challengeId) return alert("User tidak memiliki challenge aktif.");
     if (!window.confirm(`⚠️ PERHATIAN:\nYakin ingin MERESET progress challenge user "${userName}" kembali ke Hari 1?\n\nSemua progress checklist dan jurnal user untuk challenge ini akan dihapus.`)) return;
-    
     setBtnLoading(true);
-    try {
-        await axios.post(`${BACKEND_URL}/api/admin/users/challenge/reset`, 
-            { user_id: userId, challenge_id: challengeId }, 
-            { headers: getAuthHeader() }
-        );
-        alert("Sukses! Challenge user telah di-reset ke Hari 1.");
-        fetchUsers();
-    } catch (e) {
-        alert("Gagal reset: " + (e.response?.data?.message || e.message));
-    } finally {
-        setBtnLoading(false);
-    }
+    try { await axios.post(`${BACKEND_URL}/api/admin/users/challenge/reset`, { user_id: userId, challenge_id: challengeId }, { headers: getAuthHeader() }); alert("Sukses! Challenge user telah di-reset ke Hari 1."); fetchUsers(); } catch (e) { alert("Gagal reset: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); }
   };
 
   const handleRemoveUserChallenge = async (userId, challengeId, userName) => {
     if (!challengeId) return alert("User tidak memiliki challenge aktif.");
     if (!window.confirm(`⛔ BAHAYA:\nYakin ingin MENGHAPUS/MENGELUARKAN user "${userName}" dari challenge ini?\n\nUser akan kehilangan akses dan seluruh data challenge akan hilang.`)) return;
-    
+    setBtnLoading(true);
+    try { await axios.post(`${BACKEND_URL}/api/admin/users/challenge/remove`, { user_id: userId, challenge_id: challengeId }, { headers: getAuthHeader() }); alert("Sukses! User telah dikeluarkan dari challenge."); fetchUsers(); } catch (e) { alert("Gagal menghapus: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); }
+  };
+
+  // --- NEW: LOGIC GENERATOR CHALLENGE (PREVIEW FLOW) ---
+  const handleGeneratePreview = async () => {
+    if (!genChallengeName) return alert("Isi judul dulu!");
     setBtnLoading(true);
     try {
-        await axios.post(`${BACKEND_URL}/api/admin/users/challenge/remove`, 
-            { user_id: userId, challenge_id: challengeId }, 
+        const res = await axios.post(
+            `${BACKEND_URL}/api/admin/quiz/generate-preview`, 
+            { title: genChallengeName }, 
             { headers: getAuthHeader() }
         );
-        alert("Sukses! User telah dikeluarkan dari challenge.");
-        fetchUsers();
+        if (res.data.success) {
+            setPreviewData(res.data.preview_data);
+            setShowPreviewModal(true);
+        }
     } catch (e) {
-        alert("Gagal menghapus: " + (e.response?.data?.message || e.message));
+        alert("Gagal generate: " + (e.response?.data?.message || e.message));
     } finally {
         setBtnLoading(false);
     }
   };
 
-  // --- LOGIC GENERATOR CHALLENGE ---
-  const generatePrompt = () => {
-    if (!genChallengeName) { alert("Mohon isi Topik Challenge!"); return; }
-    
-    const template = `
-Berperanlah sebagai Pelatih Kebugaran & Kesehatan.
-Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
-
-TUGAS ANDA:
-1. Analisa topik tersebut dan tentukan **3 Tipe Kondisi Spesifik** (Misal: Tipe A=Sembelit, Tipe B=GERD, Tipe C=Kembung).
-2. Untuk SETIAP Tipe, buatkan **3 Pilihan Challenge (Opsi)** per hari selama 30 hari.
-
-STRUKTUR OPSI:
-- Opsi 1 (Mudah): Sangat ringan, < 5 menit.
-- Opsi 2 (Sedang): Standar, butuh sedikit usaha.
-- Opsi 3 (Menantang): Hasil maksimal.
-
-FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
-
-[TIPE A: (Nama Kondisi A)]
-| Hari | Opsi 1 | Opsi 2 | Opsi 3 |
-|---|---|---|---|
-| 1 | ... | ... | ... |
-... (sampai hari 30)
-
-[TIPE B: (Nama Kondisi B)]
-... (Tabel sama)
-
-[TIPE C: (Nama Kondisi C)]
-... (Tabel sama)
-    `;
-    setGeneratedPrompt(template.trim());
-  };
-
-  const handleOpenGemini = () => {
-    if (!generatedPrompt) return alert("Generate prompt dulu!");
-    navigator.clipboard.writeText(generatedPrompt).then(() => {
-        alert("Prompt disalin! Paste di Gemini/ChatGPT.");
-        window.open("https://gemini.google.com/app", "_blank");
-    }).catch(err => { alert("Gagal menyalin: " + err); });
-  };
-
-  const handleResetGenerator = () => { setGenChallengeName(""); setGeneratedPrompt(""); };
-
-  // --- BROADCAST HANDLERS ---
-  
-  // 1. Handle Select User
-  const handleSelectTestUser = (e) => {
-      const uid = e.target.value;
-      setSelectedTestUser(uid);
-      const user = users.find(u => u.id === parseInt(uid));
-      if (user) {
-          setTestPhone(user.phone);
-      } else {
-          setTestPhone("");
-      }
-  };
-
-  // 2. Handle Send Test
-  const handleTestBroadcast = async () => {
-    if (!testPhone) return alert("Isi nomor HP dulu!");
+  const handleSaveGeneratedChallenge = async () => {
+    if (!previewData || !genChallengeName) return;
     setBtnLoading(true);
     try {
-        const res = await axios.post(`${BACKEND_URL}/api/admin/broadcast/test`, { phone_number: testPhone }, { headers: getAuthHeader() });
-        alert(res.data.message || "Test sent!");
+        await axios.post(
+            `${BACKEND_URL}/api/admin/quiz/save-generated`, 
+            { title: genChallengeName, preview_data: previewData }, 
+            { headers: getAuthHeader() }
+        );
+        alert("Challenge berhasil disimpan!");
+        setShowPreviewModal(false);
+        setPreviewData(null);
+        setGenChallengeName("");
+        fetchChallengeCards(); // Refresh list
     } catch (e) {
-        alert("Gagal kirim test: " + (e.response?.data?.message || e.message));
+        alert("Gagal simpan: " + (e.response?.data?.message || e.message));
     } finally {
         setBtnLoading(false);
     }
   };
 
-  // 3. Handle Manual Trigger (Kirim Challenge Macet)
-  const handleManualBroadcast = async (type) => {
-      const msg = type === 'daily' 
-        ? "Yakin ingin mengirim CHALLENGE HARI INI ke SEMUA USER sekarang?" 
-        : "Yakin ingin mengirim REMINDER MALAM sekarang?";
-      
-      if(!window.confirm(msg)) return;
-      
-      setBtnLoading(true);
-      try {
-          const endpoint = type === 'daily' ? 'daily' : 'reminder';
-          await axios.post(`${BACKEND_URL}/api/admin/broadcast/${endpoint}`, {}, { headers: getAuthHeader() });
-          alert(`Sukses! Pesan ${type} sedang dikirim di background.`);
-      } catch(e) { 
-          alert("Gagal memicu broadcast."); 
-      } finally {
-          setBtnLoading(false);
-      }
-  };
-
-  // 4. Handle Custom Broadcast (Pengumuman)
-  const handleCustomBroadcast = async () => {
-      if (!customBroadcastMsg) return alert("Pesan tidak boleh kosong!");
-      if (!window.confirm("Kirim pesan ini ke SEMUA user? Aksi ini tidak bisa dibatalkan.")) return;
-      
-      setBtnLoading(true);
-      try {
-          await axios.post(`${BACKEND_URL}/api/admin/broadcast/custom`, { message: customBroadcastMsg }, { headers: getAuthHeader() });
-          alert("Pesan sedang dikirim ke semua user via background process.");
-          setCustomBroadcastMsg("");
-      } catch (e) {
-          alert("Gagal mengirim broadcast: " + (e.response?.data?.message || e.message));
-      } finally {
-          setBtnLoading(false);
-      }
-  };
+  // --- BROADCAST HANDLERS ---
+  const handleSelectTestUser = (e) => { const uid = e.target.value; setSelectedTestUser(uid); const user = users.find(u => u.id === parseInt(uid)); if (user) { setTestPhone(user.phone); } else { setTestPhone(""); } };
+  const handleTestBroadcast = async () => { if (!testPhone) return alert("Isi nomor HP dulu!"); setBtnLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/admin/broadcast/test`, { phone_number: testPhone }, { headers: getAuthHeader() }); alert(res.data.message || "Test sent!"); } catch (e) { alert("Gagal kirim test: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); } };
+  const handleManualBroadcast = async (type) => { const msg = type === 'daily' ? "Yakin ingin mengirim CHALLENGE HARI INI ke SEMUA USER sekarang?" : "Yakin ingin mengirim REMINDER MALAM sekarang?"; if(!window.confirm(msg)) return; setBtnLoading(true); try { const endpoint = type === 'daily' ? 'daily' : 'reminder'; await axios.post(`${BACKEND_URL}/api/admin/broadcast/${endpoint}`, {}, { headers: getAuthHeader() }); alert(`Sukses! Pesan ${type} sedang dikirim di background.`); } catch(e) { alert("Gagal memicu broadcast."); } finally { setBtnLoading(false); } };
+  const handleCustomBroadcast = async () => { if (!customBroadcastMsg) return alert("Pesan tidak boleh kosong!"); if (!window.confirm("Kirim pesan ini ke SEMUA user? Aksi ini tidak bisa dibatalkan.")) return; setBtnLoading(true); try { await axios.post(`${BACKEND_URL}/api/admin/broadcast/custom`, { message: customBroadcastMsg }, { headers: getAuthHeader() }); alert("Pesan sedang dikirim ke semua user via background process."); setCustomBroadcastMsg(""); } catch (e) { alert("Gagal mengirim broadcast: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); } };
 
   const SidebarItem = ({ id, icon: Icon, label }) => (
     <button onClick={() => { setActiveTab(id); if(window.innerWidth<=1024) setSidebarOpen(false); }}
@@ -373,9 +287,10 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
               <h2 className="heading-2" style={{marginBottom:'1rem'}}>Manajemen Challenge</h2>
               <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap: '1.5rem' }}>
                 <Card style={{ padding: '1.5rem', background: 'white', height: 'fit-content' }}>
-                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem' }}>Buat Challenge Baru</h3>
-                  <input placeholder="Judul Tantangan..." style={{ ...inputStyle, marginBottom: '1rem' }} value={newChallengeTitle} onChange={(e) => setNewChallengeTitle(e.target.value)} />
-                  <button onClick={handleGenerateAI} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Loading...' : 'Buat Challenge (Entity Only)'}</button>
+                  <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Bot size={18} /> AI Quick Generator</h3>
+                  <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>Otomatis buat challenge lengkap (Tipe, Kuis, & Deskripsi) dalam sekali klik.</p>
+                  <input placeholder="Topik Challenge (cth: Bebas Maag)" style={{ ...inputStyle, marginBottom: '1rem' }} value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} />
+                  <button onClick={handleGeneratePreview} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Sedang Generate...' : 'Preview Challenge (AI)'}</button>
                 </Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
@@ -588,39 +503,33 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
              </div>
           )}
 
-          {/* TAB CHALLENGE GENERATOR */}
+          {/* TAB CHALLENGE GENERATOR (NEW PREVIEW FLOW) */}
           {activeTab === 'challenge_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                   <h2 className="heading-2">Challenge Generator (AI)</h2>
+                   <h2 className="heading-2" style={{display:'flex', alignItems:'center', gap:'0.5rem'}}><Sparkles className="text-yellow-500"/> Challenge Generator (AI)</h2>
                    <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Tipe Kondisi x 3 Opsi Pilihan) dengan bantuan AI.</p>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                   <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                      <CardHeader><CardTitle className="heading-3">1. Konfigurasi Challenge</CardTitle></CardHeader>
-                      <CardContent>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                             <div><label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#334155', display: 'block', marginBottom: '0.5rem' }}>Topik Challenge (Misal: Usus Sehat)</label><input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} /></div>
-                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button onClick={generatePrompt} style={{ flex: 1, background: '#16a34a', color: 'white', padding: '0.8rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}> <Sparkles size={18} /> Buat Prompt </button>
-                                <button onClick={handleResetGenerator} style={{ background: '#f1f5f9', color: '#64748b', padding: '0.8rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}> <Trash2 size={18} /> Reset </button>
-                             </div>
-                          </div>
-                      </CardContent>
-                   </Card>
-                   {generatedPrompt && (
-                      <Card style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
-                          <CardHeader><CardTitle className="heading-3" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bot size={20} color="#2563eb" /> 2. Hasil Prompt (Siap Copy)</CardTitle></CardHeader>
-                          <CardContent>
-                            <textarea readOnly value={generatedPrompt} style={{ width: '100%', height: '300px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem', resize: 'vertical', background: 'white' }}></textarea>
-                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                               <p style={{ fontSize: '0.9rem', color: '#64748b' }}>Klik tombol di bawah untuk copy otomatis & buka Gemini:</p>
-                               <button onClick={handleOpenGemini} style={{ width: '100%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: 'white', padding: '1rem', borderRadius: '12px', border: 'none', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)' }}><Bot size={24} /> BUKA GEMINI AI & PASTE</button>
-                             </div>
-                          </CardContent>
-                      </Card>
-                   )}
-                </div>
+                
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
+                    <CardHeader><CardTitle className="heading-3">Generator</CardTitle></CardHeader>
+                    <CardContent>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={labelStyle}>Topik Challenge</label>
+                                <input type="text" placeholder="Contoh: Program Bebas Maag 30 Hari" value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} style={inputStyle} />
+                            </div>
+                            <button 
+                                onClick={handleGeneratePreview} 
+                                disabled={btnLoading} 
+                                style={{ width:'100%', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', padding: '1rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow:'0 4px 6px -1px rgba(59, 130, 246, 0.3)' }}
+                            > 
+                                {btnLoading ? <Loader2 className="animate-spin" /> : <Bot size={20} />} 
+                                {btnLoading ? 'Sedang Membuat Preview...' : 'Generate Preview (AI)'} 
+                            </button>
+                        </div>
+                    </CardContent>
+                </Card>
              </div>
           )}
 
@@ -844,7 +753,7 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                              <input style={inputStyle} value={editingChallenge.title} onChange={(e) => setEditingChallenge({...editingChallenge, title: e.target.value})} />
                          </div>
                          <div style={{ marginBottom: '1.5rem' }}>
-                             <label style={labelStyle}>Deskripsi & Tipe (A/B/C)</label>
+                             <label style={labelStyle}>Deskripsi & Tipe</label>
                              <textarea style={{ ...inputStyle, minHeight: '200px' }} value={editingChallenge.description} onChange={(e) => setEditingChallenge({...editingChallenge, description: e.target.value})} placeholder="Jelaskan tantangan ini..." />
                          </div>
                          <button onClick={handleUpdateChallenge} disabled={btnLoading} style={{ width:'100%', padding: '0.8rem', borderRadius: '6px', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer', fontWeight:'bold' }}>{btnLoading ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
@@ -883,6 +792,85 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
                          )}
                      </div>
                  )}
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* --- NEW: PREVIEW MODAL --- */}
+      {showPreviewModal && previewData && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
+           <div style={{ background: 'white', padding: '0', borderRadius: '16px', width: '90%', maxWidth: '700px', height:'80vh', display:'flex', flexDirection:'column', boxShadow:'0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+             <div style={{padding:'1.5rem', borderBottom:'1px solid #e2e8f0', background:'#f8fafc', borderTopLeftRadius:'16px', borderTopRightRadius:'16px'}}>
+                 <h3 style={{ fontWeight: '800', fontSize: '1.25rem', color:'#1e293b' }}>✨ Preview Hasil AI</h3>
+                 <p style={{fontSize:'0.9rem', color:'#64748b'}}>Tinjau hasil generate sebelum disimpan.</p>
+             </div>
+             
+             <div style={{padding:'1.5rem', overflowY:'auto', flex:1}}>
+                 {/* 1. Deskripsi */}
+                 <div style={{marginBottom:'1.5rem'}}>
+                     <h4 style={{fontSize:'0.9rem', fontWeight:'700', color:'#475569', marginBottom:'0.5rem', textTransform:'uppercase'}}>Deskripsi Program</h4>
+                     <div style={{padding:'1rem', background:'#f1f5f9', borderRadius:'8px', fontSize:'0.95rem', lineHeight:'1.6'}}>{previewData.description}</div>
+                 </div>
+
+                 {/* 2. Tipe User */}
+                 <div style={{marginBottom:'1.5rem'}}>
+                     <h4 style={{fontSize:'0.9rem', fontWeight:'700', color:'#475569', marginBottom:'0.5rem', textTransform:'uppercase'}}>Kategori User (Tipe)</h4>
+                     <div style={{display:'grid', gap:'0.8rem'}}>
+                         {previewData.types && Object.entries(previewData.types).map(([key, val], idx) => (
+                             <div key={idx} style={{padding:'0.8rem', border:'1px solid #e2e8f0', borderRadius:'8px', display:'flex', alignItems:'center', gap:'0.8rem'}}>
+                                 <span style={{background:'#dbeafe', color:'#1e40af', fontWeight:'bold', padding:'0.3rem 0.6rem', borderRadius:'6px', fontSize:'0.8rem'}}>
+                                     {typeof val === 'object' ? val.name : key} {/* Handle format array obj / key-val */}
+                                 </span>
+                                 <span style={{fontSize:'0.9rem', color:'#334155'}}>{typeof val === 'object' ? val.description : val}</span>
+                             </div>
+                         ))}
+                         {/* Fallback jika format array */}
+                         {Array.isArray(previewData.types) && previewData.types.map((t, idx) => (
+                             <div key={idx} style={{padding:'0.8rem', border:'1px solid #e2e8f0', borderRadius:'8px'}}>
+                                 <div style={{fontWeight:'bold', color:'#3b82f6'}}>{t.name}</div>
+                                 <div style={{fontSize:'0.85rem', color:'#64748b'}}>{t.description}</div>
+                             </div>
+                         ))}
+                     </div>
+                 </div>
+
+                 {/* 3. Pertanyaan Kuis */}
+                 <div>
+                     <h4 style={{fontSize:'0.9rem', fontWeight:'700', color:'#475569', marginBottom:'0.5rem', textTransform:'uppercase'}}>Kuis Diagnosa ({previewData.questions.length} Soal)</h4>
+                     <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                         {previewData.questions.map((q, idx) => (
+                             <Card key={idx} style={{padding:'1rem', border:'1px dashed #cbd5e1', background:'#fff'}}>
+                                 <div style={{fontWeight:'bold', marginBottom:'0.8rem'}}>Q{idx+1}: {q.text}</div>
+                                 <ul style={{listStyle:'none', padding:0, margin:0, display:'flex', flexDirection:'column', gap:'0.5rem'}}>
+                                     {q.options.map((opt, i) => (
+                                         <li key={i} style={{fontSize:'0.85rem', display:'flex', justifyContent:'space-between', background:'#f8fafc', padding:'0.5rem', borderRadius:'4px'}}>
+                                             <span>{opt.text}</span>
+                                             <span style={{fontSize:'0.75rem', fontWeight:'bold', color:'#64748b', background:'#e2e8f0', padding:'2px 6px', borderRadius:'4px'}}>{opt.type}</span>
+                                         </li>
+                                     ))}
+                                 </ul>
+                             </Card>
+                         ))}
+                     </div>
+                 </div>
+             </div>
+
+             <div style={{padding:'1.5rem', borderTop:'1px solid #e2e8f0', background:'#f8fafc', borderBottomLeftRadius:'16px', borderBottomRightRadius:'16px', display:'flex', gap:'1rem', justifyContent:'flex-end'}}>
+                 <button 
+                    onClick={() => setShowPreviewModal(false)}
+                    style={{padding:'0.8rem 1.5rem', background:'white', border:'1px solid #cbd5e1', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'#64748b'}}
+                 >
+                     Batal / Generate Ulang
+                 </button>
+                 <button 
+                    onClick={handleSaveGeneratedChallenge}
+                    disabled={btnLoading}
+                    style={{padding:'0.8rem 1.5rem', background:'var(--primary)', border:'none', borderRadius:'8px', cursor:'pointer', fontWeight:'bold', color:'white', display:'flex', alignItems:'center', gap:'0.5rem'}}
+                 >
+                     {btnLoading ? <Loader2 className="animate-spin" /> : <CheckCircle size={18}/>}
+                     Setujui & Simpan
+                 </button>
              </div>
            </div>
         </div>
