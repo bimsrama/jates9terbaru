@@ -130,10 +130,9 @@ const Register = () => {
   };
 
   // ==========================================
-  // LOGIC STEP 3: QUIZ (INI YANG TADI EROR)
+  // LOGIC STEP 3: QUIZ
   // ==========================================
   
-  // Fungsi ini harus ada di dalam komponen Register agar bisa dipanggil onClick
   const handleAnswerOption = (category) => {
     const currentQ = questions[currentQuestionIndex];
     setAnswers(prev => ({ ...prev, [currentQ.id]: category }));
@@ -155,8 +154,17 @@ const Register = () => {
     ['C', 'B', 'A'].forEach(type => { if (counts[type] > maxCount) { maxCount = counts[type]; resultType = type; } });
 
     try {
-      await axios.post(`${BACKEND_URL}/api/quiz/submit`, { health_type: resultType }, { headers: getAuthHeader() });
-      setQuizResult({ type: resultType });
+      const res = await axios.post(`${BACKEND_URL}/api/quiz/submit`, { 
+        challenge_id: selectedChallengeId, // PASTIKAN ID CHALLENGE DIKIRIM
+        health_type: resultType,
+        answers: answers,
+        score: 100 // Dummy score
+      }, { headers: getAuthHeader() });
+      
+      setQuizResult({ 
+        type: resultType, 
+        aiSummary: res.data.ai_summary // Ambil ringkasan AI dari response backend
+      });
       setStep(4);
     } catch (err) { setError("Gagal simpan kuis."); }
     finally { setLoading(false); }
@@ -260,7 +268,7 @@ const Register = () => {
               </div>
             )}
 
-            {/* KUIS STEP 3 (PERBAIKAN UTAMA DISINI) */}
+            {/* KUIS STEP 3 */}
             {step === 3 && questions.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <h3 className="heading-3" style={{ marginBottom: '1.5rem' }}>{questions[currentQuestionIndex].question_text}</h3>
@@ -284,12 +292,20 @@ const Register = () => {
                 <div style={{ marginBottom: '2rem' }}>
                   <h3 className="heading-3">Tipe Pencernaan:</h3>
                   <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#166534', margin: '0.5rem 0' }}>Tipe {quizResult.type}</div>
-                  <p className="body-medium" style={{ color: '#4b5563' }}>
+                  <p className="body-medium" style={{ color: '#4b5563', marginBottom: '1rem' }}>
                     {quizResult.type === 'A' && "Kecenderungan Sembelit & Kurang Serat"}
                     {quizResult.type === 'B' && "Kecenderungan Kembung & Sensitif"}
                     {quizResult.type === 'C' && "Kecenderungan Maag & Asam Lambung"}
                     {quizResult.type === 'Sehat' && "Pencernaan Sehat & Terjaga"}
                   </p>
+                  
+                  {/* RINGKASAN AI */}
+                  {quizResult.aiSummary && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '12px', padding: '1rem', fontSize: '0.9rem', color: '#1e40af', fontStyle: 'italic', textAlign: 'left', display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ minWidth: '20px' }}>🤖</div>
+                        <div>"{quizResult.aiSummary}"</div>
+                    </div>
+                  )}
                 </div>
                 <Button className="btn-primary" onClick={() => setStep(4.5)} style={{ width: '100%', padding: '1rem' }}>
                   Daftar Program 30 Hari <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
