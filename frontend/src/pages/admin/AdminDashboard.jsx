@@ -6,7 +6,7 @@ import {
   FileText, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Send, Smartphone, Calendar, 
   Trash2, Clock, Save, Eye, Package, Bell, 
-  AlertTriangle, RefreshCw, Zap, Sparkles, Menu
+  AlertTriangle, RefreshCw, Zap, Sparkles, Menu, FileSpreadsheet, CheckCircle, XCircle
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -171,6 +171,45 @@ const AdminDashboard = () => {
         newArr[idx] = val; 
         return { ...prev, [d]: { ...row, [typeKey]: newArr } };
     });
+  };
+
+  // --- LOGIC CHALLENGE MANAGEMENT (RESET & REMOVE) ---
+  const handleResetUserChallenge = async (userId, challengeId, userName) => {
+    if (!challengeId) return alert("User tidak memiliki challenge aktif.");
+    if (!window.confirm(`⚠️ PERHATIAN:\nYakin ingin MERESET progress challenge user "${userName}" kembali ke Hari 1?\n\nSemua progress checklist dan jurnal user untuk challenge ini akan dihapus.`)) return;
+    
+    setBtnLoading(true);
+    try {
+        await axios.post(`${BACKEND_URL}/api/admin/users/challenge/reset`, 
+            { user_id: userId, challenge_id: challengeId }, 
+            { headers: getAuthHeader() }
+        );
+        alert("Sukses! Challenge user telah di-reset ke Hari 1.");
+        fetchUsers();
+    } catch (e) {
+        alert("Gagal reset: " + (e.response?.data?.message || e.message));
+    } finally {
+        setBtnLoading(false);
+    }
+  };
+
+  const handleRemoveUserChallenge = async (userId, challengeId, userName) => {
+    if (!challengeId) return alert("User tidak memiliki challenge aktif.");
+    if (!window.confirm(`⛔ BAHAYA:\nYakin ingin MENGHAPUS/MENGELUARKAN user "${userName}" dari challenge ini?\n\nUser akan kehilangan akses dan seluruh data challenge akan hilang.`)) return;
+    
+    setBtnLoading(true);
+    try {
+        await axios.post(`${BACKEND_URL}/api/admin/users/challenge/remove`, 
+            { user_id: userId, challenge_id: challengeId }, 
+            { headers: getAuthHeader() }
+        );
+        alert("Sukses! User telah dikeluarkan dari challenge.");
+        fetchUsers();
+    } catch (e) {
+        alert("Gagal menghapus: " + (e.response?.data?.message || e.message));
+    } finally {
+        setBtnLoading(false);
+    }
   };
 
   // --- LOGIC GENERATOR CHALLENGE ---
@@ -666,8 +705,87 @@ FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
             </div>
           )}
 
-          {/* TAB USERS */}
-          {activeTab === 'users' && (<Card style={{ overflowX: 'auto', background: 'white' }}><CardHeader><CardTitle className="heading-3">Daftar Pengguna</CardTitle></CardHeader><CardContent><table style={{ width: '100%', borderCollapse: 'collapse' }}><thead><tr style={{ borderBottom: '2px solid #f1f5f9' }}><th style={thStyle}>User</th><th style={thStyle}>Statistik</th><th style={thStyle}>Challenge</th><th style={thStyle}>Badge</th><th style={thStyle}>Aksi</th></tr></thead><tbody>{users.map(u => (<tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}><td style={tdStyle}><b>{u.name}</b><br/>{u.phone}</td><td style={tdStyle}><span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem'}}>Refs: {u.referral_count}</span></td><td style={tdStyle}><span style={{color:u.current_challenge!=='-'?'#16a34a':'#94a3b8', fontWeight:'bold'}}>{u.current_challenge}</span></td><td style={tdStyle}><select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={selectStyle}>{GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}</select></td><td style={tdStyle}><button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold'}}>{u.role==='admin'?'Revoke':'Admin'}</button></td></tr>))}</tbody></table></CardContent></Card>)}
+          {/* TAB USERS (UPDATED WITH RESET/DELETE) */}
+          {activeTab === 'users' && (
+            <Card style={{ overflowX: 'auto', background: 'white' }}>
+                <CardHeader><CardTitle className="heading-3">Daftar Pengguna & Manajemen Challenge</CardTitle></CardHeader>
+                <CardContent>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize:'0.9rem' }}>
+                        <thead style={{background:'#f8fafc'}}>
+                            <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                                <th style={thStyle}>User Info</th>
+                                <th style={thStyle}>Statistik</th>
+                                <th style={thStyle}>Challenge Aktif</th>
+                                <th style={thStyle}>Badge</th>
+                                <th style={thStyle}>Aksi Challenge</th>
+                                <th style={thStyle}>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={tdStyle}>
+                                        <b>{u.name}</b><br/>
+                                        <span style={{color:'#64748b', fontSize:'0.8rem'}}>{u.phone}</span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{background:'#f1f5f9', padding:'2px 6px', borderRadius:'4px', fontSize:'0.75rem', border:'1px solid #e2e8f0'}}>
+                                            Refs: {u.referral_count}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{
+                                            color: u.active_challenge_id ? '#166534' : '#94a3b8', 
+                                            fontWeight:'bold',
+                                            background: u.active_challenge_id ? '#dcfce7' : 'transparent',
+                                            padding: u.active_challenge_id ? '2px 8px' : '0',
+                                            borderRadius: '12px',
+                                            fontSize: '0.85rem'
+                                        }}>
+                                            {u.current_challenge}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <select value={u.badge} onChange={e=>handleUpdateUser(u.id,'badge',e.target.value)} style={{...selectStyle, fontSize:'0.8rem', padding:'2px'}}>
+                                            {GEN_Z_BADGES.map(b=><option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        {u.active_challenge_id ? (
+                                            <div style={{display:'flex', gap:'0.5rem'}}>
+                                                <button 
+                                                    onClick={() => handleResetUserChallenge(u.id, u.active_challenge_id, u.name)} 
+                                                    title="Reset ke Hari 1"
+                                                    disabled={btnLoading}
+                                                    style={{background:'#f59e0b', color:'white', border:'none', borderRadius:'4px', padding:'4px 8px', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', fontSize:'0.75rem'}}
+                                                >
+                                                    <RefreshCw size={14}/> Reset
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleRemoveUserChallenge(u.id, u.active_challenge_id, u.name)} 
+                                                    title="Hapus dari Challenge"
+                                                    disabled={btnLoading}
+                                                    style={{background:'#ef4444', color:'white', border:'none', borderRadius:'4px', padding:'4px 8px', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', fontSize:'0.75rem'}}
+                                                >
+                                                    <XCircle size={14}/> Del
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span style={{color:'#94a3b8', fontSize:'0.8rem'}}>-</span>
+                                        )}
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <button onClick={()=>handleUpdateUser(u.id,'role',u.role==='admin'?'user':'admin')} style={{color:u.role==='admin'?'red':'blue', border:'none', background:'none', cursor:'pointer', fontWeight:'bold', fontSize:'0.8rem'}}>
+                                            {u.role==='admin'?'Revoke Admin':'Make Admin'}
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
+          )}
           
           {/* TAB ARTICLES */}
           {activeTab === 'articles' && (<div style={{display:'grid', gridTemplateColumns: window.innerWidth < 1024 ? '1fr' : '1fr 1.5fr', gap:'1.5rem'}}><Card style={{padding:'1.5rem', background:'white', height:'fit-content'}}><h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Artikel Baru</h3><form onSubmit={handlePostArticle}><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Judul Artikel</label><input style={inputStyle} value={articleForm.title} onChange={e=>setArticleForm({...articleForm, title: e.target.value})} required placeholder="Tips Hidup Sehat..." /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Gambar (Otomatis Kompres)</label><input type="file" style={inputStyle} onChange={e=>setArticleForm({...articleForm, image: e.target.files[0]})} accept="image/*" /></div><div style={{marginBottom:'1rem'}}><label style={labelStyle}>Isi Konten (AI akan hitung waktu baca)</label><textarea style={{...inputStyle, minHeight:'150px'}} value={articleForm.content} onChange={e=>setArticleForm({...articleForm, content: e.target.value})} required placeholder="Tulis konten disini..." /></div><button type="submit" disabled={btnLoading} className="btn-primary" style={{width:'100%', padding:'0.8rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px', display:'flex', justifyContent:'center', gap:'0.5rem'}}>{btnLoading ? <Loader2 className="animate-spin" /> : <><Sparkles size={16}/> Publish Artikel (AI)</>}</button></form></Card><div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>{articles.map(a => (<Card key={a.id} style={{padding:'1rem', display:'flex', gap:'1rem', alignItems:'start'}}>{a.image_url && <img src={`${BACKEND_URL}${a.image_url}`} alt="art" style={{width:'80px', height:'80px', objectFit:'cover', borderRadius:'8px'}} />}<div><h4 style={{fontWeight:'bold'}}>{a.title}</h4><p style={{fontSize:'0.8rem', color:'#64748b'}}>{a.content}</p></div></Card>))}</div></div>)}
