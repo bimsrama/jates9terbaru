@@ -6,11 +6,15 @@ import {
   FileText, Check, X, Loader2, Bot, LogOut, 
   MessageSquare, Send, Smartphone, Calendar, 
   Trash2, Clock, Save, Eye, Package, Bell, 
-  AlertTriangle, RefreshCw, Zap, Sparkles, Menu, FileSpreadsheet, CheckCircle, XCircle
+  AlertTriangle, RefreshCw, Zap, Sparkles, Menu, FileSpreadsheet, CheckCircle, XCircle,
+  ExternalLink, Info
 } from 'lucide-react';
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
+
+// Link Google Sheet Master (Ganti jika ada link baru)
+const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?gid=0#gid=0";
 
 const GEN_Z_BADGES = [
   "Pejuang Tangguh", "Si Paling Sehat", "Usus Glowing", "Lord of Fiber", 
@@ -42,21 +46,18 @@ const AdminDashboard = () => {
   const [wdRefInput, setWdRefInput] = useState(""); 
   const [wdProcessingId, setWdProcessingId] = useState(null);
 
-  // MATRIX STATES (INPUT CHALLENGE)
-  const [selectedChallengeId, setSelectedChallengeId] = useState(null);
-  const [contentMatrix, setContentMatrix] = useState({});
-  const [loadingMatrix, setLoadingMatrix] = useState(false);
-  const [activeTypeTab, setActiveTypeTab] = useState('a'); // 'a', 'b', or 'c'
-
+  // CHALLENGE INFO STATE
+  const [selectedChallengeId, setSelectedChallengeId] = useState("");
+  
   // EDIT & VIEW CHALLENGE STATE
   const [editingChallenge, setEditingChallenge] = useState(null); 
   const [challengeParticipants, setChallengeParticipants] = useState([]);
   const [viewMode, setViewMode] = useState('info'); 
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
-  // --- NEW: GENERATOR PREVIEW STATE ---
+  // GENERATOR PREVIEW STATE
   const [genChallengeName, setGenChallengeName] = useState("");
-  const [previewData, setPreviewData] = useState(null); // Menyimpan hasil JSON dari AI
+  const [previewData, setPreviewData] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // BROADCAST STATE
@@ -70,19 +71,17 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'challenge_content' && selectedChallengeId) fetchContentMatrix(selectedChallengeId);
     if (activeTab === 'users' || activeTab === 'broadcast') fetchUsers();
     if (activeTab === 'articles') fetchArticles();
     if (activeTab === 'products') fetchProducts(); 
     if (activeTab === 'finance') fetchWithdrawals(); 
     if (activeTab === 'orders') fetchOrders();
-  }, [activeTab, selectedChallengeId]);
+  }, [activeTab]);
 
   // --- API FETCH ---
   const fetchStats = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/stats`, { headers: getAuthHeader() }); setStats(res.data); } catch (e) {} };
   const fetchUsers = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/users`, { headers: getAuthHeader() }); setUsers(res.data); } catch (e) {} };
-  const fetchChallengeCards = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); if(res.data.length && !selectedChallengeId) setSelectedChallengeId(res.data[0].id); } catch (e) {} };
-  const fetchContentMatrix = async (id) => { setLoadingMatrix(true); try { const res = await axios.get(`${BACKEND_URL}/api/admin/campaign/matrix/${id}`, { headers: getAuthHeader() }); const m={}; res.data.forEach(x=>{m[x.day_sequence]=x}); setContentMatrix(m); } catch(e){} setLoadingMatrix(false); };
+  const fetchChallengeCards = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); } catch (e) {} };
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`, { headers: getAuthHeader() }); setArticles(res.data); } catch(e){} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/products`, { headers: getAuthHeader() }); setProducts(res.data); } catch(e){} };
   
@@ -146,8 +145,6 @@ const AdminDashboard = () => {
       if(!window.confirm("Hapus produk ini?")) return;
       try { await axios.delete(`${BACKEND_URL}/api/admin/products/${id}`, { headers: getAuthHeader() }); fetchProducts(); } catch(e){ alert("Gagal hapus"); }
   };
-
-  const handleSaveMatrix = async () => { if(!selectedChallengeId) return; setBtnLoading(true); try { const pl = Object.keys(contentMatrix).map(d=>({day_sequence:parseInt(d), challenge_id:selectedChallengeId, ...contentMatrix[d]})); await axios.post(`${BACKEND_URL}/api/admin/campaign/matrix/save`, {challenge_id:selectedChallengeId, data:pl}, {headers:getAuthHeader()}); alert("Challenge Saved!"); } catch(e){alert("Error");} setBtnLoading(false); };
   
   const handleDeleteChallenge = async (id, e) => { e.stopPropagation(); if(window.confirm("Delete?")) try { await axios.delete(`${BACKEND_URL}/api/admin/quiz/delete-challenge/${id}`, {headers:getAuthHeader()}); setChallenges(challenges.filter(c=>c.id!==id)); } catch(e){} };
   
@@ -161,18 +158,7 @@ const AdminDashboard = () => {
   const handleUpdateUser = async (uid, type, val) => {
     try { const payload = { user_id: uid }; if (type === 'role') payload.role = val; if (type === 'badge') payload.badge = val; await axios.post(`${BACKEND_URL}/api/admin/users/update-role`, payload, { headers: getAuthHeader() }); fetchUsers(); alert(`User ${type} berhasil diubah!`); } catch(e) { alert("Gagal update user."); }
   };
-  
-  const handleMatrixChange = (d, typeKey, idx, val) => {
-    setContentMatrix(prev => {
-        const row = prev[d] || {};
-        const currentArr = row[typeKey] || ["", "", ""];
-        const newArr = [...currentArr];
-        newArr[idx] = val; 
-        return { ...prev, [d]: { ...row, [typeKey]: newArr } };
-    });
-  };
 
-  // --- LOGIC CHALLENGE MANAGEMENT (RESET & REMOVE) ---
   const handleResetUserChallenge = async (userId, challengeId, userName) => {
     if (!challengeId) return alert("User tidak memiliki challenge aktif.");
     if (!window.confirm(`⚠️ PERHATIAN:\nYakin ingin MERESET progress challenge user "${userName}" kembali ke Hari 1?\n\nSemua progress checklist dan jurnal user untuk challenge ini akan dihapus.`)) return;
@@ -187,7 +173,6 @@ const AdminDashboard = () => {
     try { await axios.post(`${BACKEND_URL}/api/admin/users/challenge/remove`, { user_id: userId, challenge_id: challengeId }, { headers: getAuthHeader() }); alert("Sukses! User telah dikeluarkan dari challenge."); fetchUsers(); } catch (e) { alert("Gagal menghapus: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); }
   };
 
-  // --- NEW: LOGIC GENERATOR CHALLENGE (PREVIEW FLOW) ---
   const handleGeneratePreview = async () => {
     if (!genChallengeName) return alert("Isi judul dulu!");
     setBtnLoading(true);
@@ -221,7 +206,7 @@ const AdminDashboard = () => {
         setShowPreviewModal(false);
         setPreviewData(null);
         setGenChallengeName("");
-        fetchChallengeCards(); // Refresh list
+        fetchChallengeCards(); 
     } catch (e) {
         alert("Gagal simpan: " + (e.response?.data?.message || e.message));
     } finally {
@@ -253,7 +238,7 @@ const AdminDashboard = () => {
           <SidebarItem id="broadcast" icon={MessageSquare} label="Broadcast WA" />
           <SidebarItem id="products" icon={Package} label="Manajemen Produk" />
           <SidebarItem id="finance" icon={Wallet} label="Keuangan & WD" />
-          <SidebarItem id="challenge_content" icon={Calendar} label="Input Challenge" />
+          <SidebarItem id="challenge_content" icon={Calendar} label="Input Challenge (Sheet)" />
           <SidebarItem id="users" icon={Users} label="User & Referral" />
           <SidebarItem id="articles" icon={FileText} label="Artikel Kesehatan" />
           <SidebarItem id="challenge_generator" icon={Sparkles} label="Challenge Generator" />
@@ -305,12 +290,86 @@ const AdminDashboard = () => {
             </div>
           )}
 
+          {/* TAB CHALLENGE CONTENT (REPLACED WITH GOOGLE SHEET INSTRUCTIONS) */}
+          {activeTab === 'challenge_content' && (
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                   <h2 className="heading-2" style={{display:'flex', alignItems:'center', gap:'0.5rem'}}><FileSpreadsheet className="text-green-600"/> Manajemen Konten Harian</h2>
+                   <p style={{ color: '#64748b', marginBottom: '1rem' }}>Konten harian (Tasks & Facts) dikelola melalui Google Sheet Master.</p>
+                </div>
+                
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', padding: '1.5rem' }}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{...labelStyle, fontSize:'1rem'}}>Pilih Challenge untuk Melihat Instruksi</label>
+                        <select 
+                            value={selectedChallengeId} 
+                            onChange={(e) => setSelectedChallengeId(e.target.value)} 
+                            style={{...selectStyle, padding: '0.8rem', fontSize: '1rem', marginTop: '0.5rem'}}
+                        >
+                            <option value="" disabled>-- Pilih Challenge --</option>
+                            {challenges.map(c => (
+                                <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {selectedChallengeId ? (
+                        <div className="animate-fade-in">
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontWeight: 'bold', color: '#166534', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Info size={20}/> Instruksi Pengisian Sheet
+                                </h3>
+                                <div style={{ display: 'grid', gap: '1rem', fontSize: '0.95rem', color: '#14532d' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ minWidth: '120px', fontWeight: 'bold' }}>1. ID Database:</div>
+                                        <div style={{ background: 'white', padding: '2px 8px', borderRadius: '4px', border: '1px solid #86efac', fontWeight: 'bold' }}>{selectedChallengeId}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ minWidth: '120px', fontWeight: 'bold' }}>2. Nama Tab Sheet:</div>
+                                        <div style={{ background: 'white', padding: '2px 8px', borderRadius: '4px', border: '1px solid #86efac', fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                            konten_{selectedChallengeId}
+                                        </div>
+                                    </div>
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                                        *Pastikan Anda membuat Tab baru di Google Sheet dengan nama persis <b>konten_{selectedChallengeId}</b> agar sistem bisa membacanya.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <a 
+                                href={GOOGLE_SHEET_URL} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                style={{ 
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', 
+                                    background: '#10b981', color: 'white', textDecoration: 'none', 
+                                    padding: '1rem', borderRadius: '8px', fontWeight: 'bold', 
+                                    boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
+                                    transition: 'transform 0.1s'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <FileSpreadsheet size={20}/> Buka Google Sheet Master
+                                <ExternalLink size={16}/>
+                            </a>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8', border: '2px dashed #e2e8f0', borderRadius: '12px' }}>
+                            <Bot size={48} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
+                            <p>Silakan pilih challenge di atas untuk mendapatkan ID dan panduan penamaan sheet.</p>
+                        </div>
+                    )}
+                </Card>
+            </div>
+          )}
+
           {/* TAB BROADCAST & WA */}
           {activeTab === 'broadcast' && (
             <div style={{ maxWidth: '600px', margin: '0 auto' }}>
                 <h2 className="heading-2" style={{marginBottom:'1.5rem'}}>Broadcast WhatsApp</h2>
                 
-                {/* 1. MANUAL TRIGGER (FITUR UTAMA YANG DIMINTA) */}
+                {/* 1. MANUAL TRIGGER */}
                 <Card style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom:'2rem', boxShadow:'0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                     <div style={{display:'flex', alignItems:'center', gap:'0.5rem', marginBottom:'0.5rem'}}>
                         <AlertTriangle size={24} color="#dc2626"/>
@@ -367,7 +426,7 @@ const AdminDashboard = () => {
                     </div>
                 </Card>
 
-                {/* 2. CUSTOM BROADCAST (ANNOUNCEMENT) */}
+                {/* 2. CUSTOM BROADCAST */}
                 <Card style={{ padding: '1.5rem', background: 'white', border: '1px solid #e2e8f0', marginBottom:'2rem' }}>
                     <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#16a34a', display:'flex', alignItems:'center', gap:'0.5rem' }}>
                         <MessageSquare size={20}/> Broadcast Pengumuman (Custom)
@@ -388,7 +447,7 @@ const AdminDashboard = () => {
                     </button>
                 </Card>
 
-                {/* 3. TEST KONEKSI & KIRIM (FITUR YANG DIPERBAHARUI) */}
+                {/* 3. TEST KONEKSI */}
                 <Card style={{ padding: '1.5rem', background: '#f8fafc', border: '1px dashed #cbd5e1' }}>
                     <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', color:'#64748b', display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1rem' }}>
                         <Zap size={18} /> Test Koneksi (AppScript & WA)
@@ -411,7 +470,6 @@ const AdminDashboard = () => {
                             {btnLoading ? 'Sending...' : 'Kirim Test'}
                         </button>
                     </div>
-                    <p style={{fontSize:'0.75rem', color:'#94a3b8', marginTop:'0.5rem'}}>* Ini akan mengirim pesan "Tes Broadcast" untuk memastikan Python terhubung ke AppScript/Watzap.</p>
                 </Card>
             </div>
           )}
@@ -503,7 +561,7 @@ const AdminDashboard = () => {
              </div>
           )}
 
-          {/* TAB CHALLENGE GENERATOR (NEW PREVIEW FLOW) */}
+          {/* TAB CHALLENGE GENERATOR */}
           {activeTab === 'challenge_generator' && (
              <div style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <div style={{ marginBottom: '2rem' }}>
@@ -531,87 +589,6 @@ const AdminDashboard = () => {
                     </CardContent>
                 </Card>
              </div>
-          )}
-
-          {/* TAB INPUT CHALLENGE (UPDATED - 3 OPSI PER TIPE) */}
-          {activeTab === 'challenge_content' && (
-            <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
-                  <h1 className="heading-2">Input Challenge 30 Hari</h1>
-                  <div style={{display:'flex', gap:'1rem'}}>
-                      <a href="https://docs.google.com/spreadsheets/d/1y9dkUeHdgxAnjhcUb56-7vtXrznNR0Ll1UQRdOtmFLQ/edit?gid=0#gid=0" target="_blank" rel="noreferrer" style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'#10b981', color:'white', textDecoration:'none', padding:'0.5rem 1rem', borderRadius:'6px', fontWeight:'bold', fontSize:'0.9rem'}}>
-                          <FileSpreadsheet size={18}/> Buka Master Sheet (Fakta & Promo)
-                      </a>
-                      <select value={selectedChallengeId || ""} onChange={(e) => setSelectedChallengeId(e.target.value)} style={selectStyle}>
-                         <option value="" disabled>Pilih Challenge...</option>
-                         {challenges.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-                      </select>
-                      <button onClick={handleSaveMatrix} disabled={btnLoading} style={{display:'flex', alignItems:'center', gap:'0.5rem', background:'var(--primary)', color:'white', border:'none', padding:'0.5rem 1rem', borderRadius:'6px', cursor:'pointer'}}>
-                         {btnLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>} Simpan Challenge
-                      </button>
-                  </div>
-              </div>
-              
-              {/* TAB SELECTOR UNTUK TIPE */}
-              <div style={{display:'flex', gap:'1rem', marginBottom:'1rem', borderBottom:'1px solid #e2e8f0'}}>
-                  {['A','B','C'].map(t => (
-                      <button 
-                        key={t}
-                        onClick={()=>setActiveTypeTab(t.toLowerCase())}
-                        style={{
-                            padding:'0.8rem 2rem', 
-                            borderBottom: activeTypeTab===t.toLowerCase() ? '3px solid var(--primary)' : '3px solid transparent',
-                            color: activeTypeTab===t.toLowerCase() ? 'var(--primary)' : '#64748b',
-                            background: 'transparent',
-                            borderTop: 'none', borderLeft:'none', borderRight:'none',
-                            fontWeight: 'bold', cursor:'pointer', fontSize:'1rem'
-                        }}
-                      >
-                          TIPE {t}
-                      </button>
-                  ))}
-              </div>
-
-              {loadingMatrix ? <div style={{padding:'2rem', textAlign:'center'}}>Loading data...</div> : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', background:'white' }}>
-                    <table style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
-                        <tr>
-                            <th style={{...thStyle, width: '60px', background: '#f1f5f9', textAlign:'center'}}>Hari</th>
-                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 1 (Mudah)</th>
-                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 2 (Sedang)</th>
-                            <th style={{...thStyle, textAlign:'center', background: activeTypeTab==='a'?'#dbeafe': activeTypeTab==='b'?'#dcfce7':'#fae8ff', color: activeTypeTab==='a'?'#1e40af': activeTypeTab==='b'?'#166534':'#86198f', width:'30%'}}>OPSI 3 (Menantang)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Array.from({ length: 30 }, (_, i) => i + 1).map(day => {
-                            const row = contentMatrix[day] || {};
-                            const currentKey = `challenge_${activeTypeTab}`;
-                            const optionsArray = Array.isArray(row[currentKey]) ? row[currentKey] : ["", "", ""];
-
-                            return (
-                                <tr key={day} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', background:'#f8fafc'}}>{day}</td>
-                                    
-                                    {[0, 1, 2].map((optIndex) => (
-                                        <td key={optIndex} style={{...tdStyle, padding:'0.5rem', background: activeTypeTab==='a'?'#eff6ff': activeTypeTab==='b'?'#f0fdf4':'#faf5ff'}}>
-                                            <textarea 
-                                                placeholder={`Pilihan ${optIndex+1} untuk Hari ${day}`} 
-                                                style={tableInputStyle} 
-                                                value={optionsArray[optIndex] || ""} 
-                                                onChange={e=>handleMatrixChange(day, currentKey, optIndex, e.target.value)} 
-                                            />
-                                        </td>
-                                    ))}
-                                </tr>
-                            )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-              )}
-              <p style={{marginTop:'1rem', fontSize:'0.85rem', color:'#64748b', fontStyle:'italic'}}>* Masukkan 3 pilihan challenge yang berbeda setiap harinya agar user punya alternatif.</p>
-            </div>
           )}
 
           {/* TAB USERS (UPDATED WITH RESET/DELETE) */}
