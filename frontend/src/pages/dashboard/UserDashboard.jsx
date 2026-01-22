@@ -39,12 +39,12 @@ const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  
+   
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
   const [activeChallenges, setActiveChallenges] = useState([]); 
   const [recommendedChallenges, setRecommendedChallenges] = useState([]); 
-  
+   
   // --- STATE KHUSUS MULTI CHALLENGE ---
   const [allDailyData, setAllDailyData] = useState([]); 
   const [selectedTasksMap, setSelectedTasksMap] = useState({}); 
@@ -55,7 +55,7 @@ const UserDashboard = () => {
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
-  
+   
   // --- STATE TOKO & ALAMAT ---
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -63,7 +63,7 @@ const UserDashboard = () => {
   const [cities, setCities] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [subdistricts, setSubdistricts] = useState([]);
-  
+   
   const [newAddr, setNewAddr] = useState({
       label:'Rumah', name:'', phone:'', prov_id:'', prov_name:'', city_id:'', city_name:'', dis_id:'', dis_name:'', subdis_id:'', subdis_name:'', address:'', zip:''
   });
@@ -105,12 +105,12 @@ const UserDashboard = () => {
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
-  
+   
   const [showQRModal, setShowQRModal] = useState(false);
   const [friendCode, setFriendCode] = useState("");
   const [showFriendProfile, setShowFriendProfile] = useState(false);
   const [friendData, setFriendData] = useState(null);
-  
+   
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
@@ -180,7 +180,7 @@ const UserDashboard = () => {
 
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
   const changeThemeColor = (k) => { setThemeColor(k); localStorage.setItem('colorTheme', k); };
-  
+   
   const handleProvChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, prov_id: id, prov_name: name, city_id:'', dis_id:'', subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/cities?prov_id=${id}`).then(res => setCities(res.data)); };
   const handleCityChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, city_id: id, city_name: name, dis_id:'', subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/districts?city_id=${id}`).then(res => setDistricts(res.data)); };
   const handleDistrictChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, dis_id: id, dis_name: name, subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/subdistricts?dis_id=${id}`).then(res => setSubdistricts(res.data)); };
@@ -204,7 +204,7 @@ const UserDashboard = () => {
   };
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
-  
+   
   const fetchAllDailyContents = async () => { 
       setDailyLoading(true); 
       try { 
@@ -221,14 +221,14 @@ const UserDashboard = () => {
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); if(Array.isArray(res.data)) { setProducts(res.data); } else { setProducts([]); } } catch(e){ setProducts([]); } };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
-  
+   
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
-  
+   
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
-  
+   
   const toggleTaskSelection = (challengeId, task) => {
     const currentTasks = selectedTasksMap[challengeId] || [];
     let newTasks;
@@ -251,7 +251,7 @@ const UserDashboard = () => {
           fetchAllDailyContents(); fetchData(); fetchCheckinHistory(); 
       } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
   };
-  
+   
   const handleChallengeAction = async (id, action) => {
       // Prompt confirm untuk stop saja, pause/resume biasanya lebih sering
       if(action === 'stop' && !window.confirm(`Yakin ingin ${action} challenge ini?`)) return;
@@ -346,7 +346,7 @@ const UserDashboard = () => {
   const triggerFileInput = () => fileInputRef.current.click();
   const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
   const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
-  
+   
   // --- FIX 1: UPDATE LOGIKA ALAMAT DI SHOP ---
   const openCheckout = async (product) => { 
       setSelectedProduct(product); 
@@ -385,7 +385,7 @@ const UserDashboard = () => {
   };
   const handleOpenInvoice = (order) => { setSelectedInvoice(order); setShowInvoice(true); };
   const badgeStyle = { background: 'rgba(255,255,255,0.2)', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px', backdropFilter:'blur(4px)', border: '1px solid rgba(255,255,255,0.4)' };
-  
+   
   const ShopBanner = () => (
       <div style={{ marginBottom: '2rem', position:'relative', borderRadius: '24px', overflow:'hidden', boxShadow:'0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
           <div style={{ background: currentTheme.cardGradient, padding: '2.5rem 2rem', color: 'white', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -455,16 +455,16 @@ const UserDashboard = () => {
                                               display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0, color: 'white',
                                               transition: 'all 0.2s'
                                           }}> 
-                                            {isSelected && <Check size={18} strokeWidth={4}/>} 
+                                              {isSelected && <Check size={18} strokeWidth={4}/>} 
                                           </div>
                                           <span style={{fontSize:'1rem', fontWeight: isSelected ? '700' : '500'}}>{task}</span>
                                       </div>
                                   );
                               })}
                           </div>
-                          
+                           
                           <textarea value={journal} onChange={(e) => handleJournalChange(data.challenge_id, e.target.value)} placeholder={`Catat perasaanmu setelah latihan...`} style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: 'none', background: darkMode ? '#0f172a' : '#f1f5f9', marginTop:'1.5rem', color: darkMode ? 'white' : 'black', fontFamily:'inherit', fontSize:'0.95rem', resize:'vertical', minHeight:'80px' }} ></textarea>
-                          
+                           
                           <div style={{ marginTop: '1.5rem', display:'flex', gap:'1rem' }}>
                               <button onClick={() => handleSubmitCheckin(data.challenge_id, 'completed')} disabled={isSubmitting || selected.length === 0} style={{ flex:2, background: selected.length > 0 ? currentTheme.primary : '#cbd5e1', color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'1rem', cursor: selected.length > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: selected.length > 0 ? '0 4px 15px rgba(0,0,0,0.1)' : 'none', transition:'all 0.2s', transform: 'scale(1)' }}> 
                                   {isSubmitting ? <RefreshCw className="animate-spin" size={20}/> : <CheckCircle size={20}/>} COMPLETE WORKOUT
@@ -506,6 +506,7 @@ const UserDashboard = () => {
             overflow-y: auto; 
             color: ${darkMode ? 'white' : 'black'}; 
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            position: relative; /* Added relative positioning for absolute children */
         }
         
         /* GYM STYLE ELEMENTS */
@@ -654,11 +655,11 @@ const UserDashboard = () => {
                                                     {chal.status}
                                                 </span>
                                             </div>
-                                            
+                                             
                                             <div className="progress-bar-capsule" style={{marginBottom:'0.8rem', background: darkMode?'#334155':'#f1f5f9'}}>
                                                 <div className="progress-fill" style={{width:`${chal.progress}%`}}></div>
                                             </div>
-                                            
+                                             
                                             <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', color:'#64748b', marginBottom:'1.5rem'}}>
                                                 <span style={{fontWeight:'700', color: currentTheme.primary}}>{chal.progress}% Completed</span>
                                                 <span>{30 - chal.day} hari tersisa</span>
@@ -674,7 +675,7 @@ const UserDashboard = () => {
                                                     <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.missed || 0} Missed</span>
                                                 </div>
                                             </div>
-                                            
+                                             
                                             <div style={{marginTop:'1rem', display:'flex', gap:'10px'}}>
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
@@ -693,7 +694,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
                 </div>
-                
+                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
                   {/* ARTIKEL KESEHATAN (Moved to Right Column) */}
@@ -940,11 +941,14 @@ const UserDashboard = () => {
       </select> 
       {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'4px'}}>Belum ada alamat tersimpan.</p>} </div> )} <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Harga</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Ongkir</span><span>Rp {shippingCost.toLocaleString()}</span></div> <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.2rem', marginTop:'0.5rem'}}><span>Total</span><span>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span></div> </div> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer'}}>Bayar</button> </div> </div> </div> )}
       
-      {/* FIX: INVOICE MODAL LEBIH LENGKAP */}
+      {/* FIX: INVOICE MODAL LEBIH LENGKAP + Z-INDEX & CLOSE BUTTON */}
       {showInvoice && selectedInvoice && ( 
-        <div className="modal-overlay" onClick={()=>setShowInvoice(false)}> 
+        <div className="modal-overlay" onClick={()=>setShowInvoice(false)} style={{zIndex: 100001}}> 
             <div className="modal-content" style={{maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> 
-                <div style={{textAlign:'center', marginBottom:'1.5rem', borderBottom:'1px dashed #ccc', paddingBottom:'1rem'}}> 
+                <div style={{textAlign:'center', marginBottom:'1.5rem', borderBottom:'1px dashed #ccc', paddingBottom:'1rem', position:'relative'}}> 
+                    <button onClick={()=>setShowInvoice(false)} style={{position:'absolute', right:0, top:0, background:'none', border:'none', cursor:'pointer'}}>
+                        <X size={24} color={darkMode?'white':'black'}/>
+                    </button>
                     <h2 style={{fontWeight:'bold', fontSize:'1.5rem'}}>INVOICE</h2> 
                     <p style={{fontSize:'0.9rem', color:'#64748b'}}>VITALYST STORE</p> 
                     <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date}</p> 
@@ -1001,7 +1005,30 @@ const UserDashboard = () => {
         </div> 
       )}
 
-      {showAddressModal && ( <div className="modal-overlay" onClick={()=>setShowAddressModal(false)}> <div className="modal-content" onClick={e=>e.stopPropagation()}> <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Tambah Alamat</h3> <input placeholder="Label (Rumah/Kantor)" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> </div> <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={handleCityChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}></textarea> <input placeholder="Kode Pos" onChange={e=>setNewAddr({...newAddr, zip:e.target.value})} style={{width:'100%', padding:'0.7rem', marginBottom:'1rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> <div style={{display:'flex', gap:'0.5rem'}}> <button onClick={handleSaveAddress} style={{flex:1, padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white', cursor:'pointer'}}>Simpan</button> <button onClick={()=>setShowAddressModal(false)} style={{flex:1, padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Batal</button> </div> </div> </div> )}
+      {/* FIX: ADDRESS MODAL DENGAN CLOSE BUTTON DI HEADER & Z-INDEX */}
+      {showAddressModal && ( 
+        <div className="modal-overlay" onClick={()=>setShowAddressModal(false)} style={{zIndex: 100001}}> 
+            <div className="modal-content" onClick={e=>e.stopPropagation()}> 
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                    <h3 style={{fontWeight:'bold'}}>Tambah Alamat</h3>
+                    <button onClick={()=>setShowAddressModal(false)} style={{background:'none', border:'none', cursor:'pointer'}}>
+                        <X size={24} color={darkMode?'white':'black'}/>
+                    </button>
+                </div>
+                <input placeholder="Label (Rumah/Kantor)" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> 
+                    <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                    <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                </div> 
+                <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={handleCityChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}></textarea> <input placeholder="Kode Pos" onChange={e=>setNewAddr({...newAddr, zip:e.target.value})} style={{width:'100%', padding:'0.7rem', marginBottom:'1rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                <div style={{display:'flex', gap:'0.5rem'}}> 
+                    <button onClick={handleSaveAddress} style={{flex:1, padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white', cursor:'pointer'}}>Simpan</button> 
+                    <button onClick={()=>setShowAddressModal(false)} style={{flex:1, padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Batal</button> 
+                </div> 
+            </div> 
+        </div> 
+      )}
+
       {selectedArticle && ( <div className="modal-overlay" onClick={()=>setSelectedArticle(null)}> <div className="modal-content" style={{width:'100%', maxWidth:'600px', maxHeight:'85vh', padding:'2rem', position:'relative'}} onClick={e=>e.stopPropagation()}> <button onClick={()=>setSelectedArticle(null)} style={{position:'absolute', right:'1rem', top:'1rem', background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem', paddingRight:'2rem'}}>{selectedArticle.title}</h2> {selectedArticle.image_url && <img src={`${BACKEND_URL}${selectedArticle.image_url}`} style={{width:'100%', borderRadius:'8px', marginBottom:'1rem'}}/>} <div style={{lineHeight:'1.6', fontSize:'0.95rem', whiteSpace:'pre-line'}}>{selectedArticle.content}</div> </div> </div> )}
       {showQRModal && ( <div className="modal-overlay" onClick={()=>setShowQRModal(false)}> <div className="modal-content" style={{textAlign:'center', background:'white'}} onClick={e=>e.stopPropagation()}> <h3 style={{fontWeight:'bold', marginBottom:'1rem', color:'black'}}>Kode Pertemanan</h3> <div style={{padding:'1rem', border:'1px solid #eee', borderRadius:'12px', display:'inline-block'}}> <QRCodeSVG value={`https://jagatetapsehat.com/add/${overview?.user?.referral_code}`} size={180} /> </div> <button onClick={()=>setShowQRModal(false)} style={{display:'block', width:'100%', marginTop:'1rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Tutup</button> </div> </div> )}
 
