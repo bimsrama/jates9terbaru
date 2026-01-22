@@ -7,7 +7,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
   MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
-  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame
+  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -17,7 +17,7 @@ import HealthReport from './HealthReport';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- KONFIGURASI TEMA (Diperbarui untuk tampilan Gym/Sporty) ---
+// --- KONFIGURASI TEMA (Gym/Sporty Style) ---
 const THEMES = {
   green: { id: 'green', name: 'Hijau Alami', primary: '#22c55e', light: '#dcfce7', text: '#14532d', cardGradient: 'linear-gradient(135deg, #22c55e 0%, #14532d 100%)', gradient: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#ef4444', light: '#fee2e2', text: '#7f1d1d', cardGradient: 'linear-gradient(135deg, #ef4444 0%, #7f1d1d 100%)', gradient: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
@@ -161,14 +161,14 @@ const UserDashboard = () => {
 
   useEffect(() => { if (activeTab === 'friends') fetchFriendsList(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
+  useEffect(() => { if (activeTab === 'chat') setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300); }, [activeTab, chatHistory]);
 
   const handleTouchStart = (e) => { if (mainContentRef.current.scrollTop === 0) startY.current = e.touches[0].clientY; };
   const handleTouchMove = (e) => { if (startY.current === 0) return; const currentY = e.touches[0].clientY; const diff = currentY - startY.current; };
   const handleTouchEnd = async (e) => {
       const currentY = e.changedTouches[0].clientY;
       const diff = currentY - startY.current;
-      if (diff > 100 && mainContentRef.current.scrollTop === 0 && !refreshing) {
+      if (diff > 100 && mainContentRef.current.scrollTop === 0 && !refreshing && activeTab === 'dashboard') {
           setRefreshing(true);
           const randomMotivation = MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
           setMotivationText(randomMotivation);
@@ -225,8 +225,7 @@ const UserDashboard = () => {
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
-  const handleScrollToChat = () => { setActiveTab('dashboard'); if(!isDesktop) setSidebarOpen(false); setTimeout(() => chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); };
-
+  
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
   
@@ -514,7 +513,7 @@ const UserDashboard = () => {
             <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Activity size={20}/> Dashboard</button></li>
             <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
             <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
-            <li><button className="nav-item" onClick={handleScrollToChat}><Bot size={20}/> Dr. Alva AI</button></li>
+            <li><button className={`nav-item ${activeTab==='chat'?'active':''}`} onClick={() => handleNavClick('chat')}><Bot size={20}/> Dr. Alva AI</button></li>
             <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => handleNavClick('settings')}><Settings size={20}/> Pengaturan</button></li>
           </ul>
         </nav>
@@ -537,7 +536,7 @@ const UserDashboard = () => {
             </div>
         )}
 
-        <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1 }}>
+        <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {activeTab === 'dashboard' && (
             <>
               <div style={{ marginBottom: '2rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -586,13 +585,8 @@ const UserDashboard = () => {
                           <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '0', right: '-5px', background: 'white', borderRadius: '50%', padding: '6px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}> <Edit2 size={14} color={currentTheme.text} /> </button>
                       </div>
                       <div style={{flex:1}}> 
-                          <div style={{fontSize:'0.8rem', fontWeight:'600', opacity:0.8, letterSpacing:'1px', textTransform:'uppercase', marginBottom:'4px'}}>Member Sejak 2024</div>
                           <h2 className="heading-2" style={{ marginBottom: '0.5rem', fontSize: '1.5rem', fontWeight: '900', textShadow:'0 2px 4px rgba(0,0,0,0.1)' }}>{overview?.user?.name}</h2> 
                           <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div> 
-                      </div>
-                      <div style={{textAlign:'right', display: isDesktop ? 'block' : 'none'}}>
-                          <div style={{fontSize:'2rem', fontWeight:'900'}}>100%</div>
-                          <div style={{fontSize:'0.8rem', opacity:0.8}}>Dedication</div>
                       </div>
                     </CardContent>
                   </Card>
@@ -673,6 +667,19 @@ const UserDashboard = () => {
                         )}
                     </CardContent>
                   </Card>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                  
+                  {/* ARTIKEL KESEHATAN (Moved to Right Column) */}
+                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border:'none', borderRadius:'24px', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)', height:'fit-content' }}>
+                      <div style={{padding:'1.5rem', borderBottom:`1px solid ${darkMode?'#334155':'#f1f5f9'}`}}>
+                        <h3 style={{fontWeight:'800', display:'flex', alignItems:'center', gap:'8px', fontSize:'1.1rem'}}><BookOpen size={20}/> ARTIKEL TERBARU</h3>
+                      </div>
+                      <div style={{padding:'1rem'}}>
+                        {articles.map(article => ( <div key={article.id} onClick={() => setSelectedArticle(article)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#0f172a' : '#f8fafc', borderRadius:'16px', marginBottom:'0.8rem', cursor:'pointer', border: 'none', alignItems:'center' }}> <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}> <FileText size={24} color={currentTheme.text}/> </div> <div style={{flex:1}}> <h4 style={{fontWeight:'700', fontSize:'0.95rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4> <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}> <Clock size={12}/> {Math.ceil((article.content?.split(' ').length || 0)/200)} min baca </p> </div> <ChevronRight size={18} color="#94a3b8"/> </div> ))}
+                      </div>
+                  </Card>
 
                   {recommendedChallenges.length > 0 && (
                       <div style={{marginTop:'1rem'}}>
@@ -696,60 +703,75 @@ const UserDashboard = () => {
                           </div>
                       </div>
                   )}
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-                  
-                  {/* --- CHAT BOT STYLE --- */}
-                  <Card ref={chatSectionRef} style={{ background: darkMode ? '#1e293b' : 'white', height: '500px', display:'flex', flexDirection:'column', borderRadius:'24px', border:'none', boxShadow:'0 10px 15px -3px rgba(0,0,0,0.05)' }}>
-                      <div style={{ padding: '1.5rem', borderBottom: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: '50px', height: '50px', background: currentTheme.gradient, borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0, boxShadow:'0 4px 10px rgba(0,0,0,0.1)' }}> <Bot size={28} color={currentTheme.text} /> </div>
-                        <div> <h3 style={{ fontWeight: '800', fontSize: '1.1rem', color: darkMode ? 'white' : '#0f172a', marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> Dr. Alva <div style={{width:'8px', height:'8px', background:'#22c55e', borderRadius:'50%'}}></div> </h3> <p style={{ fontSize: '0.8rem', color: darkMode ? '#94a3b8' : '#64748b' }}>AI Personal Coach</p> </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1rem' }}>
+                      <div style={{ background: darkMode ? '#334155' : 'white', padding: '1.5rem 2rem', borderRadius: '24px', display: 'inline-block', boxShadow: '0 10px 20px -5px rgba(0,0,0,0.1)' }}>
+                          <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.5rem', textTransform:'uppercase', letterSpacing:'1.5px', fontWeight:'700' }}>Kode Referral Anda</p>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+                              <span style={{ fontSize: '2rem', fontWeight: '900', color: currentTheme.primary, letterSpacing: '4px', fontFamily:'monospace' }}>{overview?.user?.referral_code || '-'}</span>
+                              <button onClick={copyReferral} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <Copy size={20} color="#475569" /> </button>
+                              <button onClick={()=>setShowQRModal(true)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <QrCode size={20} color="#475569" /> </button>
+                          </div>
                       </div>
-                      <div style={{flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem'}}> 
+                  </div>
+                </div>
+              </div>
+              {motivationText && ( <div style={{marginTop:'2rem', textAlign:'center', padding:'1rem', fontWeight:'600', color: darkMode?'#cbd5e1':'#64748b', animation:'fadeIn 0.5s ease', fontStyle:'italic'}}> "{motivationText}" </div> )}
+            </>
+          )}
+
+          {activeTab === 'chat' && (
+              <div style={{ display:'flex', flexDirection:'column', height:'100%', maxWidth:'800px', margin:'0 auto', width:'100%' }}>
+                  <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> 
+                      <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Home</button> 
+                  </div>
+                  <Card style={{ flex:1, display:'flex', flexDirection:'column', borderRadius:'24px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.08)', background: darkMode ? '#1e293b' : 'white', overflow:'hidden' }}>
+                      {/* Chat Header */}
+                      <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: '1rem', background: currentTheme.gradient }}>
+                        <div style={{ width: '45px', height: '45px', background: 'white', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0, boxShadow:'0 4px 10px rgba(0,0,0,0.1)' }}> 
+                            <Bot size={28} color={currentTheme.text} /> 
+                        </div>
+                        <div> 
+                            <h3 style={{ fontWeight: '800', fontSize: '1.2rem', color: currentTheme.text, marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> 
+                                Dr. Alva <div style={{width:'8px', height:'8px', background:'#22c55e', borderRadius:'50%', boxShadow:'0 0 5px #22c55e'}}></div> 
+                            </h3> 
+                            <p style={{ fontSize: '0.8rem', color: currentTheme.text, opacity:0.8 }}>AI Personal Health Coach</p> 
+                        </div>
+                      </div>
+
+                      {/* Chat Body */}
+                      <div style={{flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem', background: darkMode?'#0f172a':'#f8fafc'}}> 
                         {chatHistory.map((msg, i) => ( 
                             <div key={i} style={{ 
                                 padding:'1rem 1.2rem', 
-                                background: msg.role==='user' ? currentTheme.primary : (darkMode?'#334155':'#f1f5f9'), 
+                                background: msg.role==='user' ? currentTheme.primary : (darkMode?'#334155':'white'), 
                                 borderRadius: msg.role==='user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px', 
-                                maxWidth:'85%', 
+                                maxWidth:'80%', 
                                 alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', 
                                 color: msg.role==='user' ? 'white' : (darkMode?'e2e8f0':'#334155'), 
                                 fontSize: '0.95rem',
                                 lineHeight: '1.5',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                                border: msg.role!=='user' && !darkMode ? '1px solid #e2e8f0' : 'none'
                             }}> 
                                 {msg.content} 
                             </div> 
                         ))} 
-                        {chatLoading && <div style={{ alignSelf:'flex-start', padding:'0.5rem 1rem', background:'#f1f5f9', borderRadius:'20px', fontSize:'0.8rem', color:'#64748b' }}>Typing...</div>} 
+                        {chatLoading && (
+                            <div style={{ alignSelf:'flex-start', padding:'0.8rem 1.2rem', background: darkMode?'#334155':'white', borderRadius:'20px 20px 20px 4px', fontSize:'0.8rem', color:'#64748b', display:'flex', gap:'4px' }}>
+                                <span className="animate-bounce">●</span><span className="animate-bounce" style={{animationDelay:'0.1s'}}>●</span><span className="animate-bounce" style={{animationDelay:'0.2s'}}>●</span>
+                            </div>
+                        )} 
                         <div ref={chatEndRef}></div> 
                       </div>
-                      <form onSubmit={handleSendChat} style={{padding:'1.2rem', borderTop: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display:'flex', gap:'0.8rem'}}> 
-                          <input value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'1rem', borderRadius:'30px', border:`1px solid ${darkMode?'#475569':'#e2e8f0'}`, background: darkMode?'#0f172a':'white', color: darkMode?'white':'black', outline:'none', fontSize:'0.95rem'}} placeholder="Tanya Dr. Alva..." /> 
-                          <button style={{background: currentTheme.primary, border:'none', width:'50px', height:'50px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:`0 4px 10px ${currentTheme.light}`}}><Send size={20} color="white" style={{marginLeft:'-2px', marginTop:'2px'}}/></button> 
+
+                      {/* Chat Input */}
+                      <form onSubmit={handleSendChat} style={{padding:'1.2rem', borderTop: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display:'flex', gap:'0.8rem', background: darkMode?'#1e293b':'white'}}> 
+                          <input autoFocus value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'1rem 1.5rem', borderRadius:'30px', border:`1px solid ${darkMode?'#475569':'#e2e8f0'}`, background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black', outline:'none', fontSize:'0.95rem'}} placeholder="Tulis pesan..." /> 
+                          <button style={{background: currentTheme.primary, border:'none', width:'54px', height:'54px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:`0 4px 15px ${currentTheme.light}`, transition:'transform 0.2s'}}><Send size={22} color="white" style={{marginLeft:'-3px', marginTop:'2px'}}/></button> 
                       </form>
                   </Card>
-
-                  <Card style={{ background: darkMode ? '#1e293b' : 'transparent', border:'none', boxShadow:'none' }}>
-                      <h3 style={{marginBottom:'1rem', fontWeight:'800', display:'flex', alignItems:'center', gap:'8px'}}><BookOpen size={20}/> ARTIKEL TERBARU</h3>
-                      {articles.map(article => ( <div key={article.id} onClick={() => setSelectedArticle(article)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#334155' : 'white', borderRadius:'16px', marginBottom:'0.8rem', cursor:'pointer', border: 'none', alignItems:'center', boxShadow:'0 2px 5px rgba(0,0,0,0.05)' }}> <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}> <FileText size={24} color={currentTheme.text}/> </div> <div style={{flex:1}}> <h4 style={{fontWeight:'700', fontSize:'0.95rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4> <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}> <Clock size={12}/> {Math.ceil((article.content?.split(' ').length || 0)/200)} min baca </p> </div> <ChevronRight size={18} color="#94a3b8"/> </div> ))}
-                  </Card>
-                </div>
               </div>
-
-              <div style={{ textAlign: 'center', marginTop: '2rem', marginBottom: '1rem' }}>
-                  <div style={{ background: darkMode ? '#334155' : 'white', padding: '1.5rem 2rem', borderRadius: '24px', display: 'inline-block', boxShadow: '0 10px 20px -5px rgba(0,0,0,0.1)' }}>
-                      <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.5rem', textTransform:'uppercase', letterSpacing:'1.5px', fontWeight:'700' }}>Kode Referral Anda</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
-                          <span style={{ fontSize: '2rem', fontWeight: '900', color: currentTheme.primary, letterSpacing: '4px', fontFamily:'monospace' }}>{overview?.user?.referral_code || '-'}</span>
-                          <button onClick={copyReferral} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <Copy size={20} color="#475569" /> </button>
-                          <button onClick={()=>setShowQRModal(true)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <QrCode size={20} color="#475569" /> </button>
-                      </div>
-                  </div>
-              </div>
-              {motivationText && ( <div style={{marginTop:'2rem', textAlign:'center', padding:'1rem', fontWeight:'600', color: darkMode?'#cbd5e1':'#64748b', animation:'fadeIn 0.5s ease', fontStyle:'italic'}}> "{motivationText}" </div> )}
-            </>
           )}
 
           {activeTab === 'settings' && (
@@ -789,7 +811,7 @@ const UserDashboard = () => {
               alignItems: 'center',
               background: darkMode ? '#1e293b' : 'white',
               borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-              padding: '10px 0',
+              padding: '10px 10px',
               position: 'fixed',
               bottom: 0,
               left: 0,
@@ -805,16 +827,7 @@ const UserDashboard = () => {
                   onClick={() => handleNavClick('dashboard')}
               >
                   <Home size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
-              </button>
-
-              {/* Teman (Menggantikan History) */}
-              <button
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
-                  onClick={() => handleNavClick('friends')}
-              >
-                  <Users size={22} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
               </button>
 
               {/* Shop */}
@@ -823,7 +836,50 @@ const UserDashboard = () => {
                   onClick={() => handleNavClick('shop')}
               >
                   <ShoppingBag size={22} strokeWidth={activeTab === 'shop' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
+              </button>
+
+              {/* Dr. Alva (CENTER FLOATING ICON) */}
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                  <button
+                      onClick={() => handleNavClick('chat')}
+                      style={{
+                          position: 'absolute',
+                          top: '-35px',
+                          width: '70px',
+                          height: '70px',
+                          borderRadius: '50%',
+                          background: currentTheme.cardGradient,
+                          border: `6px solid ${darkMode ? '#1e293b' : 'white'}`,
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          zIndex: 20
+                      }}
+                  >
+                      <Bot size={28} color="white" fill="white" />
+                  </button>
+                  <span style={{
+                      position: 'absolute',
+                      bottom: '2px',
+                      fontSize: '0.7rem',
+                      fontWeight: 'bold',
+                      color: activeTab === 'chat' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b')
+                  }}>
+                      Dr. Alva
+                  </span>
+              </div>
+
+              {/* Teman */}
+              <button
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                  onClick={() => handleNavClick('friends')}
+              >
+                  <Users size={22} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
+                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
               </button>
 
               {/* Profil */}
@@ -832,7 +888,7 @@ const UserDashboard = () => {
                   onClick={() => handleNavClick('settings')}
               >
                   <User size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.7rem', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Profil</span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Profil</span>
               </button>
           </nav>
       )}
