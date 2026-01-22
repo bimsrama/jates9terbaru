@@ -7,7 +7,7 @@ import {
   MessageSquare, Send, Smartphone, Calendar, 
   Trash2, Clock, Save, Eye, Package, Bell, 
   AlertTriangle, RefreshCw, Zap, Sparkles, Menu, FileSpreadsheet, CheckCircle, XCircle,
-  ExternalLink, Info
+  ExternalLink, Info, Copy
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -59,6 +59,7 @@ const AdminDashboard = () => {
   const [genChallengeName, setGenChallengeName] = useState("");
   const [previewData, setPreviewData] = useState(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [generatedPrompt, setGeneratedPrompt] = useState(""); // State untuk prompt text
 
   // BROADCAST STATE
   const [testPhone, setTestPhone] = useState("");
@@ -214,6 +215,45 @@ const AdminDashboard = () => {
     }
   };
 
+  // --- NEW: PROMPT GENERATOR HANDLER ---
+  const generateExternalPrompt = () => {
+      if (!genChallengeName) return alert("Isi topik challenge dulu di kolom Input!");
+      
+      const prompt = `Berperanlah sebagai Pelatih Kebugaran & Kesehatan.
+Saya ingin membuat Program Tantangan 30 Hari dengan Topik: "${genChallengeName}"
+
+TUGAS ANDA:
+1. Analisa topik tersebut dan tentukan **3 Tipe Kondisi Spesifik** (Misal: Tipe A=Sembelit, Tipe B=GERD, Tipe C=Kembung).
+2. Untuk SETIAP Tipe, buatkan **3 Pilihan Challenge (Opsi)** per hari selama 30 hari.
+
+STRUKTUR OPSI:
+- Opsi 1 (Mudah): Sangat ringan, < 5 menit.
+- Opsi 2 (Sedang): Standar, butuh sedikit usaha.
+- Opsi 3 (Menantang): Hasil maksimal.
+
+FORMAT OUTPUT (Wajib Format Tabel agar mudah disalin):
+
+[TIPE A: (Nama Kondisi A)]
+| Hari | Opsi 1 | Opsi 2 | Opsi 3 |
+|---|---|---|---|
+| 1 | ... | ... | ... |
+... (sampai hari 30)
+
+[TIPE B: (Nama Kondisi B)]
+... (Tabel sama)
+
+[TIPE C: (Nama Kondisi C)]
+... (Tabel sama)`;
+
+      setGeneratedPrompt(prompt);
+  };
+
+  const copyPromptToClipboard = () => {
+     if(!generatedPrompt) return;
+     navigator.clipboard.writeText(generatedPrompt);
+     alert("Prompt berhasil disalin! Silakan paste di ChatGPT/Claude.");
+  };
+
   // --- BROADCAST HANDLERS ---
   const handleSelectTestUser = (e) => { const uid = e.target.value; setSelectedTestUser(uid); const user = users.find(u => u.id === parseInt(uid)); if (user) { setTestPhone(user.phone); } else { setTestPhone(""); } };
   const handleTestBroadcast = async () => { if (!testPhone) return alert("Isi nomor HP dulu!"); setBtnLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/admin/broadcast/test`, { phone_number: testPhone }, { headers: getAuthHeader() }); alert(res.data.message || "Test sent!"); } catch (e) { alert("Gagal kirim test: " + (e.response?.data?.message || e.message)); } finally { setBtnLoading(false); } };
@@ -275,7 +315,9 @@ const AdminDashboard = () => {
                   <h3 style={{ fontWeight: 'bold', marginBottom: '1rem', display:'flex', alignItems:'center', gap:'0.5rem' }}><Bot size={18} /> AI Quick Generator</h3>
                   <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>Otomatis buat challenge lengkap (Tipe, Kuis, & Deskripsi) dalam sekali klik.</p>
                   <input placeholder="Topik Challenge (cth: Bebas Maag)" style={{ ...inputStyle, marginBottom: '1rem' }} value={genChallengeName} onChange={(e) => setGenChallengeName(e.target.value)} />
-                  <button onClick={handleGeneratePreview} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Sedang Generate...' : 'Preview Challenge (AI)'}</button>
+                  <div style={{display:'flex', gap:'0.5rem', flexDirection:'column'}}>
+                    <button onClick={handleGeneratePreview} disabled={btnLoading} className="btn-primary" style={{ width: '100%', padding:'0.7rem', background:'var(--primary)', color:'white', border:'none', borderRadius:'6px' }}>{btnLoading ? 'Sedang Generate...' : 'Generate Preview (Internal)'}</button>
+                  </div>
                 </Card>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {challenges.map(c => (
@@ -569,8 +611,8 @@ const AdminDashboard = () => {
                    <p style={{ color: '#64748b', marginBottom: '1rem' }}>Buat misi harian otomatis (3 Tipe Kondisi x 3 Opsi Pilihan) dengan bantuan AI.</p>
                 </div>
                 
-                <Card style={{ background: 'white', border: '1px solid #e2e8f0' }}>
-                    <CardHeader><CardTitle className="heading-3">Generator</CardTitle></CardHeader>
+                <Card style={{ background: 'white', border: '1px solid #e2e8f0', marginBottom:'2rem' }}>
+                    <CardHeader><CardTitle className="heading-3">Quick Generator (Internal AI)</CardTitle></CardHeader>
                     <CardContent>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
@@ -583,9 +625,50 @@ const AdminDashboard = () => {
                                 style={{ width:'100%', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', padding: '1rem', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow:'0 4px 6px -1px rgba(59, 130, 246, 0.3)' }}
                             > 
                                 {btnLoading ? <Loader2 className="animate-spin" /> : <Bot size={20} />} 
-                                {btnLoading ? 'Sedang Membuat Preview...' : 'Generate Preview (AI)'} 
+                                {btnLoading ? 'Sedang Membuat Preview...' : 'Generate Preview (Internal)'} 
                             </button>
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* PROMPT GENERATOR BARU */}
+                <Card style={{ background: '#f8fafc', border: '1px dashed #94a3b8' }}>
+                    <CardHeader><CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'8px'}}><Copy size={18}/> Manual Prompt Generator</CardTitle></CardHeader>
+                    <CardContent>
+                        <p style={{fontSize:'0.9rem', color:'#64748b', marginBottom:'1rem'}}>
+                            Gunakan ini jika ingin membuat konten via ChatGPT/Claude. Masukkan topik di atas, lalu klik tombol di bawah untuk menyalin prompt.
+                        </p>
+                        <button 
+                            onClick={generateExternalPrompt} 
+                            style={{ 
+                                padding:'0.6rem 1rem', background:'white', border:'1px solid #cbd5e1', 
+                                borderRadius:'6px', cursor:'pointer', fontWeight:'bold', 
+                                color:'#334155', marginBottom:'1rem', display:'inline-flex', alignItems:'center', gap:'6px'
+                            }}
+                        >
+                            <Sparkles size={16}/> Buat Prompt
+                        </button>
+
+                        {generatedPrompt && (
+                            <div className="animate-fade-in" style={{marginTop:'0.5rem'}}>
+                                <textarea 
+                                    readOnly 
+                                    value={generatedPrompt} 
+                                    style={{width:'100%', minHeight:'200px', padding:'1rem', borderRadius:'8px', border:'1px solid #cbd5e1', fontFamily:'monospace', fontSize:'0.85rem', background:'#1e293b', color:'#e2e8f0'}}
+                                />
+                                <button 
+                                    onClick={copyPromptToClipboard}
+                                    style={{
+                                        width:'100%', marginTop:'0.5rem', padding:'0.8rem', 
+                                        background:'#16a34a', color:'white', border:'none', 
+                                        borderRadius:'6px', fontWeight:'bold', cursor:'pointer', 
+                                        display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem'
+                                    }}
+                                >
+                                    <Copy size={18}/> Salin Prompt
+                                </button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
              </div>
