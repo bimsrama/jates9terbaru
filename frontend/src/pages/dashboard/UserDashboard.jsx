@@ -7,7 +7,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
   MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
-  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map
+  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map, Receipt
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -347,7 +347,6 @@ const UserDashboard = () => {
   const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
   const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
    
-  // --- FIX 1: UPDATE LOGIKA ALAMAT DI SHOP ---
   const openCheckout = async (product) => { 
       setSelectedProduct(product); 
       setShippingCost(0); 
@@ -394,7 +393,7 @@ const UserDashboard = () => {
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', background:'white', borderTop:'1px solid #eee' }}>
               <button onClick={()=>{fetchAddresses(); setShowAddressModal(true)}} style={{ padding:'1rem', borderRight:'1px solid #eee', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color: currentTheme.text }}> <MapPin size={18}/> Alamat Saya </button>
-              <button onClick={()=>{fetchOrders(); setShowOrderHistory(true)}} style={{ padding:'1rem', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color: currentTheme.text }}> <Truck size={18}/> Status Pesanan </button>
+              <button onClick={()=>{fetchOrders(); setShowOrderHistory(true)}} style={{ padding:'1rem', background:'none', border:'none', cursor:'pointer', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', color: currentTheme.text }}> <Receipt size={18}/> Status Pesanan </button>
           </div>
       </div>
   );
@@ -933,15 +932,101 @@ const UserDashboard = () => {
       {/* --- ALL MODALS --- */}
       {showTutorial && ( <div className="modal-overlay" onClick={closeTutorial}> <div className="modal-content" style={{textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}> <Sparkles size={32} color={currentTheme.text}/> </div> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2> <div style={{textAlign:'left', fontSize:'0.95rem', color: darkMode?'#cbd5e1':'#475569', lineHeight:'1.6', marginBottom:'2rem'}}> <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p> <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}> <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li> <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li> <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li> <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li> </ul> <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p> </div> <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button> </div> </div> )}
       {showPrivacy && ( <div className="modal-overlay" onClick={()=>setShowPrivacy(false)}> <div className="modal-content" onClick={e=>e.stopPropagation()}> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <h2 style={{fontSize:'1.3rem', fontWeight:'bold'}}>Kebijakan Privasi</h2> <button onClick={()=>setShowPrivacy(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button> </div> <div style={{lineHeight:'1.6', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#475569'}}> <p style={{marginBottom:'1rem'}}>Terakhir diperbarui: Januari 2026</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>1. Informasi yang Kami Kumpulkan</h4> <p style={{marginBottom:'1rem'}}>Kami mengumpulkan informasi seperti nama, nomor telepon (untuk verifikasi WhatsApp), dan data kesehatan yang Anda masukkan untuk personalisasi challenge.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>2. Penggunaan Data</h4> <p style={{marginBottom:'1rem'}}>Data Anda digunakan untuk memantau progres kesehatan, mengirimkan pengingat misi harian, dan rekomendasi produk kesehatan yang relevan.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>3. Keamanan Data</h4> <p style={{marginBottom:'1rem'}}>Kami menjaga kerahasiaan data Anda dan tidak akan membagikannya kepada pihak ketiga tanpa persetujuan Anda, kecuali diwajibkan oleh hukum.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>4. Hubungi Kami</h4> <p>Jika ada pertanyaan mengenai privasi ini, silakan hubungi tim support kami.</p> </div> <button onClick={()=>setShowPrivacy(false)} style={{width:'100%', marginTop:'2rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black', fontWeight:'bold'}}>Tutup</button> </div> </div> )}
-      {showCheckoutModal && selectedProduct && ( <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)}> <div className="modal-content" onClick={e=>e.stopPropagation()}> <h3 style={{fontWeight:'bold', marginBottom:'1rem'}}>Checkout</h3> <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem'}}> <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.6rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black'}}>JNE (Kirim)</button> <button onClick={()=>handleMethodChange('pickup')} style={{flex:1, padding:'0.6rem', border: shippingMethod==='pickup' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='pickup' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black'}}>Ambil di Toko</button> </div> {shippingMethod === 'jne' && ( <div style={{marginBottom:'1rem'}}> <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}><span>Kirim ke:</span><button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer'}}>+ Alamat Baru</button></div> 
-      {/* FIX: Tambahkan value={selectedAddrId || ""} agar default select berfungsi */}
-      <select onChange={e=>handleSelectAddrCheckout(e.target.value)} value={selectedAddrId || ""} style={{width:'100%', padding:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}}> 
-        <option value="" disabled>Pilih Alamat...</option> 
-        {addresses.map(a=><option key={a.id} value={a.id}>{a.label} - {a.address}</option>)} 
-      </select> 
-      {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'4px'}}>Belum ada alamat tersimpan.</p>} </div> )} <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Harga</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.3rem'}}><span>Ongkir</span><span>Rp {shippingCost.toLocaleString()}</span></div> <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.2rem', marginTop:'0.5rem'}}><span>Total</span><span>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span></div> </div> <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer'}}>Bayar</button> </div> </div> </div> )}
       
-      {/* FIX: INVOICE MODAL LEBIH LENGKAP + Z-INDEX & CLOSE BUTTON */}
+      {/* --- FIX 2: RESPONSIVE CHECKOUT MODAL --- */}
+      {showCheckoutModal && selectedProduct && ( 
+        <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)} style={{zIndex:100001}}> 
+            <div className="modal-content" onClick={e=>e.stopPropagation()} style={{maxWidth:'500px', width:'95%', maxHeight:'90vh', overflowY:'auto'}}> 
+                <h3 style={{fontWeight:'bold', marginBottom:'1rem', fontSize:'1.2rem'}}>Checkout</h3> 
+                <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem', flexWrap:'wrap'}}> 
+                    <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
+                        <Truck size={18}/> JNE (Kirim)
+                    </button> 
+                    <button onClick={()=>handleMethodChange('pickup')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='pickup' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='pickup' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
+                        <MapPin size={18}/> Ambil di Toko
+                    </button> 
+                </div> 
+                
+                {shippingMethod === 'jne' && ( 
+                    <div style={{marginBottom:'1rem', background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'12px'}}> 
+                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}>
+                            <span style={{fontWeight:'bold'}}>Kirim ke:</span>
+                            <button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer', fontWeight:'600'}}>+ Alamat Baru</button>
+                        </div> 
+                        <select onChange={e=>handleSelectAddrCheckout(e.target.value)} value={selectedAddrId || ""} style={{width:'100%', padding:'0.8rem', border:'1px solid #ccc', borderRadius:'8px', background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}}> 
+                            <option value="" disabled>Pilih Alamat Pengiriman...</option> 
+                            {addresses.map(a=><option key={a.id} value={a.id}>{a.label} - {a.address}</option>)} 
+                        </select> 
+                        {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'8px'}}>Belum ada alamat tersimpan.</p>} 
+                    </div> 
+                )} 
+                
+                <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> 
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Harga Barang</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> 
+                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Biaya Pengiriman</span><span>Rp {shippingCost.toLocaleString()}</span></div> 
+                    <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.3rem', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #ccc'}}>
+                        <span>Total Bayar</span>
+                        <span style={{color: currentTheme.primary}}>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span>
+                    </div> 
+                </div> 
+                
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> 
+                    <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> 
+                    <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer', boxShadow:'0 4px 10px rgba(0,0,0,0.1)'}}>Bayar Sekarang</button> 
+                </div> 
+            </div> 
+        </div> 
+      )}
+
+      {/* --- FIX 1: ORDER HISTORY MODAL (SEBELUMNYA HILANG) --- */}
+      {showOrderHistory && (
+          <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)} style={{zIndex: 100000}}>
+              <div className="modal-content" style={{maxWidth:'500px', width:'95%', maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem', borderBottom:'1px solid #eee', paddingBottom:'1rem'}}>
+                      <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Riwayat Pesanan</h3>
+                      <button onClick={()=>setShowOrderHistory(false)} style={{background:'none', border:'none', cursor:'pointer'}}>
+                          <X size={24} color={darkMode?'white':'black'}/>
+                      </button>
+                  </div>
+                  
+                  {myOrders.length === 0 ? (
+                      <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>
+                          <ShoppingBag size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
+                          <p>Belum ada riwayat pesanan.</p>
+                      </div>
+                  ) : (
+                      <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                          {myOrders.map(order => (
+                              <div key={order.id} style={{padding:'1rem', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', borderRadius:'12px', background: darkMode?'#0f172a':'#f8fafc'}}>
+                                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
+                                      <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>#{order.order_id || order.id}</span>
+                                      <span style={{
+                                          fontSize:'0.75rem', padding:'2px 8px', borderRadius:'10px', 
+                                          background: order.status==='paid'?'#dcfce7':'#ffedd5', 
+                                          color: order.status==='paid'?'#166534':'#9a3412', fontWeight:'bold', textTransform:'uppercase'
+                                      }}>
+                                          {order.status}
+                                      </span>
+                                  </div>
+                                  <div style={{fontWeight:'bold', marginBottom:'0.2rem'}}>{order.product_name}</div>
+                                  <div style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>
+                                      Total: Rp {order.amount?.toLocaleString()}
+                                  </div>
+                                  <button 
+                                      onClick={() => handleOpenInvoice(order)} 
+                                      style={{width:'100%', padding:'0.6rem', background:'white', border:'1px solid #ccc', borderRadius:'8px', cursor:'pointer', fontWeight:'600', color:'#334155'}}
+                                  >
+                                      Lihat Invoice
+                                  </button>
+                              </div>
+                          ))}
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
+      
+      {/* --- FIX 3: INVOICE MODAL LEBIH LENGKAP --- */}
       {showInvoice && selectedInvoice && ( 
         <div className="modal-overlay" onClick={()=>setShowInvoice(false)} style={{zIndex: 100001}}> 
             <div className="modal-content" style={{maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> 
@@ -949,58 +1034,88 @@ const UserDashboard = () => {
                     <button onClick={()=>setShowInvoice(false)} style={{position:'absolute', right:0, top:0, background:'none', border:'none', cursor:'pointer'}}>
                         <X size={24} color={darkMode?'white':'black'}/>
                     </button>
+                    <div style={{width:'50px', height:'50px', background: currentTheme.primary, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem auto', color:'white'}}>
+                        <Check size={28}/>
+                    </div>
                     <h2 style={{fontWeight:'bold', fontSize:'1.5rem'}}>INVOICE</h2> 
                     <p style={{fontSize:'0.9rem', color:'#64748b'}}>VITALYST STORE</p> 
-                    <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date}</p> 
+                    <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date || new Date().toLocaleDateString()}</p> 
                 </div> 
+                
                 <div style={{marginBottom:'1.5rem'}}> 
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> 
-                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Order ID</span> 
-                        <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id}</span> 
+                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>No. Order</span> 
+                        <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id || selectedInvoice.id}</span> 
                     </div> 
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> 
                         <span style={{color:'#64748b', fontSize:'0.9rem'}}>Status</span> 
                         <span style={{fontWeight:'bold', fontSize:'0.9rem', textTransform:'uppercase', color: selectedInvoice.status === 'paid' ? 'green' : 'orange'}}>{selectedInvoice.status}</span> 
                     </div> 
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> 
-                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Metode</span> 
+                        <span style={{color:'#64748b', fontSize:'0.9rem'}}>Pengiriman</span> 
                         <span style={{fontSize:'0.9rem'}}>{selectedInvoice.shipping_method}</span> 
                     </div> 
-                    {/* Alamat Pengiriman */}
-                    {selectedInvoice.address && (
+                    
+                    {/* Alamat Pengiriman (Muncul jika BUKAN Pickup) */}
+                    {selectedInvoice.shipping_method !== 'Ambil di Toko' && selectedInvoice.shipping_method !== 'pickup' && selectedInvoice.address && (
                         <div style={{marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid #eee'}}>
                             <span style={{color:'#64748b', fontSize:'0.9rem', display:'block', marginBottom:'4px'}}>Alamat Pengiriman:</span>
-                            <span style={{fontSize:'0.85rem', lineHeight:'1.4'}}>{selectedInvoice.address}</span>
+                            <span style={{fontSize:'0.85rem', lineHeight:'1.4', display:'block', background:'#f8fafc', padding:'8px', borderRadius:'6px', border:'1px solid #e2e8f0'}}>
+                                {typeof selectedInvoice.address === 'object' ? `${selectedInvoice.address.address}, ${selectedInvoice.address.city_name}` : selectedInvoice.address}
+                            </span>
                         </div>
                     )}
+
                     {selectedInvoice.resi && ( 
-                        <div style={{display:'flex', justifyContent:'space-between', marginTop:'0.5rem'}}> 
-                            <span style={{color:'#64748b', fontSize:'0.9rem'}}>Resi</span> 
-                            <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>{selectedInvoice.resi}</span> 
+                        <div style={{display:'flex', justifyContent:'space-between', marginTop:'0.5rem', background:'#f0fdf4', padding:'8px', borderRadius:'6px'}}> 
+                            <span style={{color:'#166534', fontSize:'0.9rem'}}>No. Resi</span> 
+                            <span style={{fontSize:'0.9rem', fontWeight:'bold', color:'#166534'}}>{selectedInvoice.resi}</span> 
                         </div> 
                     )} 
                 </div> 
                 
+                {/* Rincian Produk & Harga */}
                 <div style={{borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'1rem 0', marginBottom:'1.5rem'}}> 
+                    <div style={{marginBottom:'1rem'}}>
+                         <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'4px'}}>Produk</p>
+                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                            <span style={{fontWeight:'bold', fontSize:'0.95rem'}}>{selectedInvoice.product_name}</span>
+                            <span style={{fontSize:'0.9rem'}}>x1</span>
+                         </div>
+                    </div>
+
                     <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
-                        <span style={{fontSize:'0.9rem'}}>{selectedInvoice.product_name}</span> 
-                        <span style={{fontSize:'0.9rem', fontWeight:'bold'}}>Rp {selectedInvoice.amount.toLocaleString()}</span> 
+                        <span style={{fontSize:'0.9rem', color:'#64748b'}}>Harga</span> 
+                        {/* Asumsi: Amount sudah termasuk ongkir, kita estimasi harga barang */}
+                        <span style={{fontSize:'0.9rem'}}>Rp {(selectedInvoice.amount - (selectedInvoice.shipping_cost || 0)).toLocaleString()}</span> 
+                    </div> 
+                    
+                    {selectedInvoice.shipping_cost > 0 && (
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
+                            <span style={{fontSize:'0.9rem', color:'#64748b'}}>Ongkos Kirim</span> 
+                            <span style={{fontSize:'0.9rem'}}>Rp {selectedInvoice.shipping_cost.toLocaleString()}</span> 
+                        </div> 
+                    )}
+
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #eee'}}> 
+                        <span style={{fontSize:'1rem', fontWeight:'bold'}}>Total Bayar</span> 
+                        <span style={{fontSize:'1.1rem', fontWeight:'bold', color: currentTheme.primary}}>Rp {selectedInvoice.amount.toLocaleString()}</span> 
                     </div> 
                 </div> 
 
                 {/* Tombol Lihat Lokasi Toko jika Pickup */}
                 {(selectedInvoice.shipping_method === 'Ambil di Toko' || selectedInvoice.shipping_method === 'pickup') && (
                     <a 
-                        href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst+Terdekat" 
+                        href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst" 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        style={{display:'block', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none'}}
+                        style={{display:'flex', alignItems:'center', justifyContent:'center', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none', gap:'8px'}}
                     >
-                        <Map size={16} style={{display:'inline', marginRight:'6px', marginBottom:'-2px'}}/> Lihat Lokasi Toko
+                        <Map size={18} /> Buka Google Maps (Toko)
                     </a>
                 )}
 
-                <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup</button> 
+                <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup Invoice</button> 
             </div> 
         </div> 
       )}
