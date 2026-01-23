@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { 
   Leaf, ArrowRight, Check, Loader2, Trophy, Stethoscope, FileText, 
   RefreshCcw, CheckCircle, ShieldCheck, Phone, User, Lock, Edit2, RefreshCw, Medal, Users,
-  MessageCircle, Award, CalendarCheck
+  MessageCircle, Award, CalendarCheck, Activity
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -18,9 +18,15 @@ const Register = () => {
   const { register, getAuthHeader } = useAuth();
 
   // --- STATE ALUR ---
+  // 1 = Form
+  // 2 = Pilih Challenge
+  // 3 = Kuis
+  // 4 = Hasil Tipe (Penjelasan Tipe)
+  // 5 = Info Challenge (Motivasi & Benefit)
+  // 6 = Animasi Badge
+  // 7 = Selesai
   const [step, setStep] = useState(1);
   
-  // --- STATE LAIN ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -29,33 +35,30 @@ const Register = () => {
   const [resendTimer, setResendTimer] = useState(0);
 
   // Data
-  const [formData, setFormData] = useState({
-    name: '', phone_number: '', password: '', confirm_password: '', referral_code: ''
-  });
+  const [formData, setFormData] = useState({ name: '', phone_number: '', password: '', confirm_password: '', referral_code: '' });
   const [challenges, setChallenges] = useState([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [quizResult, setQuizResult] = useState(null);
+  
+  // Hasil Analisa
+  const [quizResult, setQuizResult] = useState({ type: '', description: '', motivation: '' });
 
-  const inputStyle = {
-    width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '8px',
-    border: '1px solid var(--border-light)', background: 'var(--bg-section)', fontSize: '1rem', outline: 'none'
-  };
+  const inputStyle = { width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.5rem', borderRadius: '8px', border: '1px solid var(--border-light)', background: 'var(--bg-section)', fontSize: '1rem', outline: 'none' };
 
-  // --- AUTO REDIRECT STEP 5 ---
+  // --- AUTO REDIRECT STEP 7 ---
   useEffect(() => {
-    if (step === 5) {
+    if (step === 7) {
       const timer = setTimeout(() => navigate('/dashboard'), 3000);
       return () => clearTimeout(timer);
     }
   }, [step, navigate]);
 
-  // --- STEP 4.5: ANIMASI BADGE ---
+  // --- ANIMASI BADGE STEP 6 ---
   useEffect(() => {
-    if (step === 4.5) {
-      const timer = setTimeout(() => setStep(5), 6000);
+    if (step === 6) {
+      const timer = setTimeout(() => setStep(7), 5000);
       return () => clearTimeout(timer);
     }
   }, [step]);
@@ -64,14 +67,12 @@ const Register = () => {
   // LOGIC STEP 1: REGISTER & OTP
   // ==========================================
   const handleInitialSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault(); setError('');
     if (formData.password !== formData.confirm_password) { setError('Password tidak cocok'); return; }
     setLoading(true);
     try {
       await axios.post(`${BACKEND_URL}/api/auth/request-otp`, { phone_number: formData.phone_number });
-      setShowOtpModal(true);
-      startResendTimer();
+      setShowOtpModal(true); startResendTimer();
     } catch (err) { setError(err.response?.data?.message || 'Gagal kirim OTP.'); }
     finally { setLoading(false); }
   };
@@ -82,98 +83,47 @@ const Register = () => {
     try {
       await axios.post(`${BACKEND_URL}/api/auth/verify-otp`, { phone_number: formData.phone_number, otp: otpCode });
       const regRes = await register({ name: formData.name, phone_number: formData.phone_number, password: formData.password, referral_code: formData.referral_code });
-      if (regRes.success) {
-        setShowOtpModal(false);
-        await fetchChallenges();
-        setStep(2);
-      } else { alert(regRes.error || "Gagal membuat akun."); }
+      if (regRes.success) { setShowOtpModal(false); await fetchChallenges(); setStep(2); } 
+      else { alert(regRes.error || "Gagal membuat akun."); }
     } catch (err) { alert(err.response?.data?.message || "Kode OTP Salah."); }
     finally { setOtpLoading(false); }
   };
 
-  const startResendTimer = () => {
-    setResendTimer(60);
-    const interval = setInterval(() => {
-      setResendTimer((prev) => { if (prev <= 1) { clearInterval(interval); return 0; } return prev - 1; });
-    }, 1000);
-  };
-
-  const handleResendOtp = async () => {
-    if (resendTimer > 0) return;
-    try { await axios.post(`${BACKEND_URL}/api/auth/request-otp`, { phone_number: formData.phone_number }); startResendTimer(); alert("OTP dikirim!"); }
-    catch (err) { alert("Gagal kirim ulang."); }
-  };
+  const startResendTimer = () => { setResendTimer(60); const interval = setInterval(() => { setResendTimer((prev) => { if (prev <= 1) { clearInterval(interval); return 0; } return prev - 1; }); }, 1000); };
+  const handleResendOtp = async () => { if (resendTimer > 0) return; try { await axios.post(`${BACKEND_URL}/api/auth/request-otp`, { phone_number: formData.phone_number }); startResendTimer(); alert("OTP dikirim!"); } catch (err) { alert("Gagal kirim ulang."); } };
 
   // ==========================================
-  // LOGIC STEP 2: PILIH CHALLENGE
+  // LOGIC STEP 2 & 3: CHALLENGE & KUIS
   // ==========================================
-  const fetchChallenges = async () => {
-    try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); }
-    catch (err) { console.error(err); }
-  };
+  const fetchChallenges = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/challenges`); setChallenges(res.data); } catch (err) { console.error(err); } };
 
   const handleSelectChallenge = async (id) => {
     setSelectedChallengeId(id); setLoading(true);
     try {
       await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: id }, { headers: getAuthHeader() });
       const qRes = await axios.get(`${BACKEND_URL}/api/quiz/questions/${id}`, { headers: getAuthHeader() });
-      if (qRes.data && qRes.data.length > 0) { setQuestions(qRes.data); setStep(3); }
-      else { setStep(4.5); } 
-    } catch (err) { setError("Gagal pilih challenge."); }
-    finally { setLoading(false); }
+      if (qRes.data && qRes.data.length > 0) { setQuestions(qRes.data); setStep(3); } else { setStep(6); } 
+    } catch (err) { setError("Gagal pilih challenge."); } finally { setLoading(false); }
   };
 
-  // ==========================================
-  // LOGIC STEP 3: QUIZ
-  // ==========================================
-  
-  const handleAnswerOption = (typeValue) => {
-    const currentQ = questions[currentQuestionIndex];
-    setAnswers(prev => ({ ...prev, [currentQ.id]: typeValue }));
-  };
-
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(prev => prev + 1);
-    } else { 
-        calculateAndSubmitQuiz();
-    }
-  };
+  const handleAnswerOption = (typeValue) => { setAnswers(prev => ({ ...prev, [questions[currentQuestionIndex].id]: typeValue })); };
+  const handleNextQuestion = () => { if (currentQuestionIndex < questions.length - 1) { setCurrentQuestionIndex(prev => prev + 1); } else { calculateAndSubmitQuiz(); } };
 
   const calculateAndSubmitQuiz = async () => {
     setLoading(true);
-    
-    // Logika Hitung Skor Dinamis
-    const counts = {};
-    Object.values(answers).forEach(type => {
-      counts[type] = (counts[type] || 0) + 1;
-    });
-
-    let resultType = "Umum"; 
-    let maxCount = -1;
-
-    Object.entries(counts).forEach(([type, count]) => {
-      if (count > maxCount) {
-        maxCount = count;
-        resultType = type;
-      }
-    });
+    const counts = {}; Object.values(answers).forEach(type => { counts[type] = (counts[type] || 0) + 1; });
+    let resultType = "Umum"; let maxCount = -1;
+    Object.entries(counts).forEach(([type, count]) => { if (count > maxCount) { maxCount = count; resultType = type; } });
 
     try {
-      const res = await axios.post(`${BACKEND_URL}/api/quiz/submit`, { 
-        challenge_id: selectedChallengeId, 
-        health_type: resultType,
-        answers: answers,
-        score: 100 
-      }, { headers: getAuthHeader() });
-      
+      const res = await axios.post(`${BACKEND_URL}/api/quiz/submit`, { challenge_id: selectedChallengeId, health_type: resultType, answers: answers, score: 100 }, { headers: getAuthHeader() });
       setQuizResult({ 
         type: resultType, 
-        aiSummary: res.data.ai_summary 
+        description: res.data.ai_description || `Tipe ${resultType} membutuhkan perhatian khusus.`, 
+        motivation: res.data.ai_motivation || "Ayo mulai hidup sehat!" 
       });
-      setStep(4);
-    } catch (err) { setError("Gagal simpan kuis."); }
-    finally { setLoading(false); }
+      setStep(4); // Masuk ke Penjelasan Tipe dulu
+    } catch (err) { setError("Gagal simpan kuis."); } finally { setLoading(false); }
   };
 
   // ==========================================
@@ -182,40 +132,31 @@ const Register = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--gradient-hero)', paddingTop: '2rem', paddingBottom: '2rem' }}>
       
-      {/* CARD KHUSUS ANIMASI BADGE (Step 4.5) */}
-      {step === 4.5 ? (
+      {/* ANIMASI BADGE (Step 6) */}
+      {step === 6 ? (
         <div style={{ textAlign: 'center', animation: 'fadeIn 0.8s ease-in-out', maxWidth: '420px', width: '100%', padding: '1rem' }}>
           <div style={{ marginBottom: '1.5rem', position: 'relative', display: 'inline-block' }}>
              <div style={{ position: 'absolute', inset: '-30px', background: 'radial-gradient(circle, rgba(253, 224, 71, 0.5) 0%, rgba(255,255,255,0) 70%)', borderRadius: '50%', animation: 'pulse 2s infinite' }}></div>
              <Trophy size={110} color="#ca8a04" style={{ filter: 'drop-shadow(0 10px 15px rgba(234, 179, 8, 0.5))', transform: 'scale(1.1)' }} />
           </div>
-          
           <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.2)', marginBottom: '0.5rem' }}>SELAMAT!</h2>
-          
-          <div style={{ background: 'white', color: '#ca8a04', padding: '0.6rem 1.5rem', borderRadius: '50px', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '0.5rem', marginBottom: '2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-             <Medal size={24}/> Pejuang Tangguh
-          </div>
-
+          <div style={{ background: 'white', color: '#ca8a04', padding: '0.6rem 1.5rem', borderRadius: '50px', fontWeight: 'bold', fontSize: '1.2rem', marginTop: '0.5rem', marginBottom: '2rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}><Medal size={24}/> Pejuang Tangguh</div>
           <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '1.5rem', borderRadius: '16px', color: '#334155', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'left' }}>
-             <h4 style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Users size={18} className="text-blue-600" /> Apa itu Badge?
-             </h4>
-             <p style={{ fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '0.8rem' }}>
-               Badge adalah simbol pencapaian untuk Anda, para pejuang sehat yang konsisten!
-             </p>
+             <h4 style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Users size={18} className="text-blue-600" /> Apa itu Badge?</h4>
+             <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#475569' }}>Simbol pencapaian untuk Anda yang konsisten! Selesaikan tantangan untuk koleksi badge lainnya.</p>
           </div>
         </div>
       ) : (
-        /* KARTU STEP NORMAL 1, 2, 3, 4, 5 */
-        <Card style={{ maxWidth: step === 4 ? '550px' : '500px', width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', minHeight: '650px', position: 'relative' }}>
+        /* KARTU STEP 1, 2, 3, 4, 5, 7 */
+        <Card style={{ maxWidth: (step === 4 || step === 5) ? '550px' : '500px', width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', minHeight: '650px', position: 'relative' }}>
           <CardHeader style={{ textAlign: 'center', paddingBottom: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: step === 5 ? '#22c55e' : 'var(--gradient-button)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: step === 7 ? '#22c55e' : 'var(--gradient-button)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {step === 1 && <Leaf className="h-8 w-8 text-white" />}
                 {step === 2 && <Trophy className="h-8 w-8 text-white" />}
                 {step === 3 && <Stethoscope className="h-8 w-8 text-white" />}
-                {step === 4 && <FileText className="h-8 w-8 text-white" />}
-                {step === 5 && <CheckCircle className="h-8 w-8 text-white" />}
+                {(step === 4 || step === 5) && <Activity className="h-8 w-8 text-white" />}
+                {step === 7 && <CheckCircle className="h-8 w-8 text-white" />}
               </div>
             </div>
             
@@ -223,16 +164,18 @@ const Register = () => {
               {step === 1 && "Daftar Akun Baru"}
               {step === 2 && "Pilih Program Sehatmu"}
               {step === 3 && "Cek Kondisi Tubuh"}
-              {step === 4 && "Hasil Analisa Kesehatan"}
-              {step === 5 && "Registrasi Selesai!"}
+              {step === 4 && "Analisa Tubuh Anda"}
+              {step === 5 && "Solusi Program"}
+              {step === 7 && "Registrasi Selesai!"}
             </CardTitle>
             
             <p className="body-small" style={{ color: 'var(--text-secondary)' }}>
               {step === 1 && "Langkah 1: Isi Data & Verifikasi WA"}
               {step === 2 && "Langkah 2: Tentukan Tantangan"}
               {step === 3 && `Pertanyaan ${currentQuestionIndex + 1} dari ${questions.length}`}
-              {step === 4 && "Analisa Personal & Langkah Selanjutnya"}
-              {step === 5 && "Akun Anda telah siap."}
+              {step === 4 && "Berdasarkan jawaban kuis Anda"}
+              {step === 5 && "Langkah sehat selanjutnya"}
+              {step === 7 && "Akun Anda telah siap."}
             </p>
 
             {step === 3 && (
@@ -245,9 +188,10 @@ const Register = () => {
           <CardContent style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             {error && <div style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>{error}</div>}
 
-            {/* FORM STEP 1 */}
+            {/* STEP 1: FORM */}
             {step === 1 && (
               <form onSubmit={handleInitialSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* ... (Input fields sama seperti sebelumnya) ... */}
                 <div style={{ position: 'relative' }}><User size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} /><input type="text" name="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nama Lengkap" required style={inputStyle} /></div>
                 <div style={{ position: 'relative' }}><Phone size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} /><input type="tel" name="phone_number" value={formData.phone_number} onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })} placeholder="Nomor WhatsApp" required style={inputStyle} /></div>
                 <div style={{ position: 'relative' }}><Lock size={20} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} /><input type="password" name="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Password" required minLength={6} style={inputStyle} /></div>
@@ -258,7 +202,7 @@ const Register = () => {
               </form>
             )}
 
-            {/* PILIH CHALLENGE STEP 2 */}
+            {/* STEP 2: SELECT CHALLENGE */}
             {step === 2 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {challenges.length === 0 ? <div className="text-center text-gray-500">Memuat Tantangan...</div> : challenges.map((c) => (
@@ -271,7 +215,7 @@ const Register = () => {
               </div>
             )}
 
-            {/* KUIS STEP 3 */}
+            {/* STEP 3: QUIZ */}
             {step === 3 && questions.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <h3 className="heading-3" style={{ marginBottom: '1.5rem' }}>{questions[currentQuestionIndex].question_text}</h3>
@@ -289,72 +233,62 @@ const Register = () => {
               </div>
             )}
 
-            {/* HASIL REPORT STEP 4 (TAMPILAN BARU SESUAI REQUEST) */}
+            {/* STEP 4: HASIL TIPE (Penjelasan Singkat) */}
             {step === 4 && quizResult && (
-              <div style={{ textAlign: 'left' }}>
-                
-                {/* 1. HASIL UTAMA */}
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#166534', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Kategori Tubuh Anda</div>
+              <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, letterSpacing: '1px' }}>KATEGORI ANDA</div>
                   <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#15803d', margin: '0.5rem 0' }}>Tipe {quizResult.type}</div>
-                  {quizResult.aiSummary && (
-                    <div style={{ fontSize: '1rem', color: '#374151', fontStyle: 'italic', lineHeight: '1.5', marginTop: '0.5rem' }}>
-                      "{quizResult.aiSummary}"
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. INFO LANGKAH SELANJUTNYA (HARDCODED ICONS) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                    <div style={{ background: '#e0f2fe', padding: '8px', borderRadius: '50%', color: '#0284c7' }}><MessageCircle size={20} /></div>
-                    <div>
-                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Panduan Harian via WhatsApp</h4>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tips & tugas harian dikirim otomatis ke WA Anda selama 30 hari penuh.</p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                    <div style={{ background: '#fef3c7', padding: '8px', borderRadius: '50%', color: '#d97706' }}><CalendarCheck size={20} /></div>
-                    <div>
-                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Laporan Progress Harian</h4>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Wajib lapor (Check-in) setiap hari untuk memantau perkembangan kesehatan.</p>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                    <div style={{ background: '#f3e8ff', padding: '8px', borderRadius: '50%', color: '#9333ea' }}><Award size={20} /></div>
-                    <div>
-                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Sertifikat Kelulusan</h4>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Selesaikan tantangan dan dapatkan Sertifikat Resmi sebagai bukti sukses.</p>
-                    </div>
+                  <div style={{ fontSize: '1.1rem', color: '#334155', lineHeight: '1.6', marginTop: '1rem', padding: '0 1rem' }}>
+                    "{quizResult.description}"
                   </div>
                 </div>
-
-                {/* 3. TOMBOL ACTION (LAYOUT BARU) */}
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => { setStep(2); setAnswers({}); setQuizResult(null); }} 
-                    style={{ flex: 1, border: '1px solid var(--border-light)', color: 'var(--text-secondary)', height: '50px', fontSize: '0.9rem' }}
-                  >
-                    <RefreshCcw size={16} style={{ marginRight: '6px' }} /> Pilih Lain
-                  </Button>
-                  
-                  <Button 
-                    className="btn-primary" 
-                    onClick={() => setStep(4.5)} 
-                    style={{ flex: 2, height: '50px', fontSize: '1rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)' }}
-                  >
-                    Siap Memulai <ArrowRight size={20} style={{ marginLeft: '8px' }} />
-                  </Button>
-                </div>
-
+                <Button className="btn-primary" onClick={() => setStep(5)} style={{ width: '100%', padding: '1rem' }}>
+                  Selanjutnya <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
+                </Button>
               </div>
             )}
 
-            {/* SUKSES STEP 5 */}
+            {/* STEP 5: INFO CHALLENGE & MOTIVASI */}
             {step === 5 && (
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'start' }}>
+                    <div style={{ fontSize: '1.5rem' }}>🤖</div>
+                    <div style={{ fontSize: '0.95rem', color: '#166534', fontStyle: 'italic', lineHeight: '1.4' }}>
+                      "{quizResult.motivation}"
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#e0f2fe', padding: '8px', borderRadius: '50%', color: '#0284c7' }}><MessageCircle size={20} /></div>
+                    <div><h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Panduan Harian via WhatsApp</h4><p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tips & tugas harian dikirim otomatis ke WA Anda selama 30 hari.</p></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#fef3c7', padding: '8px', borderRadius: '50%', color: '#d97706' }}><CalendarCheck size={20} /></div>
+                    <div><h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Laporan Progress Harian</h4><p style={{ fontSize: '0.85rem', color: '#64748b' }}>Wajib lapor (Check-in) untuk memantau perkembangan kesehatan.</p></div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#f3e8ff', padding: '8px', borderRadius: '50%', color: '#9333ea' }}><Award size={20} /></div>
+                    <div><h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Sertifikat Kelulusan</h4><p style={{ fontSize: '0.85rem', color: '#64748b' }}>Selesaikan tantangan dan dapatkan Sertifikat Resmi.</p></div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <Button variant="outline" onClick={() => { setStep(2); setAnswers({}); setQuizResult(null); }} style={{ flex: 1, border: '1px solid var(--border-light)', color: 'var(--text-secondary)', height: '50px', fontSize: '0.9rem' }}>
+                    <RefreshCcw size={16} style={{ marginRight: '6px' }} /> Pilih Lain
+                  </Button>
+                  <Button className="btn-primary" onClick={() => setStep(6)} style={{ flex: 2, height: '50px', fontSize: '1rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)' }}>
+                    Siap Memulai <ArrowRight size={20} style={{ marginLeft: '8px' }} />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 7: DONE */}
+            {step === 7 && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}><Check size={48} /></div>
                 <h3 className="heading-2" style={{ color: '#16a34a', marginBottom: '1rem' }}>Terima Kasih Telah Mendaftar!</h3>
@@ -366,7 +300,7 @@ const Register = () => {
         </Card>
       )}
 
-      {/* MODAL OTP */}
+      {/* MODAL OTP (Sama seperti sebelumnya) */}
       {showOtpModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', width: '90%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
