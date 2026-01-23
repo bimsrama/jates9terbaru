@@ -14,6 +14,7 @@ import ProductPage from "./pages/ProductPage";
 import AIChat from "./pages/AIChat";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword"; // [BARU] Import ForgotPassword
 
 // User Dashboard Pages
 import UserDashboard from "./pages/dashboard/UserDashboard";
@@ -21,7 +22,7 @@ import HealthReport from "./pages/dashboard/HealthReport";
 import DailyCheckin from "./pages/dashboard/DailyCheckin";
 import Affiliate from "./pages/dashboard/Affiliate";
 import Withdrawal from "./pages/dashboard/Withdrawal";
-import ArticlePage from "./pages/ArticlePage"; // [BARU] Import Article Page
+import ArticlePage from "./pages/ArticlePage"; 
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -44,6 +45,9 @@ function App() {
             <Route path="/chat" element={<><Navigation /><AIChat /></>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* [BARU] Route Forgot Password */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* [BARU] Route untuk Artikel (Bisa diakses publik atau user login) */}
             <Route path="/article/:id" element={<ArticlePage />} />
