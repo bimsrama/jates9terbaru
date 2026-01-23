@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardContent } from '../../components/ui/card';
-import { Bot, ChevronLeft, Loader2, Sparkles, BookOpen } from 'lucide-react';
-import ReactMarkdown from 'react-markdown'; // Jika ingin format text rapi (opsional, bisa pakai text biasa)
+import { Bot, ChevronLeft, Loader2, Sparkles } from 'lucide-react';
+
+// HAPUS IMPORT REACT-MARKDOWN AGAR TIDAK ERROR
+// import ReactMarkdown from 'react-markdown'; 
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
@@ -31,7 +33,7 @@ const TaskExplanation = () => {
         try {
             const res = await axios.post(
                 `${BACKEND_URL}/api/explain-tasks`,
-                { tasks, challenge_title: challengeTitle },
+                { tasks, challenge_title: challengeTitle, day },
                 { headers: getAuthHeader() }
             );
             setExplanation(res.data.explanation);
@@ -48,7 +50,7 @@ const TaskExplanation = () => {
              <div className="w-full max-w-lg mb-4 flex items-center gap-2">
                 <button 
                     onClick={() => navigate(-1)} 
-                    className="p-2 bg-white rounded-full shadow-sm border border-gray-200"
+                    className="p-2 bg-white rounded-full shadow-sm border border-gray-200 cursor-pointer"
                 >
                     <ChevronLeft size={24} className="text-slate-700" />
                 </button>
@@ -82,8 +84,8 @@ const TaskExplanation = () => {
                                 </div>
                             </div>
                             
-                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                {/* Gunakan ReactMarkdown jika install librarynya, atau div biasa */}
+                            {/* Render Text Biasa dengan whitespace-pre-wrap agar enter terbaca */}
+                            <div className="text-slate-700 leading-relaxed whitespace-pre-wrap text-sm">
                                 {explanation}
                             </div>
                         </div>
