@@ -11,13 +11,10 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-
-// Pastikan file HealthReport.jsx ada di folder yang sama
 import HealthReport from './HealthReport';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'https://jagatetapsehat.com/backend_api';
 
-// --- KONFIGURASI TEMA (Gym/Sporty Style) ---
 const THEMES = {
   green: { id: 'green', name: 'Hijau Alami', primary: '#22c55e', light: '#dcfce7', text: '#14532d', cardGradient: 'linear-gradient(135deg, #22c55e 0%, #14532d 100%)', gradient: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #14532d 100%)' },
   red: { id: 'red', name: 'Merah Berani', primary: '#ef4444', light: '#fee2e2', text: '#7f1d1d', cardGradient: 'linear-gradient(135deg, #ef4444 0%, #7f1d1d 100%)', gradient: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', darkGradient: 'linear-gradient(135deg, #1e293b 0%, #7f1d1d 100%)' },
@@ -154,23 +151,15 @@ const UserDashboard = () => {
   // --- SINKRONISASI CEKLIST DARI HISTORY ---
   useEffect(() => {
     if (allDailyData.length > 0 && checkinHistory.length > 0) {
-        // Loop setiap challenge yang aktif
         allDailyData.forEach(daily => {
-            // Cari history untuk challenge ini di hari yang sama
-            // Note: day_number di DB mungkin string/int, kita samakan
             const logToday = checkinHistory.find(log => 
                 log.challenge_id === daily.challenge_id && 
-                log.day == daily.day // == biar loose comparison string/int
+                log.day == daily.day 
             );
 
             if (logToday && logToday.chosen_option) {
-                // chosen_option biasanya string dipisah koma jika backend menyimpan seperti itu
-                // Tapi kita asumsikan FE mengirim array, backend simpan string. Kita split.
                 const savedTasks = logToday.chosen_option.split(', ');
-                
-                // Update state jika belum ada
                 setSelectedTasksMap(prev => {
-                    // Hanya update jika belum ada data lokal untuk mencegah override saat user klik
                     if (!prev[daily.challenge_id]) {
                         return { ...prev, [daily.challenge_id]: savedTasks };
                     }
@@ -263,12 +252,9 @@ const UserDashboard = () => {
   const toggleTaskSelection = (challengeId, task) => {
     const currentTasks = selectedTasksMap[challengeId] || [];
     let newTasks;
-    // Jika sudah ada, hapus (uncheck)
     if (currentTasks.includes(task)) { 
         newTasks = currentTasks.filter(t => t !== task); 
     } else { 
-        // Jika belum, tambah (check)
-        // Hapus limitasi < 3 jika ingin bisa lebih dari 3
         newTasks = [...currentTasks, task]; 
     }
     setSelectedTasksMap(prev => ({ ...prev, [challengeId]: newTasks }));
@@ -283,11 +269,8 @@ const UserDashboard = () => {
       const tasks = selectedTasksMap[challengeId] || [];
       const journal = journalsMap[challengeId] || "";
       
-      // Status 'progress' = simpan saja, hari tidak ganti
-      // Status 'completed' = selesai, hari ganti
       const statusToSend = type === 'save' ? 'progress' : 'completed';
       
-      // Validasi
       if (tasks.length === 0) { alert("Pilih minimal 1 aktivitas."); return; }
       
       setIsSubmitting(true); 
@@ -318,6 +301,17 @@ const UserDashboard = () => {
           await axios.post(`${BACKEND_URL}/api/user/challenge/action`, { challenge_id: id, action: action }, { headers: getAuthHeader() });
           fetchData(); 
       } catch(e) { alert("Gagal update status"); }
+  };
+
+  // --- NAVIGASI KE PENJELASAN TUGAS ---
+  const handleOpenExplanation = (dailyData) => {
+    navigate('/dashboard/task-explanation', { 
+        state: { 
+            tasks: dailyData.tasks, 
+            challengeTitle: dailyData.challenge_title, 
+            day: dailyData.day 
+        } 
+    });
   };
 
   const handleOpenReport = (challenge) => {
@@ -457,7 +451,6 @@ const UserDashboard = () => {
   // --- RENDER CHALLENGE CARD ---
   const renderDailyCard = (data) => {
       const isCompleted = data.today_status === 'completed';
-      // Load selected tasks dari state local (yang sudah disinkronkan dengan API history)
       const selected = selectedTasksMap[data.challenge_id] || [];
       const journal = journalsMap[data.challenge_id] || "";
       const totalTasks = data.tasks?.length || 0;
@@ -491,6 +484,11 @@ const UserDashboard = () => {
                           <h3 style={{fontSize:'1.3rem', fontWeight:'900'}}>Misi Tuntas!</h3>
                           <p style={{marginTop:'0.5rem'}}>Luar biasa! Konsistensi adalah kunci.</p>
                           {data.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', background:'rgba(255,255,255,0.5)', padding:'8px', borderRadius:'8px'}}>"{data.ai_feedback}"</div>}
+                          
+                          {/* Tombol Lihat Penjelasan Tetap Ada */}
+                          <button onClick={() => handleOpenExplanation(data)} style={{marginTop:'1rem', background:'transparent', border:'none', color: currentTheme.primary, fontWeight:'bold', cursor:'pointer', fontSize:'0.85rem', textDecoration:'underline'}}>
+                             Lihat Penjelasan Tugas Tadi
+                          </button>
                       </div>
                   ) : (
                       <>
@@ -510,7 +508,7 @@ const UserDashboard = () => {
                                             background: isSelected ? (darkMode ? 'rgba(34, 197, 94, 0.1)' : currentTheme.light) : (darkMode ? '#1e293b' : 'white'), 
                                             cursor:'pointer', display:'flex', alignItems:'center', gap:'1rem', transition:'all 0.2s', 
                                             color: darkMode ? 'white' : '#0f172a',
-                                            opacity: isSelected ? 0.7 : 1 // Sedikit transparan jika sudah checked
+                                            opacity: isSelected ? 0.7 : 1 
                                         }}>
                                           <div style={{ 
                                               width:'26px', height:'26px', borderRadius:'8px', 
@@ -524,7 +522,7 @@ const UserDashboard = () => {
                                           <span style={{
                                               fontSize:'1rem', 
                                               fontWeight: isSelected ? '500' : '500',
-                                              textDecoration: isSelected ? 'line-through' : 'none', // EFEK CORET
+                                              textDecoration: isSelected ? 'line-through' : 'none', 
                                               color: isSelected ? (darkMode ? '#94a3b8' : '#64748b') : 'inherit'
                                           }}>{task}</span>
                                       </div>
@@ -535,15 +533,21 @@ const UserDashboard = () => {
                           <textarea value={journal} onChange={(e) => handleJournalChange(data.challenge_id, e.target.value)} placeholder={`Catat perasaanmu setelah latihan...`} style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: 'none', background: darkMode ? '#0f172a' : '#f1f5f9', marginTop:'1.5rem', color: darkMode ? 'white' : 'black', fontFamily:'inherit', fontSize:'0.95rem', resize:'vertical', minHeight:'80px' }} ></textarea>
                             
                           <div style={{ marginTop: '1.5rem', display:'flex', gap:'1rem', flexDirection: 'column' }}>
-                              {/* LOGIKA TOMBOL: SIMPAN PROGRESS vs SELESAI */}
+                              {/* LOGIKA TOMBOL */}
                               {allChecked ? (
                                   <button onClick={() => handleSubmitCheckin(data.challenge_id, 'complete')} disabled={isSubmitting} style={{ width:'100%', background: currentTheme.primary, color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'1rem', cursor: 'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition:'all 0.2s' }}> 
                                       {isSubmitting ? <RefreshCw className="animate-spin" size={20}/> : <CheckCircle size={20}/>} SELESAI / COMPLETE WORKOUT
                                   </button>
                               ) : (
                                   <div style={{display:'flex', gap:'10px'}}>
+                                      {/* TOMBOL SIMPAN PROGRESS */}
                                       <button onClick={() => handleSubmitCheckin(data.challenge_id, 'save')} disabled={isSubmitting || tasksDoneCount === 0} style={{ flex:1, background: tasksDoneCount > 0 ? '#3b82f6' : '#cbd5e1', color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'0.9rem', cursor: tasksDoneCount > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}> 
                                           {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckSquare size={18}/>} SIMPAN PROGRESS
+                                      </button>
+                                      
+                                      {/* TOMBOL PENJELASAN TUGAS (BARU) */}
+                                      <button onClick={() => handleOpenExplanation(data)} style={{ flex:1, background: 'white', border: '1px solid #e2e8f0', color: '#475569', padding: '1rem', borderRadius: '30px', fontWeight: '700', fontSize:'0.9rem', cursor: 'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem' }}>
+                                          <BookOpen size={18}/> Info Tugas
                                       </button>
                                   </div>
                               )}
