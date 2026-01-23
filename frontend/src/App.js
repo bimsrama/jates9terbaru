@@ -14,7 +14,7 @@ import ProductPage from "./pages/ProductPage";
 import AIChat from "./pages/AIChat";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword"; // [BARU] Import ForgotPassword
+import ForgotPassword from "./pages/ForgotPassword";
 
 // User Dashboard Pages
 import UserDashboard from "./pages/dashboard/UserDashboard";
@@ -23,6 +23,7 @@ import DailyCheckin from "./pages/dashboard/DailyCheckin";
 import Affiliate from "./pages/dashboard/Affiliate";
 import Withdrawal from "./pages/dashboard/Withdrawal";
 import ArticlePage from "./pages/ArticlePage"; 
+import TaskExplanation from "./pages/dashboard/TaskExplanation"; // [BARU] Import TaskExplanation
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -45,11 +46,9 @@ function App() {
             <Route path="/chat" element={<><Navigation /><AIChat /></>} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
-            {/* [BARU] Route Forgot Password */}
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
-            {/* [BARU] Route untuk Artikel (Bisa diakses publik atau user login) */}
+            {/* Route untuk Artikel */}
             <Route path="/article/:id" element={<ArticlePage />} />
 
             {/* User Dashboard Routes */}
@@ -86,6 +85,13 @@ function App() {
                 <DashboardLayout>
                   <Withdrawal />
                 </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            
+            {/* [BARU] Route Penjelasan Tugas AI */}
+            <Route path="/dashboard/task-explanation" element={
+              <ProtectedRoute>
+                 <TaskExplanation />
               </ProtectedRoute>
             } />
 
