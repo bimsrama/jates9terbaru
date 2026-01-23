@@ -7,7 +7,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
   MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
-  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map, Receipt
+  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map, Receipt, CheckSquare
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -39,12 +39,12 @@ const UserDashboard = () => {
   const { getAuthHeader, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-   
+    
   // --- STATE DATA ---
   const [overview, setOverview] = useState(null);
   const [activeChallenges, setActiveChallenges] = useState([]); 
   const [recommendedChallenges, setRecommendedChallenges] = useState([]); 
-   
+    
   // --- STATE KHUSUS MULTI CHALLENGE ---
   const [allDailyData, setAllDailyData] = useState([]); 
   const [selectedTasksMap, setSelectedTasksMap] = useState({}); 
@@ -55,7 +55,7 @@ const UserDashboard = () => {
   const [myFriends, setMyFriends] = useState([]);
   const [articles, setArticles] = useState([]);
   const [products, setProducts] = useState([]);
-   
+    
   // --- STATE TOKO & ALAMAT ---
   const [addresses, setAddresses] = useState([]);
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -63,7 +63,7 @@ const UserDashboard = () => {
   const [cities, setCities] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [subdistricts, setSubdistricts] = useState([]);
-   
+    
   const [newAddr, setNewAddr] = useState({
       label:'Rumah', name:'', phone:'', prov_id:'', prov_name:'', city_id:'', city_name:'', dis_id:'', dis_name:'', subdis_id:'', subdis_name:'', address:'', zip:''
   });
@@ -105,12 +105,12 @@ const UserDashboard = () => {
   const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
   const [themeColor, setThemeColor] = useState(localStorage.getItem('colorTheme') || 'green');
   const currentTheme = THEMES[themeColor] || THEMES['green'];
-   
+    
   const [showQRModal, setShowQRModal] = useState(false);
   const [friendCode, setFriendCode] = useState("");
   const [showFriendProfile, setShowFriendProfile] = useState(false);
   const [friendData, setFriendData] = useState(null);
-   
+    
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
@@ -151,6 +151,36 @@ const UserDashboard = () => {
     return () => { window.removeEventListener('resize', handleResize); if(document.body.contains(script)){ document.body.removeChild(script); } };
   }, []);
 
+  // --- SINKRONISASI CEKLIST DARI HISTORY ---
+  useEffect(() => {
+    if (allDailyData.length > 0 && checkinHistory.length > 0) {
+        // Loop setiap challenge yang aktif
+        allDailyData.forEach(daily => {
+            // Cari history untuk challenge ini di hari yang sama
+            // Note: day_number di DB mungkin string/int, kita samakan
+            const logToday = checkinHistory.find(log => 
+                log.challenge_id === daily.challenge_id && 
+                log.day == daily.day // == biar loose comparison string/int
+            );
+
+            if (logToday && logToday.chosen_option) {
+                // chosen_option biasanya string dipisah koma jika backend menyimpan seperti itu
+                // Tapi kita asumsikan FE mengirim array, backend simpan string. Kita split.
+                const savedTasks = logToday.chosen_option.split(', ');
+                
+                // Update state jika belum ada
+                setSelectedTasksMap(prev => {
+                    // Hanya update jika belum ada data lokal untuk mencegah override saat user klik
+                    if (!prev[daily.challenge_id]) {
+                        return { ...prev, [daily.challenge_id]: savedTasks };
+                    }
+                    return prev;
+                });
+            }
+        });
+    }
+  }, [allDailyData, checkinHistory]);
+
   useEffect(() => {
       if (activeChallenges.length > 0) {
           fetchAllDailyContents();
@@ -172,7 +202,7 @@ const UserDashboard = () => {
           setRefreshing(true);
           const randomMotivation = MOTIVATIONS[Math.floor(Math.random() * MOTIVATIONS.length)];
           setMotivationText(randomMotivation);
-          await Promise.all([fetchData(), fetchAllDailyContents(), fetchArticles()]);
+          await Promise.all([fetchData(), fetchAllDailyContents(), fetchArticles(), fetchCheckinHistory()]);
           setTimeout(() => { setRefreshing(false); startY.current = 0; }, 1500);
       }
       startY.current = 0;
@@ -180,7 +210,7 @@ const UserDashboard = () => {
 
   const toggleDarkMode = () => { setDarkMode(!darkMode); localStorage.setItem('theme', !darkMode ? 'dark' : 'light'); if (!darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); };
   const changeThemeColor = (k) => { setThemeColor(k); localStorage.setItem('colorTheme', k); };
-   
+    
   const handleProvChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, prov_id: id, prov_name: name, city_id:'', dis_id:'', subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/cities?prov_id=${id}`).then(res => setCities(res.data)); };
   const handleCityChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, city_id: id, city_name: name, dis_id:'', subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/districts?city_id=${id}`).then(res => setDistricts(res.data)); };
   const handleDistrictChange = (e) => { const id = e.target.value; const name = e.target.options[e.target.selectedIndex].text; setNewAddr({...newAddr, dis_id: id, dis_name: name, subdis_id:''}); axios.get(`${BACKEND_URL}/api/location/subdistricts?dis_id=${id}`).then(res => setSubdistricts(res.data)); };
@@ -204,7 +234,7 @@ const UserDashboard = () => {
   };
 
   const fetchArticles = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/admin/articles`); setArticles(res.data); } catch (e) {} };
-   
+    
   const fetchAllDailyContents = async () => { 
       setDailyLoading(true); 
       try { 
@@ -221,41 +251,69 @@ const UserDashboard = () => {
   const fetchFriendsList = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/friends/list`, { headers: getAuthHeader() }); setMyFriends(res.data.friends); } catch (e) {} };
   const fetchProducts = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/products`); if(Array.isArray(res.data)) { setProducts(res.data); } else { setProducts([]); } } catch(e){ setProducts([]); } };
   const fetchOrders = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/orders`, { headers: getAuthHeader() }); setMyOrders(res.data); } catch (e) {} };
-   
+    
   const fetchCheckinHistory = async () => { try { const res = await axios.get(`${BACKEND_URL}/api/user/checkin-history`, { headers: getAuthHeader() }); setCheckinHistory(res.data); } catch(e) {} };
 
   const handleNavClick = (tab) => { setActiveTab(tab); if (!isDesktop) setSidebarOpen(false); };
-   
+    
   const handleSendChat = async (e) => { e.preventDefault(); if(!chatMessage.trim()) return; const msg = chatMessage; setChatHistory(p => [...p, {role:"user", content:msg}]); setChatMessage(""); setChatLoading(true); try { const res = await axios.post(`${BACKEND_URL}/api/chat/send`, {message:msg}, {headers:getAuthHeader()}); setChatHistory(p => [...p, {role:"assistant", content:res.data.response}]); } catch (e) { setChatHistory(p => [...p, {role:"assistant", content:"Error koneksi."}]); } finally { setChatLoading(false); } };
   const copyReferral = () => { navigator.clipboard.writeText(overview?.user?.referral_code || ""); alert("Disalin!"); };
-   
+    
+  // --- LOGIC CHECKLIST BARU ---
   const toggleTaskSelection = (challengeId, task) => {
     const currentTasks = selectedTasksMap[challengeId] || [];
     let newTasks;
-    if (currentTasks.includes(task)) { newTasks = currentTasks.filter(t => t !== task); } else { if (currentTasks.length < 3) newTasks = [...currentTasks, task]; else newTasks = currentTasks; }
+    // Jika sudah ada, hapus (uncheck)
+    if (currentTasks.includes(task)) { 
+        newTasks = currentTasks.filter(t => t !== task); 
+    } else { 
+        // Jika belum, tambah (check)
+        // Hapus limitasi < 3 jika ingin bisa lebih dari 3
+        newTasks = [...currentTasks, task]; 
+    }
     setSelectedTasksMap(prev => ({ ...prev, [challengeId]: newTasks }));
   };
 
   const handleJournalChange = (challengeId, text) => { setJournalsMap(prev => ({ ...prev, [challengeId]: text })); };
 
-  const handleSubmitCheckin = async (challengeId, status) => { 
+  // --- LOGIC SIMPAN / COMPLETE ---
+  const handleSubmitCheckin = async (challengeId, type) => { 
       if(isSubmitting) return; 
+      
       const tasks = selectedTasksMap[challengeId] || [];
       const journal = journalsMap[challengeId] || "";
-      if(status === 'completed' && tasks.length === 0) { alert("Pilih minimal 1 aktivitas untuk diselesaikan."); return; }
+      
+      // Status 'progress' = simpan saja, hari tidak ganti
+      // Status 'completed' = selesai, hari ganti
+      const statusToSend = type === 'save' ? 'progress' : 'completed';
+      
+      // Validasi
+      if (tasks.length === 0) { alert("Pilih minimal 1 aktivitas."); return; }
+      
       setIsSubmitting(true); 
       try { 
-          await axios.post(`${BACKEND_URL}/api/checkin`, { journal: journal, status: status, completed_tasks: tasks, challenge_id: challengeId }, {headers:getAuthHeader()}); 
-          if(status === 'completed') { alert("Luar biasa! Misi selesai."); }
-          if(status === 'pending') { alert("Oke, pengingat telah diset."); }
-          fetchAllDailyContents(); fetchData(); fetchCheckinHistory(); 
-      } catch(e){ alert(e.response?.data?.message || "Gagal check-in."); } finally { setIsSubmitting(false); } 
+          await axios.post(`${BACKEND_URL}/api/checkin`, { 
+              journal: journal, 
+              status: statusToSend, 
+              completed_tasks: tasks, 
+              challenge_id: challengeId 
+          }, {headers:getAuthHeader()}); 
+          
+          if(statusToSend === 'completed') { alert("Luar biasa! Hari ini tuntas."); }
+          else { alert("Progress tersimpan."); }
+          
+          fetchAllDailyContents(); 
+          fetchData(); 
+          fetchCheckinHistory(); 
+      } catch(e){ 
+          alert(e.response?.data?.message || "Gagal check-in."); 
+      } finally { 
+          setIsSubmitting(false); 
+      } 
   };
-   
+    
   const handleChallengeAction = async (id, action) => {
-      // Prompt confirm untuk stop saja, pause/resume biasanya lebih sering
       if(action === 'stop' && !window.confirm(`Yakin ingin ${action} challenge ini?`)) return;
-      
       try {
           await axios.post(`${BACKEND_URL}/api/user/challenge/action`, { challenge_id: id, action: action }, { headers: getAuthHeader() });
           fetchData(); 
@@ -333,7 +391,6 @@ const UserDashboard = () => {
   const handlePauseFromModal = async (challengeId) => {
       if(!window.confirm("Pause challenge ini? Kamu bisa melanjutkannya nanti.")) return;
       try {
-          // Ganti endpoint ke general action
           await handleChallengeAction(challengeId, 'pause');
           setShowLimitModal(false);
           startQuiz(targetJoinChallenge.id);
@@ -346,7 +403,7 @@ const UserDashboard = () => {
   const triggerFileInput = () => fileInputRef.current.click();
   const handleAddFriend = async () => { if(!friendCode) return alert("Masukkan kode teman!"); try { await axios.post(`${BACKEND_URL}/api/friends/add`, { referral_code: friendCode }, { headers: getAuthHeader() }); alert("Teman berhasil ditambahkan!"); setFriendCode(""); fetchFriendsList(); } catch (e) { alert(e.response?.data?.message || "Gagal menambahkan teman."); } };
   const handleShowFriendProfile = (friend) => { setFriendData(friend); setShowFriendProfile(true); };
-   
+    
   const openCheckout = async (product) => { 
       setSelectedProduct(product); 
       setShippingCost(0); 
@@ -361,7 +418,6 @@ const UserDashboard = () => {
           setAddresses(savedAddresses); 
           
           if (savedAddresses.length > 0) { 
-              // Set ID alamat pertama secara eksplisit
               handleSelectAddrCheckout(savedAddresses[0].id); 
           } else { 
               setSelectedAddrId(""); 
@@ -384,7 +440,7 @@ const UserDashboard = () => {
   };
   const handleOpenInvoice = (order) => { setSelectedInvoice(order); setShowInvoice(true); };
   const badgeStyle = { background: 'rgba(255,255,255,0.2)', color: 'white', padding: '5px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '5px', backdropFilter:'blur(4px)', border: '1px solid rgba(255,255,255,0.4)' };
-   
+    
   const ShopBanner = () => (
       <div style={{ marginBottom: '2rem', position:'relative', borderRadius: '24px', overflow:'hidden', boxShadow:'0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
           <div style={{ background: currentTheme.cardGradient, padding: '2.5rem 2rem', color: 'white', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -398,10 +454,15 @@ const UserDashboard = () => {
       </div>
   );
 
+  // --- RENDER CHALLENGE CARD ---
   const renderDailyCard = (data) => {
       const isCompleted = data.today_status === 'completed';
+      // Load selected tasks dari state local (yang sudah disinkronkan dengan API history)
       const selected = selectedTasksMap[data.challenge_id] || [];
       const journal = journalsMap[data.challenge_id] || "";
+      const totalTasks = data.tasks?.length || 0;
+      const tasksDoneCount = selected.length;
+      const allChecked = tasksDoneCount === totalTasks && totalTasks > 0;
 
       return (
           <Card key={data.challenge_id} className="gym-card" style={{ marginBottom: '1.5rem', background: darkMode ? '#1e293b' : 'white', border: 'none', borderRadius:'24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
@@ -433,20 +494,24 @@ const UserDashboard = () => {
                       </div>
                   ) : (
                       <>
-                          <p style={{marginBottom:'1rem', fontWeight:'700', fontSize:'0.95rem', color: darkMode?'#cbd5e1':'#64748b', textTransform:'uppercase', letterSpacing:'0.5px'}}>Target Hari Ini:</p>
+                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                            <p style={{fontWeight:'700', fontSize:'0.95rem', color: darkMode?'#cbd5e1':'#64748b', textTransform:'uppercase', letterSpacing:'0.5px'}}>Target Hari Ini:</p>
+                            <span style={{fontSize:'0.8rem', background: '#f1f5f9', padding:'2px 8px', borderRadius:'10px', color:'#64748b'}}>{tasksDoneCount}/{totalTasks} Selesai</span>
+                          </div>
+
                           <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
                               {data.tasks?.map((task, idx) => {
                                   const isSelected = selected.includes(task);
                                   return (
                                       <div key={idx} onClick={() => toggleTaskSelection(data.challenge_id, task)} 
-                                          style={{ 
-                                              padding:'1rem', borderRadius:'16px', 
-                                              border: isSelected ? `2px solid ${currentTheme.primary}` : (darkMode ? '1px solid #334155' : '1px solid #e2e8f0'), 
-                                              background: isSelected ? (darkMode ? 'rgba(34, 197, 94, 0.1)' : currentTheme.light) : (darkMode ? '#1e293b' : 'white'), 
-                                              cursor:'pointer', display:'flex', alignItems:'center', gap:'1rem', transition:'all 0.2s', 
-                                              color: darkMode ? 'white' : '#0f172a',
-                                              boxShadow: isSelected ? `0 4px 12px ${currentTheme.light}` : 'none'
-                                          }}>
+                                        style={{ 
+                                            padding:'1rem', borderRadius:'16px', 
+                                            border: isSelected ? `2px solid ${currentTheme.primary}` : (darkMode ? '1px solid #334155' : '1px solid #e2e8f0'), 
+                                            background: isSelected ? (darkMode ? 'rgba(34, 197, 94, 0.1)' : currentTheme.light) : (darkMode ? '#1e293b' : 'white'), 
+                                            cursor:'pointer', display:'flex', alignItems:'center', gap:'1rem', transition:'all 0.2s', 
+                                            color: darkMode ? 'white' : '#0f172a',
+                                            opacity: isSelected ? 0.7 : 1 // Sedikit transparan jika sudah checked
+                                        }}>
                                           <div style={{ 
                                               width:'26px', height:'26px', borderRadius:'8px', 
                                               border:`2px solid ${isSelected ? currentTheme.primary : '#cbd5e1'}`, 
@@ -456,19 +521,32 @@ const UserDashboard = () => {
                                           }}> 
                                               {isSelected && <Check size={18} strokeWidth={4}/>} 
                                           </div>
-                                          <span style={{fontSize:'1rem', fontWeight: isSelected ? '700' : '500'}}>{task}</span>
+                                          <span style={{
+                                              fontSize:'1rem', 
+                                              fontWeight: isSelected ? '500' : '500',
+                                              textDecoration: isSelected ? 'line-through' : 'none', // EFEK CORET
+                                              color: isSelected ? (darkMode ? '#94a3b8' : '#64748b') : 'inherit'
+                                          }}>{task}</span>
                                       </div>
                                   );
                               })}
                           </div>
-                           
+                            
                           <textarea value={journal} onChange={(e) => handleJournalChange(data.challenge_id, e.target.value)} placeholder={`Catat perasaanmu setelah latihan...`} style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: 'none', background: darkMode ? '#0f172a' : '#f1f5f9', marginTop:'1.5rem', color: darkMode ? 'white' : 'black', fontFamily:'inherit', fontSize:'0.95rem', resize:'vertical', minHeight:'80px' }} ></textarea>
-                           
-                          <div style={{ marginTop: '1.5rem', display:'flex', gap:'1rem' }}>
-                              <button onClick={() => handleSubmitCheckin(data.challenge_id, 'completed')} disabled={isSubmitting || selected.length === 0} style={{ flex:2, background: selected.length > 0 ? currentTheme.primary : '#cbd5e1', color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'1rem', cursor: selected.length > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: selected.length > 0 ? '0 4px 15px rgba(0,0,0,0.1)' : 'none', transition:'all 0.2s', transform: 'scale(1)' }}> 
-                                  {isSubmitting ? <RefreshCw className="animate-spin" size={20}/> : <CheckCircle size={20}/>} COMPLETE WORKOUT
-                              </button>
-                              <button onClick={() => handleSubmitCheckin(data.challenge_id, 'pending')} disabled={isSubmitting} style={{flex:1, background:'transparent', border:`2px solid ${darkMode?'#475569':'#e2e8f0'}`, borderRadius:'30px', color: darkMode?'white':'#64748b', cursor:'pointer', fontWeight:'700'}}>SKIP</button>
+                            
+                          <div style={{ marginTop: '1.5rem', display:'flex', gap:'1rem', flexDirection: 'column' }}>
+                              {/* LOGIKA TOMBOL: SIMPAN PROGRESS vs SELESAI */}
+                              {allChecked ? (
+                                  <button onClick={() => handleSubmitCheckin(data.challenge_id, 'complete')} disabled={isSubmitting} style={{ width:'100%', background: currentTheme.primary, color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'1rem', cursor: 'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition:'all 0.2s' }}> 
+                                      {isSubmitting ? <RefreshCw className="animate-spin" size={20}/> : <CheckCircle size={20}/>} SELESAI / COMPLETE WORKOUT
+                                  </button>
+                              ) : (
+                                  <div style={{display:'flex', gap:'10px'}}>
+                                      <button onClick={() => handleSubmitCheckin(data.challenge_id, 'save')} disabled={isSubmitting || tasksDoneCount === 0} style={{ flex:1, background: tasksDoneCount > 0 ? '#3b82f6' : '#cbd5e1', color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'0.9rem', cursor: tasksDoneCount > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}> 
+                                          {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckSquare size={18}/>} SIMPAN PROGRESS
+                                      </button>
+                                  </div>
+                              )}
                           </div>
                       </>
                   )}
@@ -649,16 +727,15 @@ const UserDashboard = () => {
                                                     <div style={{fontWeight:'800', fontSize:'1rem', color: darkMode?'white':'#0f172a'}}>{chal.title}</div>
                                                     <div style={{fontSize:'0.75rem', color:'#64748b', marginTop:'2px'}}>Target 30 Hari</div>
                                                 </div>
-                                                {/* FIX: Tampilkan status PAUSED jika status bukan active */}
                                                 <span style={{fontSize:'0.8rem', padding:'4px 12px', borderRadius:'20px', background: chal.status==='active'?currentTheme.light:'#fee2e2', color: chal.status==='active'?currentTheme.text:'#991b1b', fontWeight:'700', textTransform:'uppercase'}}>
                                                     {chal.status}
                                                 </span>
                                             </div>
-                                             
+                                            
                                             <div className="progress-bar-capsule" style={{marginBottom:'0.8rem', background: darkMode?'#334155':'#f1f5f9'}}>
                                                 <div className="progress-fill" style={{width:`${chal.progress}%`}}></div>
                                             </div>
-                                             
+                                            
                                             <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', color:'#64748b', marginBottom:'1.5rem'}}>
                                                 <span style={{fontWeight:'700', color: currentTheme.primary}}>{chal.progress}% Completed</span>
                                                 <span>{30 - chal.day} hari tersisa</span>
@@ -674,7 +751,7 @@ const UserDashboard = () => {
                                                     <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.missed || 0} Missed</span>
                                                 </div>
                                             </div>
-                                             
+                                            
                                             <div style={{marginTop:'1rem', display:'flex', gap:'10px'}}>
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
@@ -693,7 +770,7 @@ const UserDashboard = () => {
                     </CardContent>
                   </Card>
                 </div>
-                 
+                  
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                   
                   {/* ARTIKEL KESEHATAN (Moved to Right Column) */}
