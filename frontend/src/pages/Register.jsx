@@ -5,7 +5,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { 
   Leaf, ArrowRight, Check, Loader2, Trophy, Stethoscope, FileText, 
-  RefreshCcw, CheckCircle, ShieldCheck, Phone, User, Lock, Edit2, RefreshCw, Medal, Users 
+  RefreshCcw, CheckCircle, ShieldCheck, Phone, User, Lock, Edit2, RefreshCw, Medal, Users,
+  MessageCircle, Award, CalendarCheck
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -123,10 +124,9 @@ const Register = () => {
   };
 
   // ==========================================
-  // LOGIC STEP 3: QUIZ (UPDATED)
+  // LOGIC STEP 3: QUIZ
   // ==========================================
   
-  // [FIX] Menggunakan 'type' bukan 'category' sesuai database backend
   const handleAnswerOption = (typeValue) => {
     const currentQ = questions[currentQuestionIndex];
     setAnswers(prev => ({ ...prev, [currentQ.id]: typeValue }));
@@ -143,7 +143,7 @@ const Register = () => {
   const calculateAndSubmitQuiz = async () => {
     setLoading(true);
     
-    // [FIX] Logika Hitung Skor Dinamis (Tidak cuma A/B/C)
+    // Logika Hitung Skor Dinamis
     const counts = {};
     Object.values(answers).forEach(type => {
       counts[type] = (counts[type] || 0) + 1;
@@ -152,7 +152,6 @@ const Register = () => {
     let resultType = "Umum"; 
     let maxCount = -1;
 
-    // Cari tipe dengan jumlah jawaban terbanyak
     Object.entries(counts).forEach(([type, count]) => {
       if (count > maxCount) {
         maxCount = count;
@@ -204,14 +203,11 @@ const Register = () => {
              <p style={{ fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '0.8rem' }}>
                Badge adalah simbol pencapaian untuk Anda, para pejuang sehat yang konsisten!
              </p>
-             <p style={{ fontSize: '0.9rem', lineHeight: '1.5', color: '#475569' }}>
-               Dapatkan badge-badge lainnya dengan menyelesaikan tantangan, dan jalin pertemanan dengan pejuang hidup sehat lainnya.
-             </p>
           </div>
         </div>
       ) : (
         /* KARTU STEP NORMAL 1, 2, 3, 4, 5 */
-        <Card style={{ maxWidth: '500px', width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', minHeight: '650px', position: 'relative' }}>
+        <Card style={{ maxWidth: step === 4 ? '550px' : '500px', width: '100%', background: 'var(--bg-card)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', minHeight: '650px', position: 'relative' }}>
           <CardHeader style={{ textAlign: 'center', paddingBottom: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
               <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: step === 5 ? '#22c55e' : 'var(--gradient-button)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -227,7 +223,7 @@ const Register = () => {
               {step === 1 && "Daftar Akun Baru"}
               {step === 2 && "Pilih Program Sehatmu"}
               {step === 3 && "Cek Kondisi Tubuh"}
-              {step === 4 && "Analisa Kesehatan Anda"}
+              {step === 4 && "Hasil Analisa Kesehatan"}
               {step === 5 && "Registrasi Selesai!"}
             </CardTitle>
             
@@ -235,7 +231,7 @@ const Register = () => {
               {step === 1 && "Langkah 1: Isi Data & Verifikasi WA"}
               {step === 2 && "Langkah 2: Tentukan Tantangan"}
               {step === 3 && `Pertanyaan ${currentQuestionIndex + 1} dari ${questions.length}`}
-              {step === 4 && "Berdasarkan jawaban kuis Anda"}
+              {step === 4 && "Analisa Personal & Langkah Selanjutnya"}
               {step === 5 && "Akun Anda telah siap."}
             </p>
 
@@ -281,7 +277,6 @@ const Register = () => {
                 <h3 className="heading-3" style={{ marginBottom: '1.5rem' }}>{questions[currentQuestionIndex].question_text}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
                   {questions[currentQuestionIndex].options.map((opt, idx) => {
-                    // [FIX] Menggunakan 'type' untuk cek selected, bukan 'category'
                     const isSelected = answers[questions[currentQuestionIndex].id] === opt.type;
                     return (
                       <div key={idx} onClick={() => handleAnswerOption(opt.type)} style={{ padding: '1rem', borderRadius: '10px', border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)', background: isSelected ? 'rgba(34, 197, 94, 0.05)' : 'var(--bg-section)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -294,25 +289,67 @@ const Register = () => {
               </div>
             )}
 
-            {/* HASIL REPORT STEP 4 */}
+            {/* HASIL REPORT STEP 4 (TAMPILAN BARU SESUAI REQUEST) */}
             {step === 4 && quizResult && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ marginBottom: '2rem' }}>
-                  <h3 className="heading-3">Hasil Analisa Kesehatan:</h3>
-                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#166534', margin: '0.5rem 0' }}>{quizResult.type}</div>
-                  
-                  {/* RINGKASAN AI */}
+              <div style={{ textAlign: 'left' }}>
+                
+                {/* 1. HASIL UTAMA */}
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#166534', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Kategori Tubuh Anda</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#15803d', margin: '0.5rem 0' }}>Tipe {quizResult.type}</div>
                   {quizResult.aiSummary && (
-                    <div style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '12px', padding: '1rem', fontSize: '0.9rem', color: '#1e40af', fontStyle: 'italic', textAlign: 'left', display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                        <div style={{ minWidth: '20px' }}>🤖</div>
-                        <div>"{quizResult.aiSummary}"</div>
+                    <div style={{ fontSize: '1rem', color: '#374151', fontStyle: 'italic', lineHeight: '1.5', marginTop: '0.5rem' }}>
+                      "{quizResult.aiSummary}"
                     </div>
                   )}
                 </div>
-                <Button className="btn-primary" onClick={() => setStep(4.5)} style={{ width: '100%', padding: '1rem' }}>
-                  Mulai Program 30 Hari <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
-                </Button>
-                <Button variant="outline" onClick={() => { setStep(2); setAnswers({}); setQuizResult(null); }} style={{ width: '100%', marginTop: '1rem', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}><RefreshCcw size={18} style={{ marginRight: '0.5rem' }} /> Pilih Program Lain</Button>
+
+                {/* 2. INFO LANGKAH SELANJUTNYA (HARDCODED ICONS) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#e0f2fe', padding: '8px', borderRadius: '50%', color: '#0284c7' }}><MessageCircle size={20} /></div>
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Panduan Harian via WhatsApp</h4>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Tips & tugas harian dikirim otomatis ke WA Anda selama 30 hari penuh.</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#fef3c7', padding: '8px', borderRadius: '50%', color: '#d97706' }}><CalendarCheck size={20} /></div>
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Laporan Progress Harian</h4>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Wajib lapor (Check-in) setiap hari untuk memantau perkembangan kesehatan.</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                    <div style={{ background: '#f3e8ff', padding: '8px', borderRadius: '50%', color: '#9333ea' }}><Award size={20} /></div>
+                    <div>
+                      <h4 style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#334155' }}>Sertifikat Kelulusan</h4>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Selesaikan tantangan dan dapatkan Sertifikat Resmi sebagai bukti sukses.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. TOMBOL ACTION (LAYOUT BARU) */}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => { setStep(2); setAnswers({}); setQuizResult(null); }} 
+                    style={{ flex: 1, border: '1px solid var(--border-light)', color: 'var(--text-secondary)', height: '50px', fontSize: '0.9rem' }}
+                  >
+                    <RefreshCcw size={16} style={{ marginRight: '6px' }} /> Pilih Lain
+                  </Button>
+                  
+                  <Button 
+                    className="btn-primary" 
+                    onClick={() => setStep(4.5)} 
+                    style={{ flex: 2, height: '50px', fontSize: '1rem', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.2)' }}
+                  >
+                    Siap Memulai <ArrowRight size={20} style={{ marginLeft: '8px' }} />
+                  </Button>
+                </div>
+
               </div>
             )}
 
