@@ -17,12 +17,6 @@ const Register = () => {
   const { register, getAuthHeader } = useAuth();
 
   // --- STATE ALUR ---
-  // 1 = Form Data
-  // 2 = Pilih Challenge
-  // 3 = Jawab Quiz
-  // 4 = Laporan Hasil
-  // 4.5 = Animasi Badge (NEW STEP)
-  // 5 = Sukses & Redirect
   const [step, setStep] = useState(1);
   
   // --- STATE LAIN ---
@@ -60,7 +54,6 @@ const Register = () => {
   // --- STEP 4.5: ANIMASI BADGE ---
   useEffect(() => {
     if (step === 4.5) {
-      // Tahan animasi selama 6 detik agar user sempat baca infonya
       const timer = setTimeout(() => setStep(5), 6000);
       return () => clearTimeout(timer);
     }
@@ -124,18 +117,19 @@ const Register = () => {
       await axios.post(`${BACKEND_URL}/api/user/select-challenge`, { challenge_id: id }, { headers: getAuthHeader() });
       const qRes = await axios.get(`${BACKEND_URL}/api/quiz/questions/${id}`, { headers: getAuthHeader() });
       if (qRes.data && qRes.data.length > 0) { setQuestions(qRes.data); setStep(3); }
-      else { setStep(4.5); } // Jika tidak ada kuis, langsung ke animasi badge
+      else { setStep(4.5); } 
     } catch (err) { setError("Gagal pilih challenge."); }
     finally { setLoading(false); }
   };
 
   // ==========================================
-  // LOGIC STEP 3: QUIZ
+  // LOGIC STEP 3: QUIZ (UPDATED)
   // ==========================================
   
-  const handleAnswerOption = (category) => {
+  // [FIX] Menggunakan 'type' bukan 'category' sesuai database backend
+  const handleAnswerOption = (typeValue) => {
     const currentQ = questions[currentQuestionIndex];
-    setAnswers(prev => ({ ...prev, [currentQ.id]: category }));
+    setAnswers(prev => ({ ...prev, [currentQ.id]: typeValue }));
   };
 
   const handleNextQuestion = () => {
@@ -148,22 +142,35 @@ const Register = () => {
 
   const calculateAndSubmitQuiz = async () => {
     setLoading(true);
-    const counts = { A: 0, B: 0, C: 0 };
-    Object.values(answers).forEach(cat => { if (counts[cat] !== undefined) counts[cat]++; });
-    let resultType = "A"; let maxCount = -1;
-    ['C', 'B', 'A'].forEach(type => { if (counts[type] > maxCount) { maxCount = counts[type]; resultType = type; } });
+    
+    // [FIX] Logika Hitung Skor Dinamis (Tidak cuma A/B/C)
+    const counts = {};
+    Object.values(answers).forEach(type => {
+      counts[type] = (counts[type] || 0) + 1;
+    });
+
+    let resultType = "Umum"; 
+    let maxCount = -1;
+
+    // Cari tipe dengan jumlah jawaban terbanyak
+    Object.entries(counts).forEach(([type, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        resultType = type;
+      }
+    });
 
     try {
       const res = await axios.post(`${BACKEND_URL}/api/quiz/submit`, { 
-        challenge_id: selectedChallengeId, // PASTIKAN ID CHALLENGE DIKIRIM
+        challenge_id: selectedChallengeId, 
         health_type: resultType,
         answers: answers,
-        score: 100 // Dummy score
+        score: 100 
       }, { headers: getAuthHeader() });
       
       setQuizResult({ 
         type: resultType, 
-        aiSummary: res.data.ai_summary // Ambil ringkasan AI dari response backend
+        aiSummary: res.data.ai_summary 
       });
       setStep(4);
     } catch (err) { setError("Gagal simpan kuis."); }
@@ -274,9 +281,10 @@ const Register = () => {
                 <h3 className="heading-3" style={{ marginBottom: '1.5rem' }}>{questions[currentQuestionIndex].question_text}</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
                   {questions[currentQuestionIndex].options.map((opt, idx) => {
-                    const isSelected = answers[questions[currentQuestionIndex].id] === opt.category;
+                    // [FIX] Menggunakan 'type' untuk cek selected, bukan 'category'
+                    const isSelected = answers[questions[currentQuestionIndex].id] === opt.type;
                     return (
-                      <div key={idx} onClick={() => handleAnswerOption(opt.category)} style={{ padding: '1rem', borderRadius: '10px', border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)', background: isSelected ? 'rgba(34, 197, 94, 0.05)' : 'var(--bg-section)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div key={idx} onClick={() => handleAnswerOption(opt.type)} style={{ padding: '1rem', borderRadius: '10px', border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-light)', background: isSelected ? 'rgba(34, 197, 94, 0.05)' : 'var(--bg-section)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontWeight: isSelected ? 600 : 400 }}>{opt.text}</span>{isSelected && <Check size={18} className="text-green-600" />}
                       </div>
                     );
@@ -290,25 +298,19 @@ const Register = () => {
             {step === 4 && quizResult && (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                  <h3 className="heading-3">Tipe Pencernaan:</h3>
-                  <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#166534', margin: '0.5rem 0' }}>Tipe {quizResult.type}</div>
-                  <p className="body-medium" style={{ color: '#4b5563', marginBottom: '1rem' }}>
-                    {quizResult.type === 'A' && "Kecenderungan Sembelit & Kurang Serat"}
-                    {quizResult.type === 'B' && "Kecenderungan Kembung & Sensitif"}
-                    {quizResult.type === 'C' && "Kecenderungan Maag & Asam Lambung"}
-                    {quizResult.type === 'Sehat' && "Pencernaan Sehat & Terjaga"}
-                  </p>
+                  <h3 className="heading-3">Hasil Analisa Kesehatan:</h3>
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#166534', margin: '0.5rem 0' }}>{quizResult.type}</div>
                   
                   {/* RINGKASAN AI */}
                   {quizResult.aiSummary && (
-                    <div style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '12px', padding: '1rem', fontSize: '0.9rem', color: '#1e40af', fontStyle: 'italic', textAlign: 'left', display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '12px', padding: '1rem', fontSize: '0.9rem', color: '#1e40af', fontStyle: 'italic', textAlign: 'left', display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                         <div style={{ minWidth: '20px' }}>🤖</div>
                         <div>"{quizResult.aiSummary}"</div>
                     </div>
                   )}
                 </div>
                 <Button className="btn-primary" onClick={() => setStep(4.5)} style={{ width: '100%', padding: '1rem' }}>
-                  Daftar Program 30 Hari <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
+                  Mulai Program 30 Hari <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
                 </Button>
                 <Button variant="outline" onClick={() => { setStep(2); setAnswers({}); setQuizResult(null); }} style={{ width: '100%', marginTop: '1rem', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}><RefreshCcw size={18} style={{ marginRight: '0.5rem' }} /> Pilih Program Lain</Button>
               </div>
@@ -319,7 +321,7 @@ const Register = () => {
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}><Check size={48} /></div>
                 <h3 className="heading-2" style={{ color: '#16a34a', marginBottom: '1rem' }}>Terima Kasih Telah Mendaftar!</h3>
-                <p className="body-medium" style={{ color: '#4b5563', marginBottom: '2rem' }}>Anda akan diarahkan ke profil kesehatan Anda...</p>
+                <p className="body-medium" style={{ color: '#4b5563', marginBottom: '2rem' }}>Anda akan diarahkan ke dashboard...</p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', color: 'var(--primary)' }}><Loader2 className="animate-spin" /> Mengalihkan...</div>
               </div>
             )}
