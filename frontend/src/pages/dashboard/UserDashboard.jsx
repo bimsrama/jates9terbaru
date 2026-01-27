@@ -1305,7 +1305,7 @@ const UserDashboard = () => {
 
       {/* --- MODAL LIMIT CHALLENGE --- */}
       {showLimitModal && (
-        <div className="modal-overlay" onClick={()=>setShowLimitModal(false)}>
+        <div className="modal-overlay" onClick={()=>setShowLimitModal(false)} style={{ zIndex: 200002 }}>
             <div className="modal-content" style={{maxWidth:'400px', padding:'2rem'}} onClick={e=>e.stopPropagation()}>
                 <div style={{textAlign:'center', marginBottom:'1.5rem'}}>
                     <div style={{background: '#ffedd5', width:'50px', height:'50px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem auto'}}>
