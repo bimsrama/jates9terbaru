@@ -7,7 +7,7 @@ import {
   Package, ShoppingBag, ChevronLeft, Clock, CheckCircle, Calendar, RefreshCw, FileText,
   Camera, Bot, Sparkles, MapPin, Truck, Plus, Check, Bell, Edit2, Send, X, Loader,
   MessageSquareQuote, ShoppingCart, Play, Pause, Square, Target, TrendingUp, Zap, 
-  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map, Receipt, CheckSquare
+  Home, BookOpen, Shield, Trophy, AlertTriangle, Flame, MessageCircle, Map, Receipt, CheckSquare, ArrowLeft
 } from 'lucide-react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -71,7 +71,6 @@ const UserDashboard = () => {
   const [shippingCost, setShippingCost] = useState(0);
   const [selectedAddrId, setSelectedAddrId] = useState("");
   const [shippingMethod, setShippingMethod] = useState("jne"); 
-  const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [myOrders, setMyOrders] = useState([]);
   const [showOrderHistory, setShowOrderHistory] = useState(false);
@@ -84,7 +83,10 @@ const UserDashboard = () => {
 
   // --- STATE BARU: QUIZ, CHALLENGE & REPORT MANAGEMENT ---
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const [showQuizModal, setShowQuizModal] = useState(false);
+  
+  // Ubah: showQuizModal dihapus, diganti isTakingQuiz untuk Full Screen
+  const [isTakingQuiz, setIsTakingQuiz] = useState(false); 
+  
   const [showAiSummaryModal, setShowAiSummaryModal] = useState(false);
   const [targetJoinChallenge, setTargetJoinChallenge] = useState(null);
   const [quizQuestions, setQuizQuestions] = useState([]);
@@ -115,7 +117,6 @@ const UserDashboard = () => {
   const [chatHistory, setChatHistory] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
-  const chatSectionRef = useRef(null);
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -182,9 +183,10 @@ const UserDashboard = () => {
   useEffect(() => { if (activeTab === 'shop') fetchOrders(); }, [activeTab]);
   useEffect(() => { if (activeTab === 'chat') setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 300); }, [activeTab, chatHistory]);
 
-  const handleTouchStart = (e) => { if (mainContentRef.current.scrollTop === 0) startY.current = e.touches[0].clientY; };
-  const handleTouchMove = (e) => { if (startY.current === 0) return; const currentY = e.touches[0].clientY; const diff = currentY - startY.current; };
+  const handleTouchStart = (e) => { if (mainContentRef.current?.scrollTop === 0) startY.current = e.touches[0].clientY; };
+  const handleTouchMove = (e) => { if (startY.current === 0) return; };
   const handleTouchEnd = async (e) => {
+      if(!mainContentRef.current) return;
       const currentY = e.changedTouches[0].clientY;
       const diff = currentY - startY.current;
       if (diff > 100 && mainContentRef.current.scrollTop === 0 && !refreshing && activeTab === 'dashboard') {
@@ -337,7 +339,8 @@ const UserDashboard = () => {
           setQuizQuestions(res.data);
           setCurrentQuizIdx(0);
           setQuizAnswers({});
-          setShowQuizModal(true);
+          // Ubah ke mode Full Screen
+          setIsTakingQuiz(true);
       } catch (err) {
           alert("Gagal memuat kuis.");
       }
@@ -374,11 +377,12 @@ const UserDashboard = () => {
           }, { headers: getAuthHeader() });
 
           setAiSummaryResult(res.data.ai_summary);
-          setShowQuizModal(false);
+          setIsTakingQuiz(false); // Keluar mode kuis
           setShowAiSummaryModal(true);
           fetchData(); 
       } catch (err) {
           alert(err.response?.data?.message || "Gagal submit kuis");
+          setIsTakingQuiz(false);
       }
   };
 
@@ -485,7 +489,6 @@ const UserDashboard = () => {
                           <p style={{marginTop:'0.5rem'}}>Luar biasa! Konsistensi adalah kunci.</p>
                           {data.ai_feedback && <div style={{marginTop:'1rem', fontStyle:'italic', fontSize:'0.85rem', background:'rgba(255,255,255,0.5)', padding:'8px', borderRadius:'8px'}}>"{data.ai_feedback}"</div>}
                           
-                          {/* Tombol Lihat Penjelasan Tetap Ada */}
                           <button onClick={() => handleOpenExplanation(data)} style={{marginTop:'1rem', background:'transparent', border:'none', color: currentTheme.primary, fontWeight:'bold', cursor:'pointer', fontSize:'0.85rem', textDecoration:'underline'}}>
                              Lihat Penjelasan Tugas Tadi
                           </button>
@@ -533,19 +536,15 @@ const UserDashboard = () => {
                           <textarea value={journal} onChange={(e) => handleJournalChange(data.challenge_id, e.target.value)} placeholder={`Catat perasaanmu setelah latihan...`} style={{ width: '100%', padding: '1rem', borderRadius: '16px', border: 'none', background: darkMode ? '#0f172a' : '#f1f5f9', marginTop:'1.5rem', color: darkMode ? 'white' : 'black', fontFamily:'inherit', fontSize:'0.95rem', resize:'vertical', minHeight:'80px' }} ></textarea>
                             
                           <div style={{ marginTop: '1.5rem', display:'flex', gap:'1rem', flexDirection: 'column' }}>
-                              {/* LOGIKA TOMBOL */}
                               {allChecked ? (
                                   <button onClick={() => handleSubmitCheckin(data.challenge_id, 'complete')} disabled={isSubmitting} style={{ width:'100%', background: currentTheme.primary, color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'1rem', cursor: 'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition:'all 0.2s' }}> 
                                       {isSubmitting ? <RefreshCw className="animate-spin" size={20}/> : <CheckCircle size={20}/>} SELESAI / COMPLETE WORKOUT
                                   </button>
                               ) : (
                                   <div style={{display:'flex', gap:'10px'}}>
-                                      {/* TOMBOL SIMPAN PROGRESS */}
                                       <button onClick={() => handleSubmitCheckin(data.challenge_id, 'save')} disabled={isSubmitting || tasksDoneCount === 0} style={{ flex:1, background: tasksDoneCount > 0 ? '#3b82f6' : '#cbd5e1', color: 'white', border: 'none', padding: '1rem', borderRadius: '30px', fontWeight: '800', fontSize:'0.9rem', cursor: tasksDoneCount > 0 ? 'pointer' : 'not-allowed', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}> 
                                           {isSubmitting ? <RefreshCw className="animate-spin" size={18}/> : <CheckSquare size={18}/>} SIMPAN PROGRESS
                                       </button>
-                                      
-                                      {/* TOMBOL PENJELASAN TUGAS (BARU) */}
                                       <button onClick={() => handleOpenExplanation(data)} style={{ flex:1, background: 'white', border: '1px solid #e2e8f0', color: '#475569', padding: '1rem', borderRadius: '30px', fontWeight: '700', fontSize:'0.9rem', cursor: 'pointer', display:'flex', justifyContent:'center', alignItems:'center', gap:'0.5rem' }}>
                                           <BookOpen size={18}/> Info Tugas
                                       </button>
@@ -565,7 +564,6 @@ const UserDashboard = () => {
     <div style={{ display: 'flex', flexDirection: isDesktop ? 'row' : 'column', background: darkMode ? '#0f172a' : '#f8fafc', color: darkMode ? '#e2e8f0' : '#1e293b', width: '100%', height: '100vh', position: 'fixed', top: 0, left: 0, zIndex: 9999, overflow: 'hidden' }}>
       <style>{`<br>        header:not(.dashboard-header), .navbar, .site-header, #header, nav.navbar { display: none !important; }<br>        body { padding-top: 0 !important; margin-top: 0 !important; }<br>        :root { --primary: ${currentTheme.primary}; --primary-dark: ${currentTheme.text}; --theme-gradient: ${currentTheme.gradient}; --theme-light: ${currentTheme.light}; }<br>        .dark { --theme-gradient: ${currentTheme.darkGradient}; }<br>        .nav-item { display: flex; alignItems: center; gap: 0.75rem; width: 100%; padding: 0.75rem 1rem; border-radius: 12px; border: none; cursor: pointer; font-size: 0.95rem; margin-bottom: 0.25rem; text-align: left; transition: all 0.2s; color: ${darkMode ? '#94a3b8' : '#475569'}; background: transparent; font-weight: 500; }<br>        .nav-item.active { background: ${darkMode ? currentTheme.text : currentTheme.light}; color: ${darkMode ? 'white' : currentTheme.text}; font-weight: 700; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }<br>        
         
-        /* UPDATED MODAL CSS */
         .modal-overlay { 
             position: fixed; 
             inset: 0; 
@@ -577,17 +575,38 @@ const UserDashboard = () => {
             z-index: 99999; 
             padding: 1rem; 
         }
+        
+        /* RESPONSIVE MODAL CONTENT */
         .modal-content { 
             background: ${darkMode ? '#1e293b' : 'white'}; 
-            padding: 2rem; 
             border-radius: 24px; 
             max-width: 500px; 
             width: 100%; 
             max-height: 90vh; 
             overflow-y: auto; 
             color: ${darkMode ? 'white' : 'black'}; 
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            position: relative; /* Added relative positioning for absolute children */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header-sticky {
+            position: sticky;
+            top: 0;
+            background: ${darkMode ? '#1e293b' : 'white'};
+            z-index: 10;
+            padding: 1.5rem 1.5rem 1rem 1.5rem;
+            border-bottom: 1px solid ${darkMode ? '#334155' : '#f1f5f9'};
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 24px 24px 0 0;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
         }
         
         /* GYM STYLE ELEMENTS */
@@ -610,393 +629,449 @@ const UserDashboard = () => {
         }
       `}</style>
 
-      {isDesktop && (
-      <aside style={{ width: '280px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 20 }}>
-        <div style={{ padding: '2rem 1.5rem', borderBottom: 'none' }}> <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: currentTheme.primary, letterSpacing:'-1px', display:'flex', alignItems:'center', gap:'8px' }}><Activity fill={currentTheme.primary}/> VITALYST</h2> </div>
-        <nav style={{ padding: '1rem 1.5rem', flex: 1, overflowY: 'auto' }}>
-          <p style={{fontSize:'0.75rem', fontWeight:'bold', color:'#94a3b8', marginBottom:'1rem', textTransform:'uppercase', letterSpacing:'1px'}}>Menu Utama</p>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Activity size={20}/> Dashboard</button></li>
-            <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
-            <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
-            <li><button className={`nav-item ${activeTab==='chat'?'active':''}`} onClick={() => handleNavClick('chat')}><Bot size={20}/> Dr. Alva AI</button></li>
-            <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => handleNavClick('settings')}><Settings size={20}/> Pengaturan</button></li>
-          </ul>
-        </nav>
-        <div style={{ padding: '1.5rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}><button onClick={logout} className="nav-item" style={{ color: '#ef4444', justifyContent:'center', background: '#fef2f2', fontWeight:'bold' }}><LogOut size={20} /> Keluar</button></div>
-      </aside>
-      )}
-
-      <div ref={mainContentRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto', paddingBottom: isDesktop ? 0 : '80px', background: darkMode ? '#0f172a' : '#f8fafc' }}>
-        {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white', position: 'sticky', top: 0, zIndex: 50 }}>
-            <span style={{fontWeight:'900', fontSize:'1.2rem', color: currentTheme.primary, display:'flex', alignItems:'center', gap:'5px'}}><Activity size={20} fill={currentTheme.primary}/> VITALYST</span>
-            <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', position:'relative'}}>
-                <Bell size={24} color={darkMode?'white':'#1e293b'}/>
-                {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:0, right:0, width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></span>}
-            </button>
-        </header>}
-        
-        {refreshing && (
-            <div style={{textAlign: 'center', padding: '1rem', background: currentTheme.light, color: currentTheme.text}}>
-                <RefreshCw className="animate-spin" size={20} style={{display:'inline-block', marginRight:'8px'}}/> Memuat ulang data...
+      {/* --- RENDER KUIS (FULL SCREEN MODE) --- */}
+      {isTakingQuiz ? (
+        <div style={{ position:'absolute', inset:0, background: darkMode ? '#0f172a' : 'white', zIndex: 100000, display:'flex', flexDirection:'column' }}>
+            {/* Quiz Header */}
+            <div style={{ padding: '2rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <button onClick={() => setIsTakingQuiz(false)} style={{ background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem', color: darkMode ? '#cbd5e1' : '#64748b' }}>
+                        <ChevronLeft size={24}/> Batalkan
+                    </button>
+                    <span style={{fontWeight:'bold', color: currentTheme.primary}}>Pertanyaan {currentQuizIdx + 1} / {quizQuestions.length}</span>
+                </div>
+                {/* Progress Bar */}
+                <div style={{height:'6px', width:'100%', background: darkMode ? '#334155' : '#e2e8f0', borderRadius:'3px'}}>
+                    <div style={{height:'100%', background: currentTheme.primary, borderRadius:'3px', width: `${((currentQuizIdx+1)/quizQuestions.length)*100}%`, transition:'width 0.3s ease'}}></div>
+                </div>
             </div>
+
+            {/* Quiz Body */}
+            <div style={{ flex: 1, display:'flex', flexDirection:'column', justifyContent:'center', padding: '2rem', maxWidth:'600px', margin:'0 auto', width:'100%' }}>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: darkMode ? 'white' : '#0f172a', marginBottom: '2rem', lineHeight: '1.3' }}>
+                    {quizQuestions[currentQuizIdx]?.question_text}
+                </h2>
+                
+                <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
+                    {quizQuestions[currentQuizIdx]?.options.map((opt, idx) => (
+                        <button 
+                            key={idx}
+                            onClick={() => handleQuizAnswer(opt.category)}
+                            style={{
+                                padding:'1.5rem', textAlign:'left', 
+                                border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', 
+                                background: darkMode ? '#1e293b' : 'white', 
+                                borderRadius:'20px', 
+                                cursor:'pointer', 
+                                color: darkMode ? 'white' : '#1e293b',
+                                fontSize: '1.1rem',
+                                fontWeight: '600',
+                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                                transition: 'transform 0.2s',
+                                display:'flex', alignItems:'center', justifyContent:'space-between'
+                            }}
+                            onMouseEnter={(e)=>e.currentTarget.style.transform = 'scale(1.02)'}
+                            onMouseLeave={(e)=>e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                            {opt.text}
+                            <ChevronRight size={20} color="#cbd5e1"/>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+      ) : (
+        /* --- NORMAL DASHBOARD RENDER --- */
+        <>
+        {isDesktop && (
+        <aside style={{ width: '280px', background: darkMode ? '#1e293b' : 'white', borderRight: darkMode ? '1px solid #334155' : '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 20 }}>
+            <div style={{ padding: '2rem 1.5rem', borderBottom: 'none' }}> <h2 style={{ fontSize: '1.8rem', fontWeight: '900', color: currentTheme.primary, letterSpacing:'-1px', display:'flex', alignItems:'center', gap:'8px' }}><Activity fill={currentTheme.primary}/> VITALYST</h2> </div>
+            <nav style={{ padding: '1rem 1.5rem', flex: 1, overflowY: 'auto' }}>
+            <p style={{fontSize:'0.75rem', fontWeight:'bold', color:'#94a3b8', marginBottom:'1rem', textTransform:'uppercase', letterSpacing:'1px'}}>Menu Utama</p>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <li><button className={`nav-item ${activeTab==='dashboard'?'active':''}`} onClick={() => handleNavClick('dashboard')}><Activity size={20}/> Dashboard</button></li>
+                <li><button className={`nav-item ${activeTab==='shop'?'active':''}`} onClick={() => handleNavClick('shop')}><ShoppingBag size={20}/> Belanja Sehat</button></li>
+                <li><button className={`nav-item ${activeTab==='friends'?'active':''}`} onClick={() => handleNavClick('friends')}><Users size={20}/> Teman Sehat</button></li>
+                <li><button className={`nav-item ${activeTab==='chat'?'active':''}`} onClick={() => handleNavClick('chat')}><Bot size={20}/> Dr. Alva AI</button></li>
+                <li><button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={() => handleNavClick('settings')}><Settings size={20}/> Pengaturan</button></li>
+            </ul>
+            </nav>
+            <div style={{ padding: '1.5rem', borderTop: darkMode ? '1px solid #334155' : '1px solid #f1f5f9' }}><button onClick={logout} className="nav-item" style={{ color: '#ef4444', justifyContent:'center', background: '#fef2f2', fontWeight:'bold' }}><LogOut size={20} /> Keluar</button></div>
+        </aside>
         )}
 
-        <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {activeTab === 'dashboard' && (
-            <>
-              <div style={{ marginBottom: '2rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <div>
-                    <p className="body-medium" style={{ color: '#64748b', fontSize:'0.9rem', fontWeight:'500' }}>{getGreeting()},</p>
-                    <h1 style={{fontSize:'1.8rem', fontWeight:'900', color: darkMode?'white':'#0f172a'}}>{overview?.user?.name}</h1>
+        <div ref={mainContentRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto', paddingBottom: isDesktop ? 0 : '80px', background: darkMode ? '#0f172a' : '#f8fafc' }}>
+            {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white', position: 'sticky', top: 0, zIndex: 50 }}>
+                <span style={{fontWeight:'900', fontSize:'1.2rem', color: currentTheme.primary, display:'flex', alignItems:'center', gap:'5px'}}><Activity size={20} fill={currentTheme.primary}/> VITALYST</span>
+                <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', position:'relative'}}>
+                    <Bell size={24} color={darkMode?'white':'#1e293b'}/>
+                    {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:0, right:0, width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></span>}
+                </button>
+            </header>}
+            
+            {refreshing && (
+                <div style={{textAlign: 'center', padding: '1rem', background: currentTheme.light, color: currentTheme.text}}>
+                    <RefreshCw className="animate-spin" size={20} style={{display:'inline-block', marginRight:'8px'}}/> Memuat ulang data...
                 </div>
-                {isDesktop && (
-                    <div style={{position:'relative'}}>
-                        <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'white', border:'1px solid #e2e8f0', cursor:'pointer', position:'relative', padding:'10px', borderRadius:'12px', boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
-                            <Bell size={22} color={currentTheme.text}/>
-                            {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:8, right:10, width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></span>}
-                        </button>
-                        {showNotifDropdown && (
-                            <div style={{position:'absolute', top:'120%', right:0, width:'300px', background: darkMode?'#334155':'white', boxShadow:'0 10px 30px rgba(0,0,0,0.1)', borderRadius:'16px', padding:'1rem', zIndex:100, border: '1px solid #e2e8f0'}}>
-                                <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
-                                {overview?.notifications?.length > 0 ? (
-                                    <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                                            {overview.notifications.map((n, i) => (
-                                                <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
-                                                    <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
-                                                    <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
-                                                </div>
-                                            ))}
-                                    </div>
-                                ) : (<div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>)}
+            )}
+
+            <main style={{ padding: isDesktop ? '2rem' : '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {activeTab === 'dashboard' && (
+                <>
+                <div style={{ marginBottom: '2rem', marginTop: isDesktop ? 0 : '0.5rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                        <p className="body-medium" style={{ color: '#64748b', fontSize:'0.9rem', fontWeight:'500' }}>{getGreeting()},</p>
+                        <h1 style={{fontSize:'1.8rem', fontWeight:'900', color: darkMode?'white':'#0f172a'}}>{overview?.user?.name}</h1>
+                    </div>
+                    {isDesktop && (
+                        <div style={{position:'relative'}}>
+                            <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'white', border:'1px solid #e2e8f0', cursor:'pointer', position:'relative', padding:'10px', borderRadius:'12px', boxShadow:'0 2px 5px rgba(0,0,0,0.05)'}}>
+                                <Bell size={22} color={currentTheme.text}/>
+                                {overview?.notifications?.length > 0 && <span style={{position:'absolute', top:8, right:10, width:'8px', height:'8px', background:'red', borderRadius:'50%'}}></span>}
+                            </button>
+                            {showNotifDropdown && (
+                                <div style={{position:'absolute', top:'120%', right:0, width:'300px', background: darkMode?'#334155':'white', boxShadow:'0 10px 30px rgba(0,0,0,0.1)', borderRadius:'16px', padding:'1rem', zIndex:100, border: '1px solid #e2e8f0'}}>
+                                    <h4 style={{fontWeight:'bold', marginBottom:'0.8rem', fontSize:'0.9rem', color: darkMode?'white':'black'}}>Notifikasi</h4>
+                                    {overview?.notifications?.length > 0 ? (
+                                        <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
+                                                {overview.notifications.map((n, i) => (
+                                                    <div key={i} style={{fontSize:'0.85rem', borderBottom:'1px solid #eee', paddingBottom:'0.5rem'}}>
+                                                        <div style={{fontWeight:'bold', color: currentTheme.text}}>{n.title}</div>
+                                                        <div style={{color: darkMode?'#cbd5e1':'#64748b'}}>{n.message}</div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    ) : (<div style={{fontSize:'0.85rem', color:'#94a3b8'}}>Belum ada notifikasi baru.</div>)}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: isDesktop ? '1.5rem' : '1rem', paddingBottom: '2rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                    
+                    {/* --- CARD PROFILE (GYM MEMBER STYLE) --- */}
+                    <Card style={{ border: 'none', borderRadius: '24px', background: currentTheme.cardGradient, color: 'white', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)', overflow: 'hidden', position:'relative', minHeight:'180px' }}>
+                        <div style={{position:'absolute', top:'-20px', right:'-20px', width:'150px', height:'150px', background:'rgba(255,255,255,0.1)', borderRadius:'50%'}}></div>
+                        <div style={{position:'absolute', bottom:'-40px', left:'-20px', width:'200px', height:'200px', background:'rgba(255,255,255,0.05)', borderRadius:'50%'}}></div>
+                        
+                        <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', position:'relative', zIndex:1 }}>
+                        <div style={{ position: 'relative' }}>
+                            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', backdropFilter:'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '3px solid rgba(255,255,255,0.5)', boxShadow:'0 4px 10px rgba(0,0,0,0.2)' }}>
+                                {overview?.user?.profile_picture ? ( <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> ) : ( <User size={40} color="white" /> )}
                             </div>
+                            <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '0', right: '-5px', background: 'white', borderRadius: '50%', padding: '6px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}> <Edit2 size={14} color={currentTheme.text} /> </button>
+                        </div>
+                        <div style={{flex:1}}> 
+                            <h2 className="heading-2" style={{ marginBottom: '0.5rem', fontSize: '1.5rem', fontWeight: '900', textShadow:'0 2px 4px rgba(0,0,0,0.1)' }}>{overview?.user?.name}</h2> 
+                            <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div> 
+                        </div>
+                        </CardContent>
+                    </Card>
+
+                    <div>
+                        {dailyLoading ? (
+                            <div style={{textAlign:'center', padding:'3rem', background: darkMode?'#1e293b':'white', borderRadius:'24px'}}>
+                                <Loader className="animate-spin" size={32} color={currentTheme.text} style={{margin:'0 auto'}}/>
+                                <p style={{marginTop:'1rem', fontSize:'0.9rem'}}>Menyiapkan Program Latihan...</p>
+                            </div>
+                        ) : allDailyData.length === 0 ? (
+                            <Card style={{ padding:'2rem', textAlign:'center', background: darkMode?'#1e293b':'white', borderRadius:'24px' }}>
+                                <p style={{color:'#64748b'}}>Kamu belum mengikuti challenge apapun.</p>
+                                <p style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>Pilih rekomendasi di bawah untuk mulai!</p>
+                            </Card>
+                        ) : (
+                            allDailyData.map(data => renderDailyCard(data))
                         )}
                     </div>
-                )}
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '1.2fr 1fr' : '1fr', gap: isDesktop ? '1.5rem' : '1rem', paddingBottom: '2rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-                  
-                  {/* --- CARD PROFILE (GYM MEMBER STYLE) --- */}
-                  <Card style={{ border: 'none', borderRadius: '24px', background: currentTheme.cardGradient, color: 'white', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)', overflow: 'hidden', position:'relative', minHeight:'180px' }}>
-                    <div style={{position:'absolute', top:'-20px', right:'-20px', width:'150px', height:'150px', background:'rgba(255,255,255,0.1)', borderRadius:'50%'}}></div>
-                    <div style={{position:'absolute', bottom:'-40px', left:'-20px', width:'200px', height:'200px', background:'rgba(255,255,255,0.05)', borderRadius:'50%'}}></div>
+                    <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: 'none', borderRadius:'24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                        <CardHeader>
+                            <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1.1rem', fontWeight:'800'}}>
+                                <TrendingUp size={20} /> PROGRESS SAYA
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {activeChallenges.length === 0 ? (
+                                <p style={{fontSize:'0.9rem', color:'#64748b'}}>Belum ada challenge yang diikuti.</p>
+                            ) : (
+                                <div style={{display:'flex', flexDirection:'column', gap:'1.5rem'}}>
+                                    {activeChallenges.map(chal => (
+                                        <div key={chal.id} style={{ padding:'0', background: 'transparent', cursor: 'default' }}>
+                                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.8rem', alignItems:'center'}}>
+                                                    <div>
+                                                        <div style={{fontWeight:'800', fontSize:'1rem', color: darkMode?'white':'#0f172a'}}>{chal.title}</div>
+                                                        <div style={{fontSize:'0.75rem', color:'#64748b', marginTop:'2px'}}>Target 30 Hari</div>
+                                                    </div>
+                                                    <span style={{fontSize:'0.8rem', padding:'4px 12px', borderRadius:'20px', background: chal.status==='active'?currentTheme.light:'#fee2e2', color: chal.status==='active'?currentTheme.text:'#991b1b', fontWeight:'700', textTransform:'uppercase'}}>
+                                                        {chal.status}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="progress-bar-capsule" style={{marginBottom:'0.8rem', background: darkMode?'#334155':'#f1f5f9'}}>
+                                                    <div className="progress-fill" style={{width:`${chal.progress}%`}}></div>
+                                                </div>
+                                                
+                                                <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', color:'#64748b', marginBottom:'1.5rem'}}>
+                                                    <span style={{fontWeight:'700', color: currentTheme.primary}}>{chal.progress}% Completed</span>
+                                                    <span>{30 - chal.day} hari tersisa</span>
+                                                </div>
+
+                                                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
+                                                    <div style={{background: darkMode?'#334155':'#f8fafc', padding:'10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
+                                                        <CheckCircle size={16} color={currentTheme.primary}/>
+                                                        <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.completed || 0} Selesai</span>
+                                                    </div>
+                                                    <div style={{background: darkMode?'#334155':'#f8fafc', padding:'10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
+                                                        <X size={16} color="#ef4444"/>
+                                                        <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.missed || 0} Missed</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div style={{marginTop:'1rem', display:'flex', gap:'10px'}}>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
+                                                        style={{ flex:1, padding:'10px', borderRadius:'12px', background: darkMode?'#0f172a':'white', border:`1px solid ${darkMode?'#334155':'#e2e8f0'}`, fontWeight:'700', fontSize:'0.8rem', cursor:'pointer', color: darkMode?'white':'black' }}
+                                                    >
+                                                        Lihat Laporan
+                                                    </button>
+                                                    <button onClick={()=>handleChallengeAction(chal.id, chal.status === 'active' ? 'pause' : 'resume')} style={{padding:'10px 14px', borderRadius:'12px', background: darkMode?'#0f172a':'white', border:`1px solid ${darkMode?'#334155':'#e2e8f0'}`, cursor:'pointer', color: darkMode?'white':'black'}}>
+                                                        {chal.status === 'active' ? <Pause size={16}/> : <Play size={16}/>}
+                                                    </button>
+                                                </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                    </div>
                     
-                    <CardContent style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', position:'relative', zIndex:1 }}>
-                      <div style={{ position: 'relative' }}>
-                          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', backdropFilter:'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', border: '3px solid rgba(255,255,255,0.5)', boxShadow:'0 4px 10px rgba(0,0,0,0.2)' }}>
-                              {overview?.user?.profile_picture ? ( <img src={`${BACKEND_URL}${overview.user.profile_picture}`} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> ) : ( <User size={40} color="white" /> )}
-                          </div>
-                          <button onClick={() => setActiveTab('settings')} style={{ position: 'absolute', bottom: '0', right: '-5px', background: 'white', borderRadius: '50%', padding: '6px', border: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.2)', cursor: 'pointer' }}> <Edit2 size={14} color={currentTheme.text} /> </button>
-                      </div>
-                      <div style={{flex:1}}> 
-                          <h2 className="heading-2" style={{ marginBottom: '0.5rem', fontSize: '1.5rem', fontWeight: '900', textShadow:'0 2px 4px rgba(0,0,0,0.1)' }}>{overview?.user?.name}</h2> 
-                          <div style={badgeStyle}><Medal size={14} /> {overview?.user?.badge || "Pejuang Tangguh"}</div> 
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                    
+                    {/* ARTIKEL KESEHATAN (Moved to Right Column) */}
+                    <Card style={{ background: darkMode ? '#1e293b' : 'white', border:'none', borderRadius:'24px', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)', height:'fit-content' }}>
+                        <div style={{padding:'1.5rem', borderBottom:`1px solid ${darkMode?'#334155':'#f1f5f9'}`}}>
+                            <h3 style={{fontWeight:'800', display:'flex', alignItems:'center', gap:'8px', fontSize:'1.1rem'}}><BookOpen size={20}/> ARTIKEL TERBARU</h3>
+                        </div>
+                        <div style={{padding:'1rem'}}>
+                            {articles.map(article => ( <div key={article.id} onClick={() => setSelectedArticle(article)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#0f172a' : '#f8fafc', borderRadius:'16px', marginBottom:'0.8rem', cursor:'pointer', border: 'none', alignItems:'center' }}> <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}> <FileText size={24} color={currentTheme.text}/> </div> <div style={{flex:1}}> <h4 style={{fontWeight:'700', fontSize:'0.95rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4> <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}> <Clock size={12}/> {Math.ceil((article.content?.split(' ').length || 0)/200)} min baca </p> </div> <ChevronRight size={18} color="#94a3b8"/> </div> ))}
+                        </div>
+                    </Card>
 
-                  <div>
-                      {dailyLoading ? (
-                          <div style={{textAlign:'center', padding:'3rem', background: darkMode?'#1e293b':'white', borderRadius:'24px'}}>
-                              <Loader className="animate-spin" size={32} color={currentTheme.text} style={{margin:'0 auto'}}/>
-                              <p style={{marginTop:'1rem', fontSize:'0.9rem'}}>Menyiapkan Program Latihan...</p>
-                          </div>
-                      ) : allDailyData.length === 0 ? (
-                          <Card style={{ padding:'2rem', textAlign:'center', background: darkMode?'#1e293b':'white', borderRadius:'24px' }}>
-                              <p style={{color:'#64748b'}}>Kamu belum mengikuti challenge apapun.</p>
-                              <p style={{fontSize:'0.8rem', marginTop:'0.5rem'}}>Pilih rekomendasi di bawah untuk mulai!</p>
-                          </Card>
-                      ) : (
-                          allDailyData.map(data => renderDailyCard(data))
-                      )}
-                  </div>
-
-                  <Card style={{ background: darkMode ? '#1e293b' : '#fff', border: 'none', borderRadius:'24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                    <CardHeader>
-                        <CardTitle className="heading-3" style={{display:'flex', alignItems:'center', gap:'0.5rem', fontSize:'1.1rem', fontWeight:'800'}}>
-                            <TrendingUp size={20} /> PROGRESS SAYA
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {activeChallenges.length === 0 ? (
-                            <p style={{fontSize:'0.9rem', color:'#64748b'}}>Belum ada challenge yang diikuti.</p>
-                        ) : (
-                            <div style={{display:'flex', flexDirection:'column', gap:'1.5rem'}}>
-                                {activeChallenges.map(chal => (
-                                    <div key={chal.id} style={{ padding:'0', background: 'transparent', cursor: 'default' }}>
-                                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.8rem', alignItems:'center'}}>
-                                                <div>
-                                                    <div style={{fontWeight:'800', fontSize:'1rem', color: darkMode?'white':'#0f172a'}}>{chal.title}</div>
-                                                    <div style={{fontSize:'0.75rem', color:'#64748b', marginTop:'2px'}}>Target 30 Hari</div>
-                                                </div>
-                                                <span style={{fontSize:'0.8rem', padding:'4px 12px', borderRadius:'20px', background: chal.status==='active'?currentTheme.light:'#fee2e2', color: chal.status==='active'?currentTheme.text:'#991b1b', fontWeight:'700', textTransform:'uppercase'}}>
-                                                    {chal.status}
-                                                </span>
-                                            </div>
-                                            
-                                            <div className="progress-bar-capsule" style={{marginBottom:'0.8rem', background: darkMode?'#334155':'#f1f5f9'}}>
-                                                <div className="progress-fill" style={{width:`${chal.progress}%`}}></div>
-                                            </div>
-                                            
-                                            <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.8rem', color:'#64748b', marginBottom:'1.5rem'}}>
-                                                <span style={{fontWeight:'700', color: currentTheme.primary}}>{chal.progress}% Completed</span>
-                                                <span>{30 - chal.day} hari tersisa</span>
-                                            </div>
-
-                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px'}}>
-                                                <div style={{background: darkMode?'#334155':'#f8fafc', padding:'10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
-                                                    <CheckCircle size={16} color={currentTheme.primary}/>
-                                                    <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.completed || 0} Selesai</span>
-                                                </div>
-                                                <div style={{background: darkMode?'#334155':'#f8fafc', padding:'10px', borderRadius:'12px', display:'flex', alignItems:'center', gap:'8px'}}>
-                                                    <X size={16} color="#ef4444"/>
-                                                    <span style={{fontSize:'0.8rem', fontWeight:'600'}}>{chal.missed || 0} Missed</span>
-                                                </div>
-                                            </div>
-                                            
-                                            <div style={{marginTop:'1rem', display:'flex', gap:'10px'}}>
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleOpenReport(chal); }}
-                                                    style={{ flex:1, padding:'10px', borderRadius:'12px', background: darkMode?'#0f172a':'white', border:`1px solid ${darkMode?'#334155':'#e2e8f0'}`, fontWeight:'700', fontSize:'0.8rem', cursor:'pointer', color: darkMode?'white':'black' }}
-                                                >
-                                                    Lihat Laporan
-                                                </button>
-                                                <button onClick={()=>handleChallengeAction(chal.id, chal.status === 'active' ? 'pause' : 'resume')} style={{padding:'10px 14px', borderRadius:'12px', background: darkMode?'#0f172a':'white', border:`1px solid ${darkMode?'#334155':'#e2e8f0'}`, cursor:'pointer', color: darkMode?'white':'black'}}>
-                                                    {chal.status === 'active' ? <Pause size={16}/> : <Play size={16}/>}
-                                                </button>
-                                            </div>
-                                    </div>
+                    {recommendedChallenges.length > 0 && (
+                        <div style={{marginTop:'1rem'}}>
+                            <h3 style={{fontSize:'1.1rem', fontWeight:'800', marginBottom:'1rem', color: darkMode?'white':'black', display:'flex', alignItems:'center', gap:'8px'}}>
+                                <Target size={20}/> REKOMENDASI PROGRAM
+                            </h3>
+                            <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1rem'}}>
+                                {recommendedChallenges.map(rec => (
+                                    <Card key={rec.id} style={{background: darkMode?'#1e293b':'white', border:'none', borderRadius:'20px', overflow:'hidden', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
+                                        <div style={{height:'100px', background: currentTheme.gradient, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                                            <Trophy size={36} color={currentTheme.text} style={{opacity:0.6}}/>
+                                        </div>
+                                        <div style={{padding:'1.2rem'}}>
+                                            <h4 style={{fontWeight:'800', fontSize:'1rem', marginBottom:'0.5rem', color: darkMode?'white':'#0f172a'}}>{rec.title}</h4>
+                                            <button onClick={()=>initiateJoinChallenge(rec)} style={{ width:'100%', marginTop:'0.5rem', background: 'black', border:'none', padding:'10px', borderRadius:'12px', color: 'white', fontSize:'0.8rem', fontWeight:'bold', cursor: 'pointer' }}>
+                                                {activeChallenges.length >= 2 ? "Slot Penuh" : "Mulai Program"}
+                                            </button>
+                                        </div>
+                                    </Card>
                                 ))}
                             </div>
-                        )}
-                    </CardContent>
-                  </Card>
-                </div>
-                  
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-                  
-                  {/* ARTIKEL KESEHATAN (Moved to Right Column) */}
-                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border:'none', borderRadius:'24px', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)', height:'fit-content' }}>
-                      <div style={{padding:'1.5rem', borderBottom:`1px solid ${darkMode?'#334155':'#f1f5f9'}`}}>
-                        <h3 style={{fontWeight:'800', display:'flex', alignItems:'center', gap:'8px', fontSize:'1.1rem'}}><BookOpen size={20}/> ARTIKEL TERBARU</h3>
-                      </div>
-                      <div style={{padding:'1rem'}}>
-                        {articles.map(article => ( <div key={article.id} onClick={() => setSelectedArticle(article)} style={{ display:'flex', gap:'1rem', padding:'1rem', background: darkMode ? '#0f172a' : '#f8fafc', borderRadius:'16px', marginBottom:'0.8rem', cursor:'pointer', border: 'none', alignItems:'center' }}> <div style={{width:'50px', height:'50px', background: currentTheme.light, borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}> <FileText size={24} color={currentTheme.text}/> </div> <div style={{flex:1}}> <h4 style={{fontWeight:'700', fontSize:'0.95rem', color: darkMode ? 'white' : '#1e293b', marginBottom:'0.2rem', lineHeight:'1.3'}}>{article.title}</h4> <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', display:'flex', alignItems:'center', gap:'4px' }}> <Clock size={12}/> {Math.ceil((article.content?.split(' ').length || 0)/200)} min baca </p> </div> <ChevronRight size={18} color="#94a3b8"/> </div> ))}
-                      </div>
-                  </Card>
-
-                  {recommendedChallenges.length > 0 && (
-                      <div style={{marginTop:'1rem'}}>
-                          <h3 style={{fontSize:'1.1rem', fontWeight:'800', marginBottom:'1rem', color: darkMode?'white':'black', display:'flex', alignItems:'center', gap:'8px'}}>
-                            <Target size={20}/> REKOMENDASI PROGRAM
-                          </h3>
-                          <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1rem'}}>
-                              {recommendedChallenges.map(rec => (
-                                  <Card key={rec.id} style={{background: darkMode?'#1e293b':'white', border:'none', borderRadius:'20px', overflow:'hidden', boxShadow:'0 4px 6px -1px rgba(0,0,0,0.05)'}}>
-                                      <div style={{height:'100px', background: currentTheme.gradient, display:'flex', alignItems:'center', justifyContent:'center'}}>
-                                          <Trophy size={36} color={currentTheme.text} style={{opacity:0.6}}/>
-                                      </div>
-                                      <div style={{padding:'1.2rem'}}>
-                                          <h4 style={{fontWeight:'800', fontSize:'1rem', marginBottom:'0.5rem', color: darkMode?'white':'#0f172a'}}>{rec.title}</h4>
-                                          <button onClick={()=>initiateJoinChallenge(rec)} style={{ width:'100%', marginTop:'0.5rem', background: 'black', border:'none', padding:'10px', borderRadius:'12px', color: 'white', fontSize:'0.8rem', fontWeight:'bold', cursor: 'pointer' }}>
-                                              {activeChallenges.length >= 2 ? "Slot Penuh" : "Mulai Program"}
-                                          </button>
-                                      </div>
-                                  </Card>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-
-                  <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1rem' }}>
-                      <div style={{ background: darkMode ? '#334155' : 'white', padding: '1.5rem 2rem', borderRadius: '24px', display: 'inline-block', boxShadow: '0 10px 20px -5px rgba(0,0,0,0.1)' }}>
-                          <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.5rem', textTransform:'uppercase', letterSpacing:'1.5px', fontWeight:'700' }}>Kode Referral Anda</p>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
-                              <span style={{ fontSize: '2rem', fontWeight: '900', color: currentTheme.primary, letterSpacing: '4px', fontFamily:'monospace' }}>{overview?.user?.referral_code || '-'}</span>
-                              <button onClick={copyReferral} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <Copy size={18} color="#475569" /> </button>
-                              <button onClick={()=>setShowQRModal(true)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <QrCode size={20} color="#475569" /> </button>
-                          </div>
-                      </div>
-                  </div>
-                </div>
-              </div>
-              {motivationText && ( <div style={{marginTop:'2rem', textAlign:'center', padding:'1rem', fontWeight:'600', color: darkMode?'#cbd5e1':'#64748b', animation:'fadeIn 0.5s ease', fontStyle:'italic'}}> "{motivationText}" </div> )}
-            </>
-          )}
-
-          {activeTab === 'chat' && (
-              <div style={{ display:'flex', flexDirection:'column', height:'100%', maxWidth:'800px', margin:'0 auto', width:'100%' }}>
-                  <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> 
-                      <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Home</button> 
-                  </div>
-                  <Card style={{ flex:1, display:'flex', flexDirection:'column', borderRadius:'24px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.08)', background: darkMode ? '#1e293b' : 'white', overflow:'hidden' }}>
-                      {/* Chat Header */}
-                      <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: '1rem', background: currentTheme.gradient }}>
-                        <div style={{ width: '45px', height: '45px', background: 'white', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0, boxShadow:'0 4px 10px rgba(0,0,0,0.1)' }}> 
-                            <Bot size={28} color={currentTheme.text} /> 
                         </div>
-                        <div> 
-                            <h3 style={{ fontWeight: '800', fontSize: '1.2rem', color: currentTheme.text, marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> 
-                                Dr. Alva <div style={{width:'8px', height:'8px', background:'#22c55e', borderRadius:'50%', boxShadow:'0 0 5px #22c55e'}}></div> 
-                            </h3> 
-                            <p style={{ fontSize: '0.8rem', color: currentTheme.text, opacity:0.8 }}>AI Personal Health Coach</p> 
-                        </div>
-                      </div>
+                    )}
 
-                      {/* Chat Body */}
-                      <div style={{flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem', background: darkMode?'#0f172a':'#f8fafc'}}> 
-                        {chatHistory.map((msg, i) => ( 
-                            <div key={i} style={{ 
-                                padding:'1rem 1.2rem', 
-                                background: msg.role==='user' ? currentTheme.primary : (darkMode?'#334155':'white'), 
-                                borderRadius: msg.role==='user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px', 
-                                maxWidth:'80%', 
-                                alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', 
-                                color: msg.role==='user' ? 'white' : (darkMode?'e2e8f0':'#334155'), 
-                                fontSize: '0.95rem',
-                                lineHeight: '1.5',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                                border: msg.role!=='user' && !darkMode ? '1px solid #e2e8f0' : 'none'
-                            }}> 
-                                {msg.content} 
-                            </div> 
-                        ))} 
-                        {chatLoading && (
-                            <div style={{ alignSelf:'flex-start', padding:'0.8rem 1.2rem', background: darkMode?'#334155':'white', borderRadius:'20px 20px 20px 4px', fontSize:'0.8rem', color:'#64748b', display:'flex', gap:'4px' }}>
-                                <span className="animate-bounce">●</span><span className="animate-bounce" style={{animationDelay:'0.1s'}}>●</span><span className="animate-bounce" style={{animationDelay:'0.2s'}}>●</span>
+                    <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ background: darkMode ? '#334155' : 'white', padding: '1.5rem 2rem', borderRadius: '24px', display: 'inline-block', boxShadow: '0 10px 20px -5px rgba(0,0,0,0.1)' }}>
+                            <p style={{ fontSize: '0.75rem', color: darkMode ? '#cbd5e1' : '#64748b', marginBottom: '0.5rem', textTransform:'uppercase', letterSpacing:'1.5px', fontWeight:'700' }}>Kode Referral Anda</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '2rem', fontWeight: '900', color: currentTheme.primary, letterSpacing: '4px', fontFamily:'monospace' }}>{overview?.user?.referral_code || '-'}</span>
+                                <button onClick={copyReferral} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <Copy size={18} color="#475569" /> </button>
+                                <button onClick={()=>setShowQRModal(true)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', padding:'8px', borderRadius:'8px', display:'flex', alignItems:'center' }}> <QrCode size={20} color="#475569" /> </button>
                             </div>
-                        )} 
-                        <div ref={chatEndRef}></div> 
-                      </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                {motivationText && ( <div style={{marginTop:'2rem', textAlign:'center', padding:'1rem', fontWeight:'600', color: darkMode?'#cbd5e1':'#64748b', animation:'fadeIn 0.5s ease', fontStyle:'italic'}}> "{motivationText}" </div> )}
+                </>
+            )}
 
-                      {/* Chat Input */}
-                      <form onSubmit={handleSendChat} style={{padding:'1.2rem', borderTop: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display:'flex', gap:'0.8rem', background: darkMode?'#1e293b':'white'}}> 
-                          <input autoFocus value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'1rem 1.5rem', borderRadius:'30px', border:`1px solid ${darkMode?'#475569':'#e2e8f0'}`, background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black', outline:'none', fontSize:'0.95rem'}} placeholder="Tulis pesan..." /> 
-                          <button style={{background: currentTheme.primary, border:'none', width:'54px', height:'54px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:`0 4px 15px ${currentTheme.light}`, transition:'transform 0.2s'}}><Send size={22} color="white" style={{marginLeft:'-3px', marginTop:'2px'}}/></button> 
-                      </form>
-                  </Card>
-              </div>
-          )}
+            {activeTab === 'chat' && (
+                <div style={{ display:'flex', flexDirection:'column', height:'100%', maxWidth:'800px', margin:'0 auto', width:'100%' }}>
+                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> 
+                        <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Home</button> 
+                    </div>
+                    <Card style={{ flex:1, display:'flex', flexDirection:'column', borderRadius:'24px', border:'none', boxShadow:'0 10px 25px rgba(0,0,0,0.08)', background: darkMode ? '#1e293b' : 'white', overflow:'hidden' }}>
+                        {/* Chat Header */}
+                        <div style={{ padding: '1rem 1.5rem', borderBottom: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display: 'flex', alignItems: 'center', gap: '1rem', background: currentTheme.gradient }}>
+                            <div style={{ width: '45px', height: '45px', background: 'white', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink:0, boxShadow:'0 4px 10px rgba(0,0,0,0.1)' }}> 
+                                <Bot size={28} color={currentTheme.text} /> 
+                            </div>
+                            <div> 
+                                <h3 style={{ fontWeight: '800', fontSize: '1.2rem', color: currentTheme.text, marginBottom:'2px', display:'flex', alignItems:'center', gap:'6px' }}> 
+                                    Dr. Alva <div style={{width:'8px', height:'8px', background:'#22c55e', borderRadius:'50%', boxShadow:'0 0 5px #22c55e'}}></div> 
+                                </h3> 
+                                <p style={{ fontSize: '0.8rem', color: currentTheme.text, opacity:0.8 }}>AI Personal Health Coach</p> 
+                            </div>
+                        </div>
 
-          {activeTab === 'settings' && (
-            <div>
-               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button> <h1 className="heading-2">Pengaturan</h1> </div>
-               <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}> <div style={{ position: 'relative', width:'80px', height:'80px' }}> <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}> {overview?.user?.profile_picture ? <img src={`${BACKEND_URL}${overview.user.profile_picture}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>} </div> <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleProfilePictureUpload} /> </div> <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>{uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>} {uploadingImage ? "Mengupload..." : "Ganti Foto"}</button> </div> </CardContent> </Card>
-                  <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Ubah Tema</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}> {Object.values(THEMES).map((theme) => ( <div key={theme.id} onClick={() => changeThemeColor(theme.id)} style={{ cursor: 'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem' }}> <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: theme.cardGradient, border: themeColor === theme.id ? `3px solid ${darkMode?'white':'#1e293b'}` : '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}> {themeColor === theme.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>} </div> </div> ))} </div> </CardContent> </Card>
-                  <button onClick={() => setShowPrivacy(true)} style={{ width: '100%', padding: '1rem', border: '1px solid #e2e8f0', background: darkMode?'#334155':'white', borderRadius: '8px', color: darkMode?'white':'#1e293b', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><Shield size={20}/> Kebijakan Privasi</button>
-                  <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><LogOut size={20}/> Keluar dari Aplikasi</button>
-               </div>
-            </div>
-          )}
-          {activeTab === 'shop' && (
-              <div>
-                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}> <div style={{display:'flex', gap:'1rem', alignItems:'center'}}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Belanja Sehat</h1> </div> </div>
-                <ShopBanner />
-                <h3 style={{marginTop:'2rem', marginBottom:'1rem', fontWeight:'bold', fontSize:'1.2rem'}}>Katalog Produk</h3>
-                {products.length === 0 ? ( <div style={{padding:'3rem', textAlign:'center', color:'#64748b', background: darkMode?'#1e293b':'#f8fafc', borderRadius:'12px', border:'1px dashed #cbd5e1'}}> <Package size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/> <p>Belum ada produk tersedia saat ini.</p> </div> ) : ( <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}> {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer', color:'white'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))} </div> )}
-              </div>
-          )}
-          {activeTab === 'friends' && (
-              <div style={{maxWidth:'600px', margin:'0 auto'}}>
-                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1> </div>
-                <Card style={{marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color:'white'}}> <CardContent style={{padding:'2rem', textAlign:'center'}}> <p style={{marginBottom:'0.5rem', opacity:0.9}}>Kode Referral Saya</p> <h1 style={{fontSize:'2.5rem', fontWeight:'bold', letterSpacing:'2px', marginBottom:'1.5rem'}}>{overview?.user?.referral_code}</h1> <div style={{display:'flex', justifyContent:'center', gap:'1rem'}}> <button onClick={copyReferral} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', color:'white', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}> <Copy size={16}/> Salin </button> <button onClick={()=>setShowQRModal(true)} style={{background:'white', color:'#4f46e5', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}> <QrCode size={16}/> QR Code </button> </div> </CardContent> </Card>
-                <Card style={{marginBottom: '2rem', background: darkMode?'#1e293b':'white'}}> <CardContent style={{padding:'1.5rem'}}> <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Tambah Teman</h3> <div style={{display:'flex', gap:'0.5rem'}}> <input placeholder="Masukkan Kode Referral Teman" value={friendCode} onChange={e=>setFriendCode(e.target.value)} style={{flex:1, padding:'0.8rem', borderRadius:'8px', border:'1px solid #ccc', color:'black'}} /> <button onClick={handleAddFriend} style={{background:currentTheme.primary, color:'white', border:'none', borderRadius:'8px', padding:'0 1.5rem', fontWeight:'bold', cursor:'pointer'}}>Add</button> </div> </CardContent> </Card>
-                <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Daftar Teman</h3> <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}> {myFriends.map(f => ( <div key={f.id} onClick={()=>handleShowFriendProfile(f)} style={{cursor:'pointer', padding:'1rem', display:'flex', alignItems:'center', gap:'1rem', background: darkMode?'#1e293b':'white', borderRadius:'12px', border:'1px solid #e2e8f0'}}> <div style={{width:'50px', height:'50px', borderRadius:'50%', background:'#f1f5f9', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center'}}> <User size={24} color="#64748b"/> </div> <div> <h4 style={{fontWeight:'bold', color:darkMode?'white':'black'}}>{f.name}</h4> <div style={{fontSize:'0.8rem', color: darkMode?'#cbd5e1':'#64748b', display:'flex', alignItems:'center', gap:'4px'}}><Medal size={12}/> {f.badge}</div> </div> </div> ))} </div>
-              </div>
-          )}
-        </main>
-      </div>
+                        {/* Chat Body */}
+                        <div style={{flex:1, overflowY:'auto', padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem', background: darkMode?'#0f172a':'#f8fafc'}}> 
+                            {chatHistory.map((msg, i) => ( 
+                                <div key={i} style={{ 
+                                    padding:'1rem 1.2rem', 
+                                    background: msg.role==='user' ? currentTheme.primary : (darkMode?'#334155':'white'), 
+                                    borderRadius: msg.role==='user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px', 
+                                    maxWidth:'80%', 
+                                    alignSelf: msg.role==='user' ? 'flex-end' : 'flex-start', 
+                                    color: msg.role==='user' ? 'white' : (darkMode?'e2e8f0':'#334155'), 
+                                    fontSize: '0.95rem',
+                                    lineHeight: '1.5',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                                    border: msg.role!=='user' && !darkMode ? '1px solid #e2e8f0' : 'none'
+                                }}> 
+                                    {msg.content} 
+                                </div> 
+                            ))} 
+                            {chatLoading && (
+                                <div style={{ alignSelf:'flex-start', padding:'0.8rem 1.2rem', background: darkMode?'#334155':'white', borderRadius:'20px 20px 20px 4px', fontSize:'0.8rem', color:'#64748b', display:'flex', gap:'4px' }}>
+                                    <span className="animate-bounce">●</span><span className="animate-bounce" style={{animationDelay:'0.1s'}}>●</span><span className="animate-bounce" style={{animationDelay:'0.2s'}}>●</span>
+                                </div>
+                            )} 
+                            <div ref={chatEndRef}></div> 
+                        </div>
 
-      {!isDesktop && (
-          <nav className="mobile-navbar" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: darkMode ? '#1e293b' : 'white',
-              borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
-              padding: '10px 10px',
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              zIndex: 9999,
-              boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
-              width: '100%',
-              paddingBottom: 'safe-area-inset-bottom'
-          }}>
-              {/* Home */}
-              <button
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'dashboard' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
-                  onClick={() => handleNavClick('dashboard')}
-              >
-                  <Home size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
-              </button>
+                        {/* Chat Input */}
+                        <form onSubmit={handleSendChat} style={{padding:'1.2rem', borderTop: `1px solid ${darkMode?'#334155':'#f1f5f9'}`, display:'flex', gap:'0.8rem', background: darkMode?'#1e293b':'white'}}> 
+                            <input autoFocus value={chatMessage} onChange={e=>setChatMessage(e.target.value)} style={{flex:1, padding:'1rem 1.5rem', borderRadius:'30px', border:`1px solid ${darkMode?'#475569':'#e2e8f0'}`, background: darkMode?'#0f172a':'#f8fafc', color: darkMode?'white':'black', outline:'none', fontSize:'0.95rem'}} placeholder="Tulis pesan..." /> 
+                            <button style={{background: currentTheme.primary, border:'none', width:'54px', height:'54px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:`0 4px 15px ${currentTheme.light}`, transition:'transform 0.2s'}}><Send size={22} color="white" style={{marginLeft:'-3px', marginTop:'2px'}}/></button> 
+                        </form>
+                    </Card>
+                </div>
+            )}
 
-              {/* Shop */}
-              <button
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'shop' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
-                  onClick={() => handleNavClick('shop')}
-              >
-                  <ShoppingBag size={22} strokeWidth={activeTab === 'shop' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
-              </button>
+            {activeTab === 'settings' && (
+                <div>
+                <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button> <h1 className="heading-2">Pengaturan</h1> </div>
+                <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Foto Profil</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', alignItems:'center', gap:'1.5rem'}}> <div style={{ position: 'relative', width:'80px', height:'80px' }}> <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', border: '2px solid #e2e8f0' }}> {overview?.user?.profile_picture ? <img src={`${BACKEND_URL}${overview.user.profile_picture}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><User size={40} color="#94a3b8"/></div>} </div> <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleProfilePictureUpload} /> </div> <button onClick={triggerFileInput} disabled={uploadingImage} style={{ background: currentTheme.primary, color:'black', border:'none', padding:'0.6rem 1rem', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem' }}>{uploadingImage ? <RefreshCw className="animate-spin" size={16}/> : <Camera size={16}/>} {uploadingImage ? "Mengupload..." : "Ganti Foto"}</button> </div> </CardContent> </Card>
+                    <Card style={{ background: darkMode ? '#1e293b' : 'white', border: darkMode ? '1px solid #334155' : '1px solid #e2e8f0' }}> <CardHeader><CardTitle className="heading-3">Ubah Tema</CardTitle></CardHeader> <CardContent> <div style={{display:'flex', gap:'1rem', flexWrap:'wrap'}}> {Object.values(THEMES).map((theme) => ( <div key={theme.id} onClick={() => changeThemeColor(theme.id)} style={{ cursor: 'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.3rem' }}> <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: theme.cardGradient, border: themeColor === theme.id ? `3px solid ${darkMode?'white':'#1e293b'}` : '1px solid #ccc', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', justifyContent:'center' }}> {themeColor === theme.id && <Check size={20} color="white" style={{dropShadow:'0 1px 2px rgba(0,0,0,0.5)'}}/>} </div> </div> ))} </div> </CardContent> </Card>
+                    <button onClick={() => setShowPrivacy(true)} style={{ width: '100%', padding: '1rem', border: '1px solid #e2e8f0', background: darkMode?'#334155':'white', borderRadius: '8px', color: darkMode?'white':'#1e293b', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><Shield size={20}/> Kebijakan Privasi</button>
+                    <button onClick={logout} style={{ width: '100%', padding: '1rem', border: '1px solid #fee2e2', background: '#fef2f2', borderRadius: '8px', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem' }}><LogOut size={20}/> Keluar dari Aplikasi</button>
+                </div>
+                </div>
+            )}
+            {activeTab === 'shop' && (
+                <div>
+                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}> <div style={{display:'flex', gap:'1rem', alignItems:'center'}}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Belanja Sehat</h1> </div> </div>
+                    <ShopBanner />
+                    <h3 style={{marginTop:'2rem', marginBottom:'1rem', fontWeight:'bold', fontSize:'1.2rem'}}>Katalog Produk</h3>
+                    {products.length === 0 ? ( <div style={{padding:'3rem', textAlign:'center', color:'#64748b', background: darkMode?'#1e293b':'#f8fafc', borderRadius:'12px', border:'1px dashed #cbd5e1'}}> <Package size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/> <p>Belum ada produk tersedia saat ini.</p> </div> ) : ( <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}> {products.map((prod) => ( <Card key={prod.id} style={{ background: darkMode ? '#1e293b' : 'white', border: '1px solid #e2e8f0', overflow:'hidden', cursor:'pointer', transition:'transform 0.2s', display:'flex', flexDirection:'column', height:'100%' }} onClick={() => openCheckout(prod)}> <div style={{ height: '160px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}> {prod.image_url ? <img src={`${BACKEND_URL}${prod.image_url}`} style={{width:'100%', height:'100%', objectFit:'cover'}}/> : <Package size={48} color="#cbd5e1"/>} </div> <div style={{ padding: '1rem', flex: 1, display:'flex', flexDirection:'column', justifyContent:'space-between' }}> <div> <h4 style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: darkMode?'white':'#0f172a' }}>{prod.name}</h4> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.5rem'}}> <span style={{ fontWeight: 'bold', color: '#166534' }}>Rp {prod.price.toLocaleString()}</span> <div style={{background: currentTheme.primary, padding:'4px', borderRadius:'6px'}}><Plus size={16} color="white"/></div> </div> </div> <button onClick={()=>openCheckout(prod)} style={{marginTop:'1rem', width:'100%', background: currentTheme.primary, padding:'0.5rem', borderRadius:'8px', border:'none', fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.5rem', cursor:'pointer', color:'white'}}> <ShoppingCart size={16}/> Beli </button> </div> </Card> ))} </div> )}
+                </div>
+            )}
+            {activeTab === 'friends' && (
+                <div style={{maxWidth:'600px', margin:'0 auto'}}>
+                    <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px' }}><ChevronLeft size={20}/></button> <h1 className="heading-2" style={{color: darkMode?'white':'black'}}>Teman Sehat</h1> </div>
+                    <Card style={{marginBottom: '1.5rem', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color:'white'}}> <CardContent style={{padding:'2rem', textAlign:'center'}}> <p style={{marginBottom:'0.5rem', opacity:0.9}}>Kode Referral Saya</p> <h1 style={{fontSize:'2.5rem', fontWeight:'bold', letterSpacing:'2px', marginBottom:'1.5rem'}}>{overview?.user?.referral_code}</h1> <div style={{display:'flex', justifyContent:'center', gap:'1rem'}}> <button onClick={copyReferral} style={{background:'rgba(255,255,255,0.2)', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', color:'white', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}> <Copy size={16}/> Salin </button> <button onClick={()=>setShowQRModal(true)} style={{background:'white', color:'#4f46e5', border:'none', padding:'0.6rem 1.2rem', borderRadius:'20px', cursor:'pointer', display:'flex', alignItems:'center', gap:'0.5rem', fontWeight:'bold'}}> <QrCode size={16}/> QR Code </button> </div> </CardContent> </Card>
+                    <Card style={{marginBottom: '2rem', background: darkMode?'#1e293b':'white'}}> <CardContent style={{padding:'1.5rem'}}> <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Tambah Teman</h3> <div style={{display:'flex', gap:'0.5rem'}}> <input placeholder="Masukkan Kode Referral Teman" value={friendCode} onChange={e=>setFriendCode(e.target.value)} style={{flex:1, padding:'0.8rem', borderRadius:'8px', border:'1px solid #ccc', color:'black'}} /> <button onClick={handleAddFriend} style={{background:currentTheme.primary, color:'white', border:'none', borderRadius:'8px', padding:'0 1.5rem', fontWeight:'bold', cursor:'pointer'}}>Add</button> </div> </CardContent> </Card>
+                    <h3 style={{fontWeight:'bold', marginBottom:'1rem', color: darkMode?'white':'black'}}>Daftar Teman</h3> <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}> {myFriends.map(f => ( <div key={f.id} onClick={()=>handleShowFriendProfile(f)} style={{cursor:'pointer', padding:'1rem', display:'flex', alignItems:'center', gap:'1rem', background: darkMode?'#1e293b':'white', borderRadius:'12px', border:'1px solid #e2e8f0'}}> <div style={{width:'50px', height:'50px', borderRadius:'50%', background:'#f1f5f9', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center'}}> <User size={24} color="#64748b"/> </div> <div> <h4 style={{fontWeight:'bold', color:darkMode?'white':'black'}}>{f.name}</h4> <div style={{fontSize:'0.8rem', color: darkMode?'#cbd5e1':'#64748b', display:'flex', alignItems:'center', gap:'4px'}}><Medal size={12}/> {f.badge}</div> </div> </div> ))} </div>
+                </div>
+            )}
+            </main>
+        </div>
 
-              {/* Dr. Alva (CENTER FLOATING ICON) */}
-              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                  <button
-                      onClick={() => handleNavClick('chat')}
-                      style={{
-                          position: 'absolute',
-                          top: '-35px',
-                          width: '70px',
-                          height: '70px',
-                          borderRadius: '50%',
-                          background: currentTheme.cardGradient,
-                          border: `6px solid ${darkMode ? '#1e293b' : 'white'}`,
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          zIndex: 20
-                      }}
-                  >
-                      <Bot size={28} color="white" fill="white" />
-                  </button>
-                  <span style={{
-                      position: 'absolute',
-                      bottom: '2px',
-                      fontSize: '0.7rem',
-                      fontWeight: 'bold',
-                      color: activeTab === 'chat' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b')
-                  }}>
-                      Dr. Alva
-                  </span>
-              </div>
+        {!isDesktop && (
+            <nav className="mobile-navbar" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: darkMode ? '#1e293b' : 'white',
+                borderTop: darkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                padding: '10px 10px',
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                zIndex: 9999,
+                boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
+                width: '100%',
+                paddingBottom: 'safe-area-inset-bottom'
+            }}>
+                {/* Home */}
+                <button
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'dashboard' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                    onClick={() => handleNavClick('dashboard')}
+                >
+                    <Home size={22} strokeWidth={activeTab === 'dashboard' ? 2.5 : 2} />
+                    <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
+                </button>
 
-              {/* Teman */}
-              <button
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
-                  onClick={() => handleNavClick('friends')}
-              >
-                  <Users size={22} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
-              </button>
+                {/* Shop */}
+                <button
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'shop' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                    onClick={() => handleNavClick('shop')}
+                >
+                    <ShoppingBag size={22} strokeWidth={activeTab === 'shop' ? 2.5 : 2} />
+                    <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
+                </button>
 
-              {/* Profil */}
-              <button
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'settings' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
-                  onClick={() => handleNavClick('settings')}
-              >
-                  <User size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-                  <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Profil</span>
-              </button>
-          </nav>
+                {/* Dr. Alva (CENTER FLOATING ICON) */}
+                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                    <button
+                        onClick={() => handleNavClick('chat')}
+                        style={{
+                            position: 'absolute',
+                            top: '-35px',
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: currentTheme.cardGradient,
+                            border: `6px solid ${darkMode ? '#1e293b' : 'white'}`,
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 20
+                        }}
+                    >
+                        <Bot size={28} color="white" fill="white" />
+                    </button>
+                    <span style={{
+                        position: 'absolute',
+                        bottom: '2px',
+                        fontSize: '0.7rem',
+                        fontWeight: 'bold',
+                        color: activeTab === 'chat' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b')
+                    }}>
+                        Dr. Alva
+                    </span>
+                </div>
+
+                {/* Teman */}
+                <button
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                    onClick={() => handleNavClick('friends')}
+                >
+                    <Users size={22} strokeWidth={activeTab === 'friends' ? 2.5 : 2} />
+                    <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
+                </button>
+
+                {/* Profil */}
+                <button
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'settings' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
+                    onClick={() => handleNavClick('settings')}
+                >
+                    <User size={22} strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
+                    <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'settings' ? 'bold' : 'normal' }}>Profil</span>
+                </button>
+            </nav>
+        )}
+        </>
       )}
 
       {/* --- RENDER LAPORAN KESEHATAN SEBAGAI OVERLAY --- */}
@@ -1014,105 +1089,111 @@ const UserDashboard = () => {
       {showTutorial && ( <div className="modal-overlay" onClick={closeTutorial}> <div className="modal-content" style={{textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}> <Sparkles size={32} color={currentTheme.text}/> </div> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2> <div style={{textAlign:'left', fontSize:'0.95rem', color: darkMode?'#cbd5e1':'#475569', lineHeight:'1.6', marginBottom:'2rem'}}> <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p> <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}> <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li> <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li> <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li> <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li> </ul> <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p> </div> <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button> </div> </div> )}
       {showPrivacy && ( <div className="modal-overlay" onClick={()=>setShowPrivacy(false)}> <div className="modal-content" onClick={e=>e.stopPropagation()}> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <h2 style={{fontSize:'1.3rem', fontWeight:'bold'}}>Kebijakan Privasi</h2> <button onClick={()=>setShowPrivacy(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button> </div> <div style={{lineHeight:'1.6', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#475569'}}> <p style={{marginBottom:'1rem'}}>Terakhir diperbarui: Januari 2026</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>1. Informasi yang Kami Kumpulkan</h4> <p style={{marginBottom:'1rem'}}>Kami mengumpulkan informasi seperti nama, nomor telepon (untuk verifikasi WhatsApp), dan data kesehatan yang Anda masukkan untuk personalisasi challenge.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>2. Penggunaan Data</h4> <p style={{marginBottom:'1rem'}}>Data Anda digunakan untuk memantau progres kesehatan, mengirimkan pengingat misi harian, dan rekomendasi produk kesehatan yang relevan.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>3. Keamanan Data</h4> <p style={{marginBottom:'1rem'}}>Kami menjaga kerahasiaan data Anda dan tidak akan membagikannya kepada pihak ketiga tanpa persetujuan Anda, kecuali diwajibkan oleh hukum.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>4. Hubungi Kami</h4> <p>Jika ada pertanyaan mengenai privasi ini, silakan hubungi tim support kami.</p> </div> <button onClick={()=>setShowPrivacy(false)} style={{width:'100%', marginTop:'2rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black', fontWeight:'bold'}}>Tutup</button> </div> </div> )}
       
-      {/* --- FIX 2: RESPONSIVE CHECKOUT MODAL --- */}
+      {/* --- FIX: RESPONSIVE CHECKOUT MODAL --- */}
       {showCheckoutModal && selectedProduct && ( 
-        <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)} style={{zIndex:100001}}> 
-            <div className="modal-content" onClick={e=>e.stopPropagation()} style={{maxWidth:'500px', width:'95%', maxHeight:'90vh', overflowY:'auto'}}> 
-                <h3 style={{fontWeight:'bold', marginBottom:'1rem', fontSize:'1.2rem'}}>Checkout</h3> 
-                <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem', flexWrap:'wrap'}}> 
-                    <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
-                        <Truck size={18}/> JNE (Kirim)
-                    </button> 
-                    <button onClick={()=>handleMethodChange('pickup')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='pickup' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='pickup' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
-                        <MapPin size={18}/> Ambil di Toko
-                    </button> 
-                </div> 
-                
-                {shippingMethod === 'jne' && ( 
-                    <div style={{marginBottom:'1rem', background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'12px'}}> 
-                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}>
-                            <span style={{fontWeight:'bold'}}>Kirim ke:</span>
-                            <button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer', fontWeight:'600'}}>+ Alamat Baru</button>
+        <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)}> 
+            <div className="modal-content" onClick={e=>e.stopPropagation()}> 
+                <div className="modal-header-sticky">
+                    <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Checkout</h3> 
+                    <button onClick={()=>setShowCheckoutModal(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button>
+                </div>
+                <div className="modal-body">
+                    <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem', flexWrap:'wrap'}}> 
+                        <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
+                            <Truck size={18}/> JNE (Kirim)
+                        </button> 
+                        <button onClick={()=>handleMethodChange('pickup')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='pickup' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='pickup' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
+                            <MapPin size={18}/> Ambil di Toko
+                        </button> 
+                    </div> 
+                    
+                    {shippingMethod === 'jne' && ( 
+                        <div style={{marginBottom:'1rem', background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'12px'}}> 
+                            <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}>
+                                <span style={{fontWeight:'bold'}}>Kirim ke:</span>
+                                <button onClick={()=>{setShowAddressModal(true)}} style={{color:'#2563eb', background:'none', border:'none', cursor:'pointer', fontWeight:'600'}}>+ Alamat Baru</button>
+                            </div> 
+                            <select onChange={e=>handleSelectAddrCheckout(e.target.value)} value={selectedAddrId || ""} style={{width:'100%', padding:'0.8rem', border:'1px solid #ccc', borderRadius:'8px', background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}}> 
+                                <option value="" disabled>Pilih Alamat Pengiriman...</option> 
+                                {addresses.map(a=><option key={a.id} value={a.id}>{a.label} - {a.address}</option>)} 
+                            </select> 
+                            {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'8px'}}>Belum ada alamat tersimpan.</p>} 
                         </div> 
-                        <select onChange={e=>handleSelectAddrCheckout(e.target.value)} value={selectedAddrId || ""} style={{width:'100%', padding:'0.8rem', border:'1px solid #ccc', borderRadius:'8px', background: darkMode?'#1e293b':'white', color: darkMode?'white':'black'}}> 
-                            <option value="" disabled>Pilih Alamat Pengiriman...</option> 
-                            {addresses.map(a=><option key={a.id} value={a.id}>{a.label} - {a.address}</option>)} 
-                        </select> 
-                        {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'8px'}}>Belum ada alamat tersimpan.</p>} 
+                    )} 
+                    
+                    <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> 
+                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Harga Barang</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> 
+                        <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Biaya Pengiriman</span><span>Rp {shippingCost.toLocaleString()}</span></div> 
+                        <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.3rem', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #ccc'}}>
+                            <span>Total Bayar</span>
+                            <span style={{color: currentTheme.primary}}>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span>
+                        </div> 
                     </div> 
-                )} 
-                
-                <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> 
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Harga Barang</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> 
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Biaya Pengiriman</span><span>Rp {shippingCost.toLocaleString()}</span></div> 
-                    <div style={{display:'flex', justifyContent:'space-between', fontWeight:'bold', fontSize:'1.3rem', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #ccc'}}>
-                        <span>Total Bayar</span>
-                        <span style={{color: currentTheme.primary}}>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span>
+                    
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> 
+                        <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> 
+                        <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer', boxShadow:'0 4px 10px rgba(0,0,0,0.1)'}}>Bayar Sekarang</button> 
                     </div> 
-                </div> 
-                
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> 
-                    <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> 
-                    <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer', boxShadow:'0 4px 10px rgba(0,0,0,0.1)'}}>Bayar Sekarang</button> 
-                </div> 
+                </div>
             </div> 
         </div> 
       )}
 
-      {/* --- FIX 1: ORDER HISTORY MODAL (SEBELUMNYA HILANG) --- */}
+      {/* --- FIX: ORDER HISTORY MODAL --- */}
       {showOrderHistory && (
-          <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)} style={{zIndex: 100000}}>
-              <div className="modal-content" style={{maxWidth:'500px', width:'95%', maxHeight:'85vh'}} onClick={e=>e.stopPropagation()}>
-                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem', borderBottom:'1px solid #eee', paddingBottom:'1rem'}}>
+          <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)}>
+              <div className="modal-content" onClick={e=>e.stopPropagation()}>
+                  <div className="modal-header-sticky">
                       <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Riwayat Pesanan</h3>
                       <button onClick={()=>setShowOrderHistory(false)} style={{background:'none', border:'none', cursor:'pointer'}}>
                           <X size={24} color={darkMode?'white':'black'}/>
                       </button>
                   </div>
-                  
-                  {myOrders.length === 0 ? (
-                      <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>
-                          <ShoppingBag size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
-                          <p>Belum ada riwayat pesanan.</p>
-                      </div>
-                  ) : (
-                      <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
-                          {myOrders.map(order => (
-                              <div key={order.id} style={{padding:'1rem', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', borderRadius:'12px', background: darkMode?'#0f172a':'#f8fafc'}}>
-                                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
-                                      <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>#{order.order_id || order.id}</span>
-                                      <span style={{
-                                          fontSize:'0.75rem', padding:'2px 8px', borderRadius:'10px', 
-                                          background: order.status==='paid'?'#dcfce7':'#ffedd5', 
-                                          color: order.status==='paid'?'#166534':'#9a3412', fontWeight:'bold', textTransform:'uppercase'
-                                      }}>
-                                          {order.status}
-                                      </span>
-                                  </div>
-                                  <div style={{fontWeight:'bold', marginBottom:'0.2rem'}}>{order.product_name}</div>
-                                  <div style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>
-                                      Total: Rp {order.amount?.toLocaleString()}
-                                  </div>
-                                  <button 
-                                      onClick={() => handleOpenInvoice(order)} 
-                                      style={{width:'100%', padding:'0.6rem', background:'white', border:'1px solid #ccc', borderRadius:'8px', cursor:'pointer', fontWeight:'600', color:'#334155'}}
-                                  >
-                                      Lihat Invoice
-                                  </button>
-                              </div>
-                          ))}
-                      </div>
-                  )}
+                  <div className="modal-body">
+                    {myOrders.length === 0 ? (
+                        <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>
+                            <ShoppingBag size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
+                            <p>Belum ada riwayat pesanan.</p>
+                        </div>
+                    ) : (
+                        <div style={{display:'flex', flexDirection:'column', gap:'1rem'}}>
+                            {myOrders.map(order => (
+                                <div key={order.id} style={{padding:'1rem', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', borderRadius:'12px', background: darkMode?'#0f172a':'#f8fafc'}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}>
+                                        <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>#{order.order_id || order.id}</span>
+                                        <span style={{
+                                            fontSize:'0.75rem', padding:'2px 8px', borderRadius:'10px', 
+                                            background: order.status==='paid'?'#dcfce7':'#ffedd5', 
+                                            color: order.status==='paid'?'#166534':'#9a3412', fontWeight:'bold', textTransform:'uppercase'
+                                        }}>
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                    <div style={{fontWeight:'bold', marginBottom:'0.2rem'}}>{order.product_name}</div>
+                                    <div style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'1rem'}}>
+                                        Total: Rp {order.amount?.toLocaleString()}
+                                    </div>
+                                    <button 
+                                        onClick={() => handleOpenInvoice(order)} 
+                                        style={{width:'100%', padding:'0.6rem', background:'white', border:'1px solid #ccc', borderRadius:'8px', cursor:'pointer', fontWeight:'600', color:'#334155'}}
+                                    >
+                                        Lihat Invoice
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                  </div>
               </div>
           </div>
       )}
       
-      {/* --- FIX 3: INVOICE MODAL LEBIH LENGKAP --- */}
+      {/* --- FIX: INVOICE MODAL --- */}
       {showInvoice && selectedInvoice && ( 
-        <div className="modal-overlay" onClick={()=>setShowInvoice(false)} style={{zIndex: 100001}}> 
+        <div className="modal-overlay" onClick={()=>setShowInvoice(false)}> 
             <div className="modal-content" style={{maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> 
-                <div style={{textAlign:'center', marginBottom:'1.5rem', borderBottom:'1px dashed #ccc', paddingBottom:'1rem', position:'relative'}}> 
-                    <button onClick={()=>setShowInvoice(false)} style={{position:'absolute', right:0, top:0, background:'none', border:'none', cursor:'pointer'}}>
+                <div style={{textAlign:'center', marginBottom:'1.5rem', borderBottom:'1px dashed #ccc', paddingBottom:'1rem', position:'relative', paddingTop:'1rem'}}> 
+                    <button onClick={()=>setShowInvoice(false)} style={{position:'absolute', right:'1rem', top:'0', background:'none', border:'none', cursor:'pointer'}}>
                         <X size={24} color={darkMode?'white':'black'}/>
                     </button>
                     <div style={{width:'50px', height:'50px', background: currentTheme.primary, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem auto', color:'white'}}>
@@ -1123,7 +1204,7 @@ const UserDashboard = () => {
                     <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date || new Date().toLocaleDateString()}</p> 
                 </div> 
                 
-                <div style={{marginBottom:'1.5rem'}}> 
+                <div className="modal-body" style={{paddingTop:0}}> 
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> 
                         <span style={{color:'#64748b', fontSize:'0.9rem'}}>No. Order</span> 
                         <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id || selectedInvoice.id}</span> 
@@ -1153,85 +1234,87 @@ const UserDashboard = () => {
                             <span style={{fontSize:'0.9rem', fontWeight:'bold', color:'#166534'}}>{selectedInvoice.resi}</span> 
                         </div> 
                     )} 
-                </div> 
-                
-                {/* Rincian Produk & Harga */}
-                <div style={{borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'1rem 0', marginBottom:'1.5rem'}}> 
-                    <div style={{marginBottom:'1rem'}}>
-                         <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'4px'}}>Produk</p>
-                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                            <span style={{fontWeight:'bold', fontSize:'0.95rem'}}>{selectedInvoice.product_name}</span>
-                            <span style={{fontSize:'0.9rem'}}>x1</span>
-                         </div>
-                    </div>
 
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
-                        <span style={{fontSize:'0.9rem', color:'#64748b'}}>Harga</span> 
-                        {/* Asumsi: Amount sudah termasuk ongkir, kita estimasi harga barang */}
-                        <span style={{fontSize:'0.9rem'}}>Rp {(selectedInvoice.amount - (selectedInvoice.shipping_cost || 0)).toLocaleString()}</span> 
-                    </div> 
-                    
-                    {selectedInvoice.shipping_cost > 0 && (
+                    {/* Rincian Produk & Harga */}
+                    <div style={{borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'1rem 0', marginBottom:'1.5rem', marginTop:'1rem'}}> 
+                        <div style={{marginBottom:'1rem'}}>
+                            <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'4px'}}>Produk</p>
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                <span style={{fontWeight:'bold', fontSize:'0.95rem'}}>{selectedInvoice.product_name}</span>
+                                <span style={{fontSize:'0.9rem'}}>x1</span>
+                            </div>
+                        </div>
+
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
-                            <span style={{fontSize:'0.9rem', color:'#64748b'}}>Ongkos Kirim</span> 
-                            <span style={{fontSize:'0.9rem'}}>Rp {selectedInvoice.shipping_cost.toLocaleString()}</span> 
+                            <span style={{fontSize:'0.9rem', color:'#64748b'}}>Harga</span> 
+                            {/* Asumsi: Amount sudah termasuk ongkir, kita estimasi harga barang */}
+                            <span style={{fontSize:'0.9rem'}}>Rp {(selectedInvoice.amount - (selectedInvoice.shipping_cost || 0)).toLocaleString()}</span> 
                         </div> 
+                        
+                        {selectedInvoice.shipping_cost > 0 && (
+                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
+                                <span style={{fontSize:'0.9rem', color:'#64748b'}}>Ongkos Kirim</span> 
+                                <span style={{fontSize:'0.9rem'}}>Rp {selectedInvoice.shipping_cost.toLocaleString()}</span> 
+                            </div> 
+                        )}
+
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #eee'}}> 
+                            <span style={{fontSize:'1rem', fontWeight:'bold'}}>Total Bayar</span> 
+                            <span style={{fontSize:'1.1rem', fontWeight:'bold', color: currentTheme.primary}}>Rp {selectedInvoice.amount.toLocaleString()}</span> 
+                        </div> 
+                    </div> 
+
+                    {/* Tombol Lihat Lokasi Toko jika Pickup */}
+                    {(selectedInvoice.shipping_method === 'Ambil di Toko' || selectedInvoice.shipping_method === 'pickup') && (
+                        <a 
+                            href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{display:'flex', alignItems:'center', justifyContent:'center', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none', gap:'8px'}}
+                        >
+                            <Map size={18} /> Buka Google Maps (Toko)
+                        </a>
                     )}
 
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'1rem', paddingTop:'0.5rem', borderTop:'1px dashed #eee'}}> 
-                        <span style={{fontSize:'1rem', fontWeight:'bold'}}>Total Bayar</span> 
-                        <span style={{fontSize:'1.1rem', fontWeight:'bold', color: currentTheme.primary}}>Rp {selectedInvoice.amount.toLocaleString()}</span> 
-                    </div> 
+                    <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup Invoice</button> 
                 </div> 
-
-                {/* Tombol Lihat Lokasi Toko jika Pickup */}
-                {(selectedInvoice.shipping_method === 'Ambil di Toko' || selectedInvoice.shipping_method === 'pickup') && (
-                    <a 
-                        href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{display:'flex', alignItems:'center', justifyContent:'center', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none', gap:'8px'}}
-                    >
-                        <Map size={18} /> Buka Google Maps (Toko)
-                    </a>
-                )}
-
-                <button onClick={()=>setShowInvoice(false)} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Tutup Invoice</button> 
             </div> 
         </div> 
       )}
 
-      {/* FIX: ADDRESS MODAL DENGAN CLOSE BUTTON DI HEADER & Z-INDEX */}
+      {/* FIX: ADDRESS MODAL DENGAN CLOSE BUTTON DI HEADER & SCROLLABLE */}
       {showAddressModal && ( 
-        <div className="modal-overlay" onClick={()=>setShowAddressModal(false)} style={{zIndex: 100001}}> 
+        <div className="modal-overlay" onClick={()=>setShowAddressModal(false)}> 
             <div className="modal-content" onClick={e=>e.stopPropagation()}> 
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+                <div className="modal-header-sticky">
                     <h3 style={{fontWeight:'bold'}}>Tambah Alamat</h3>
                     <button onClick={()=>setShowAddressModal(false)} style={{background:'none', border:'none', cursor:'pointer'}}>
                         <X size={24} color={darkMode?'white':'black'}/>
                     </button>
                 </div>
-                <input placeholder="Label (Rumah/Kantor)" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> 
-                    <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
-                    <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
-                </div> 
-                <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={handleCityChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}></textarea> <input placeholder="Kode Pos" onChange={e=>setNewAddr({...newAddr, zip:e.target.value})} style={{width:'100%', padding:'0.7rem', marginBottom:'1rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
-                <div style={{display:'flex', gap:'0.5rem'}}> 
-                    <button onClick={handleSaveAddress} style={{flex:1, padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white', cursor:'pointer'}}>Simpan</button> 
-                    <button onClick={()=>setShowAddressModal(false)} style={{flex:1, padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Batal</button> 
-                </div> 
+                <div className="modal-body">
+                    <input placeholder="Label (Rumah/Kantor)" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> 
+                        <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                        <input placeholder="No HP" onChange={e=>setNewAddr({...newAddr, phone:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                    </div> 
+                    <select onChange={handleProvChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Provinsi</option>{provinces.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select> {newAddr.prov_id && <select onChange={handleCityChange} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}><option>Pilih Kota</option>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>} <textarea placeholder="Alamat Lengkap" onChange={e=>setNewAddr({...newAddr, address:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}></textarea> <input placeholder="Kode Pos" onChange={e=>setNewAddr({...newAddr, zip:e.target.value})} style={{width:'100%', padding:'0.7rem', marginBottom:'1rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
+                    <div style={{display:'flex', gap:'0.5rem'}}> 
+                        <button onClick={handleSaveAddress} style={{flex:1, padding:'0.8rem', background:currentTheme.primary, border:'none', borderRadius:'8px', fontWeight:'bold', color:'white', cursor:'pointer'}}>Simpan</button> 
+                        <button onClick={()=>setShowAddressModal(false)} style={{flex:1, padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Batal</button> 
+                    </div> 
+                </div>
             </div> 
         </div> 
       )}
 
       {selectedArticle && ( <div className="modal-overlay" onClick={()=>setSelectedArticle(null)}> <div className="modal-content" style={{width:'100%', maxWidth:'600px', maxHeight:'85vh', padding:'2rem', position:'relative'}} onClick={e=>e.stopPropagation()}> <button onClick={()=>setSelectedArticle(null)} style={{position:'absolute', right:'1rem', top:'1rem', background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem', paddingRight:'2rem'}}>{selectedArticle.title}</h2> {selectedArticle.image_url && <img src={`${BACKEND_URL}${selectedArticle.image_url}`} style={{width:'100%', borderRadius:'8px', marginBottom:'1rem'}}/>} <div style={{lineHeight:'1.6', fontSize:'0.95rem', whiteSpace:'pre-line'}}>{selectedArticle.content}</div> </div> </div> )}
-      {showQRModal && ( <div className="modal-overlay" onClick={()=>setShowQRModal(false)}> <div className="modal-content" style={{textAlign:'center', background:'white'}} onClick={e=>e.stopPropagation()}> <h3 style={{fontWeight:'bold', marginBottom:'1rem', color:'black'}}>Kode Pertemanan</h3> <div style={{padding:'1rem', border:'1px solid #eee', borderRadius:'12px', display:'inline-block'}}> <QRCodeSVG value={`https://jagatetapsehat.com/add/${overview?.user?.referral_code}`} size={180} /> </div> <button onClick={()=>setShowQRModal(false)} style={{display:'block', width:'100%', marginTop:'1rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Tutup</button> </div> </div> )}
+      {showQRModal && ( <div className="modal-overlay" onClick={()=>setShowQRModal(false)}> <div className="modal-content" style={{textAlign:'center', background:'white', padding:'2rem'}} onClick={e=>e.stopPropagation()}> <h3 style={{fontWeight:'bold', marginBottom:'1rem', color:'black'}}>Kode Pertemanan</h3> <div style={{padding:'1rem', border:'1px solid #eee', borderRadius:'12px', display:'inline-block'}}> <QRCodeSVG value={`https://jagatetapsehat.com/add/${overview?.user?.referral_code}`} size={180} /> </div> <button onClick={()=>setShowQRModal(false)} style={{display:'block', width:'100%', marginTop:'1rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black'}}>Tutup</button> </div> </div> )}
 
-      {/* --- MODAL BARU: LIMIT CHALLENGE --- */}
+      {/* --- MODAL LIMIT CHALLENGE --- */}
       {showLimitModal && (
         <div className="modal-overlay" onClick={()=>setShowLimitModal(false)}>
-            <div className="modal-content" style={{maxWidth:'400px'}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-content" style={{maxWidth:'400px', padding:'2rem'}} onClick={e=>e.stopPropagation()}>
                 <div style={{textAlign:'center', marginBottom:'1.5rem'}}>
                     <div style={{background: '#ffedd5', width:'50px', height:'50px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem auto'}}>
                         <AlertTriangle size={24} color="#ea580c"/>
@@ -1256,45 +1339,10 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* --- MODAL BARU: QUIZ --- */}
-      {showQuizModal && (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{maxHeight:'85vh', height:'auto', display:'flex', flexDirection:'column'}} onClick={e=>e.stopPropagation()}>
-                <div style={{marginBottom:'1rem'}}>
-                    <h3 style={{fontWeight:'bold', fontSize:'1.1rem'}}>Kuis Penentuan Tipe</h3>
-                    <div style={{height:'4px', background:'#e2e8f0', borderRadius:'2px', marginTop:'0.8rem'}}>
-                        <div style={{height:'100%', background: currentTheme.primary, width: `${((currentQuizIdx+1)/quizQuestions.length)*100}%`, transition:'width 0.3s ease'}}></div>
-                    </div>
-                </div>
-                <div style={{flex:1, overflowY:'auto'}}>
-                    <h4 style={{fontSize:'1.1rem', fontWeight:'600', marginBottom:'1.5rem'}}>{quizQuestions[currentQuizIdx]?.question_text}</h4>
-                    <div style={{display:'flex', flexDirection:'column', gap:'0.8rem'}}>
-                        {quizQuestions[currentQuizIdx]?.options.map((opt, idx) => (
-                            <button 
-                                key={idx}
-                                onClick={() => handleQuizAnswer(opt.category)}
-                                style={{
-                                    padding:'1rem', textAlign:'left', border: darkMode?'1px solid #334155':'1px solid #e2e8f0', 
-                                    background: darkMode?'#0f172a':'white', borderRadius:'12px', cursor:'pointer', color: darkMode?'white':'black',
-                                    transition:'background 0.2s'
-                                }}
-                                onMouseEnter={(e)=>e.currentTarget.style.borderColor = currentTheme.primary}
-                                onMouseLeave={(e)=>e.currentTarget.style.borderColor = darkMode?'#334155':'#e2e8f0'}
-                            >
-                                {opt.text}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <button onClick={() => setShowQuizModal(false)} style={{marginTop:'1rem', padding:'0.8rem', background:'transparent', border:'none', color:'#94a3b8', cursor:'pointer'}}>Batalkan</button>
-            </div>
-        </div>
-      )}
-
-      {/* --- MODAL BARU: AI SUMMARY --- */}
+      {/* --- MODAL AI SUMMARY (HASIL KUIS) --- */}
       {showAiSummaryModal && (
         <div className="modal-overlay">
-            <div className="modal-content" style={{textAlign:'center', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-content" style={{textAlign:'center', maxWidth:'400px', padding:'2rem'}} onClick={e=>e.stopPropagation()}>
                 <div style={{width:'70px', height:'70px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}>
                     <Trophy size={36} color={currentTheme.text}/>
                 </div>
