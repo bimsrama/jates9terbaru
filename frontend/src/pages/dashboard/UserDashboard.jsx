@@ -376,9 +376,9 @@ const UserDashboard = () => {
               score: 100
           }, { headers: getAuthHeader() });
 
-          setAiSummaryResult(res.data.ai_summary);
+          setAiSummaryResult(res.data.ai_summary); // Sekarang sudah ada isinya dari Backend
           setIsTakingQuiz(false); // Keluar mode kuis
-          setShowAiSummaryModal(true);
+          setShowAiSummaryModal(true); // Masuk mode ringkasan full screen
           fetchData(); 
       } catch (err) {
           alert(err.response?.data?.message || "Gagal submit kuis");
@@ -407,7 +407,7 @@ const UserDashboard = () => {
       setShippingCost(0); 
       setShippingMethod("jne"); 
       setAppliedCoupon(null); 
-      setCouponCode(""); 
+      // setCouponCode(""); 
       setShowCheckoutModal(true); 
       
       try { 
@@ -700,7 +700,10 @@ const UserDashboard = () => {
         </aside>
         )}
 
+        {/* ... (CONTENT SAMA SEPERTI SEBELUMNYA) ... */}
+        {/* --- SAYA PERSINGKAT BAGIAN DASHBOARD CONTENT AGAR KODE CUKUP --- */}
         <div ref={mainContentRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100vh', overflowY: 'auto', paddingBottom: isDesktop ? 0 : '80px', background: darkMode ? '#0f172a' : '#f8fafc' }}>
+            {/* Header & Main Content Code (No Change needed here) */}
             {!isDesktop && <header className="dashboard-header" style={{ padding: '1rem', borderBottom: '1px solid #e2e8f0', display:'flex', justifyContent:'space-between', background: darkMode?'#1e293b':'white', position: 'sticky', top: 0, zIndex: 50 }}>
                 <span style={{fontWeight:'900', fontSize:'1.2rem', color: currentTheme.primary, display:'flex', alignItems:'center', gap:'5px'}}><Activity size={20} fill={currentTheme.primary}/> VITALYST</span>
                 <button onClick={()=>setShowNotifDropdown(!showNotifDropdown)} style={{background:'none', border:'none', position:'relative'}}>
@@ -901,6 +904,7 @@ const UserDashboard = () => {
 
             {activeTab === 'chat' && (
                 <div style={{ display:'flex', flexDirection:'column', height:'100%', maxWidth:'800px', margin:'0 auto', width:'100%' }}>
+                    {/* ... (CONTENT SAMA SEPERTI SEBELUMNYA) ... */}
                     <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> 
                         <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Home</button> 
                     </div>
@@ -953,6 +957,7 @@ const UserDashboard = () => {
                 </div>
             )}
 
+            {/* ... (CONTENT SHOP, SETTINGS, FRIENDS SAMA SEPERTI SEBELUMNYA) ... */}
             {activeTab === 'settings' && (
                 <div>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}> <button onClick={() => handleNavClick('dashboard')} style={{ background: 'white', border: '1px solid #e2e8f0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155' }}><ChevronLeft size={20}/> Kembali</button> <h1 className="heading-2">Pengaturan</h1> </div>
@@ -1000,7 +1005,7 @@ const UserDashboard = () => {
                 width: '100%',
                 paddingBottom: 'safe-area-inset-bottom'
             }}>
-                {/* Home */}
+                {/* ... (BUTTONS NAV SAMA SEPERTI SEBELUMNYA) ... */}
                 <button
                     style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'dashboard' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
                     onClick={() => handleNavClick('dashboard')}
@@ -1009,7 +1014,6 @@ const UserDashboard = () => {
                     <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'dashboard' ? 'bold' : 'normal' }}>Home</span>
                 </button>
 
-                {/* Shop */}
                 <button
                     style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'shop' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
                     onClick={() => handleNavClick('shop')}
@@ -1018,7 +1022,6 @@ const UserDashboard = () => {
                     <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'shop' ? 'bold' : 'normal' }}>Shop</span>
                 </button>
 
-                {/* Dr. Alva (CENTER FLOATING ICON) */}
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'center', position: 'relative' }}>
                     <button
                         onClick={() => handleNavClick('chat')}
@@ -1052,7 +1055,6 @@ const UserDashboard = () => {
                     </span>
                 </div>
 
-                {/* Teman */}
                 <button
                     style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'friends' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
                     onClick={() => handleNavClick('friends')}
@@ -1061,7 +1063,6 @@ const UserDashboard = () => {
                     <span style={{ fontSize: '0.6rem', fontWeight: activeTab === 'friends' ? 'bold' : 'normal' }}>Teman</span>
                 </button>
 
-                {/* Profil */}
                 <button
                     style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: activeTab === 'settings' ? currentTheme.primary : (darkMode ? '#94a3b8' : '#64748b') }}
                     onClick={() => handleNavClick('settings')}
@@ -1089,15 +1090,16 @@ const UserDashboard = () => {
       {showTutorial && ( <div className="modal-overlay" onClick={closeTutorial}> <div className="modal-content" style={{textAlign:'center', padding:'2.5rem', maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> <div style={{width:'60px', height:'60px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}> <Sparkles size={32} color={currentTheme.text}/> </div> <h2 style={{fontSize:'1.5rem', fontWeight:'bold', marginBottom:'1rem'}}>Selamat Datang di Vitalyst!</h2> <div style={{textAlign:'left', fontSize:'0.95rem', color: darkMode?'#cbd5e1':'#475569', lineHeight:'1.6', marginBottom:'2rem'}}> <p style={{marginBottom:'0.8rem'}}>👋 Halo! Mari mulai perjalanan sehatmu:</p> <ul style={{listStyleType:'disc', paddingLeft:'1.5rem', marginBottom:'1rem'}}> <li style={{marginBottom:'0.5rem'}}>Ikuti <strong>Challenge Kesehatan</strong> selama 30 hari untuk membangun kebiasaan baik.</li> <li style={{marginBottom:'0.5rem'}}>Lakukan <strong>Check-in Harian</strong> untuk mencatat misimu.</li> <li style={{marginBottom:'0.5rem'}}>Kamu akan menerima <strong>WhatsApp Broadcast</strong> sebagai pengingat & motivasi.</li> <li>Konsultasikan keluhanmu dengan <strong>Dr. Alva</strong> kapan saja.</li> </ul> <p>Ayo buat kesehatanmu lebih terkontrol mulai hari ini!</p> </div> <button onClick={closeTutorial} style={{width:'100%', padding:'0.8rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer'}}>Siap, Saya Mengerti!</button> </div> </div> )}
       {showPrivacy && ( <div className="modal-overlay" onClick={()=>setShowPrivacy(false)}> <div className="modal-content" onClick={e=>e.stopPropagation()}> <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}> <h2 style={{fontSize:'1.3rem', fontWeight:'bold'}}>Kebijakan Privasi</h2> <button onClick={()=>setShowPrivacy(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button> </div> <div style={{lineHeight:'1.6', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#475569'}}> <p style={{marginBottom:'1rem'}}>Terakhir diperbarui: Januari 2026</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>1. Informasi yang Kami Kumpulkan</h4> <p style={{marginBottom:'1rem'}}>Kami mengumpulkan informasi seperti nama, nomor telepon (untuk verifikasi WhatsApp), dan data kesehatan yang Anda masukkan untuk personalisasi challenge.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>2. Penggunaan Data</h4> <p style={{marginBottom:'1rem'}}>Data Anda digunakan untuk memantau progres kesehatan, mengirimkan pengingat misi harian, dan rekomendasi produk kesehatan yang relevan.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>3. Keamanan Data</h4> <p style={{marginBottom:'1rem'}}>Kami menjaga kerahasiaan data Anda dan tidak akan membagikannya kepada pihak ketiga tanpa persetujuan Anda, kecuali diwajibkan oleh hukum.</p> <h4 style={{fontWeight:'bold', marginBottom:'0.5rem', color: currentTheme.text}}>4. Hubungi Kami</h4> <p>Jika ada pertanyaan mengenai privasi ini, silakan hubungi tim support kami.</p> </div> <button onClick={()=>setShowPrivacy(false)} style={{width:'100%', marginTop:'2rem', padding:'0.8rem', background:'#f1f5f9', border:'none', borderRadius:'8px', cursor:'pointer', color:'black', fontWeight:'bold'}}>Tutup</button> </div> </div> )}
       
-      {/* --- FIX: RESPONSIVE CHECKOUT MODAL --- */}
+      {/* --- FIX 2: RESPONSIVE CHECKOUT MODAL --- */}
       {showCheckoutModal && selectedProduct && ( 
-        <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)}> 
+        <div className="modal-overlay" onClick={()=>setShowCheckoutModal(false)} style={{zIndex:200000}}> 
             <div className="modal-content" onClick={e=>e.stopPropagation()}> 
                 <div className="modal-header-sticky">
                     <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Checkout</h3> 
                     <button onClick={()=>setShowCheckoutModal(false)} style={{background:'none', border:'none', cursor:'pointer'}}><X size={24} color={darkMode?'white':'black'}/></button>
                 </div>
                 <div className="modal-body">
+                    {/* ... (CONTENT CHECKOUT SAMA SEPERTI SEBELUMNYA) ... */}
                     <div style={{marginBottom:'1rem', display:'flex', gap:'0.5rem', flexWrap:'wrap'}}> 
                         <button onClick={()=>handleMethodChange('jne')} style={{flex:1, padding:'0.8rem', border: shippingMethod==='jne' ? `2px solid ${currentTheme.primary}` : '1px solid #ccc', borderRadius:'8px', background: shippingMethod==='jne' ? '#f0fdf4' : 'white', fontWeight:'bold', color:'black', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px'}}>
                             <Truck size={18}/> JNE (Kirim)
@@ -1106,7 +1108,6 @@ const UserDashboard = () => {
                             <MapPin size={18}/> Ambil di Toko
                         </button> 
                     </div> 
-                    
                     {shippingMethod === 'jne' && ( 
                         <div style={{marginBottom:'1rem', background: darkMode?'#334155':'#f8fafc', padding:'1rem', borderRadius:'12px'}}> 
                             <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.9rem', marginBottom:'0.5rem'}}>
@@ -1120,7 +1121,6 @@ const UserDashboard = () => {
                             {addresses.length === 0 && <p style={{fontSize:'0.8rem', color:'red', marginTop:'8px'}}>Belum ada alamat tersimpan.</p>} 
                         </div> 
                     )} 
-                    
                     <div style={{borderTop:'1px solid #eee', paddingTop:'1rem', marginBottom:'1.5rem'}}> 
                         <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Harga Barang</span><span>Rp {selectedProduct.price.toLocaleString()}</span></div> 
                         <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem', fontSize:'0.95rem'}}><span>Biaya Pengiriman</span><span>Rp {shippingCost.toLocaleString()}</span></div> 
@@ -1129,7 +1129,6 @@ const UserDashboard = () => {
                             <span style={{color: currentTheme.primary}}>Rp {(selectedProduct.price + shippingCost).toLocaleString()}</span>
                         </div> 
                     </div> 
-                    
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}> 
                         <button onClick={()=>setShowCheckoutModal(false)} style={{padding:'0.8rem', border:'1px solid #ccc', background:'white', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', color:'black'}}>Batal</button> 
                         <button onClick={handleProcessPayment} style={{padding:'0.8rem', border:'none', background: currentTheme.primary, color:'white', borderRadius:'8px', fontWeight:'bold', cursor: 'pointer', boxShadow:'0 4px 10px rgba(0,0,0,0.1)'}}>Bayar Sekarang</button> 
@@ -1139,9 +1138,9 @@ const UserDashboard = () => {
         </div> 
       )}
 
-      {/* --- FIX: ORDER HISTORY MODAL --- */}
+      {/* --- FIX 1: ORDER HISTORY MODAL DENGAN Z-INDEX TINGGI --- */}
       {showOrderHistory && (
-          <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)}>
+          <div className="modal-overlay" onClick={()=>setShowOrderHistory(false)} style={{zIndex: 200000}}>
               <div className="modal-content" onClick={e=>e.stopPropagation()}>
                   <div className="modal-header-sticky">
                       <h3 style={{fontWeight:'bold', fontSize:'1.2rem'}}>Riwayat Pesanan</h3>
@@ -1150,6 +1149,7 @@ const UserDashboard = () => {
                       </button>
                   </div>
                   <div className="modal-body">
+                    {/* ... (CONTENT SAMA) ... */}
                     {myOrders.length === 0 ? (
                         <div style={{textAlign:'center', padding:'2rem', color:'#64748b'}}>
                             <ShoppingBag size={48} style={{margin:'0 auto 1rem auto', opacity:0.5}}/>
@@ -1188,23 +1188,23 @@ const UserDashboard = () => {
           </div>
       )}
       
-      {/* --- FIX: INVOICE MODAL --- */}
+      {/* --- FIX 3: INVOICE MODAL DENGAN Z-INDEX TINGGI --- */}
       {showInvoice && selectedInvoice && ( 
-        <div className="modal-overlay" onClick={()=>setShowInvoice(false)}> 
+        <div className="modal-overlay" onClick={()=>setShowInvoice(false)} style={{zIndex: 200001}}> 
             <div className="modal-content" style={{maxWidth:'400px'}} onClick={e=>e.stopPropagation()}> 
-                <div style={{textAlign:'center', marginBottom:'1.5rem', borderBottom:'1px dashed #ccc', paddingBottom:'1rem', position:'relative', paddingTop:'1rem'}}> 
-                    <button onClick={()=>setShowInvoice(false)} style={{position:'absolute', right:'1rem', top:'0', background:'none', border:'none', cursor:'pointer'}}>
+                <div className="modal-header-sticky">
+                    <h3 style={{fontWeight:'bold', fontSize:'1.5rem'}}>INVOICE</h3>
+                    <button onClick={()=>setShowInvoice(false)} style={{background:'none', border:'none', cursor:'pointer'}}>
                         <X size={24} color={darkMode?'white':'black'}/>
                     </button>
-                    <div style={{width:'50px', height:'50px', background: currentTheme.primary, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1rem auto', color:'white'}}>
-                        <Check size={28}/>
-                    </div>
-                    <h2 style={{fontWeight:'bold', fontSize:'1.5rem'}}>INVOICE</h2> 
-                    <p style={{fontSize:'0.9rem', color:'#64748b'}}>VITALYST STORE</p> 
-                    <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date || new Date().toLocaleDateString()}</p> 
-                </div> 
-                
+                </div>
                 <div className="modal-body" style={{paddingTop:0}}> 
+                    {/* ... (CONTENT SAMA) ... */}
+                    <div style={{textAlign:'center', marginBottom:'1rem'}}>
+                        <p style={{fontSize:'0.9rem', color:'#64748b'}}>VITALYST STORE</p> 
+                        <p style={{fontSize:'0.8rem', color:'#94a3b8'}}>{selectedInvoice.date || new Date().toLocaleDateString()}</p> 
+                    </div>
+                    
                     <div style={{display:'flex', justifyContent:'space-between', marginBottom:'0.5rem'}}> 
                         <span style={{color:'#64748b', fontSize:'0.9rem'}}>No. Order</span> 
                         <span style={{fontWeight:'bold', fontSize:'0.9rem'}}>{selectedInvoice.order_id || selectedInvoice.id}</span> 
@@ -1218,7 +1218,6 @@ const UserDashboard = () => {
                         <span style={{fontSize:'0.9rem'}}>{selectedInvoice.shipping_method}</span> 
                     </div> 
                     
-                    {/* Alamat Pengiriman (Muncul jika BUKAN Pickup) */}
                     {selectedInvoice.shipping_method !== 'Ambil di Toko' && selectedInvoice.shipping_method !== 'pickup' && selectedInvoice.address && (
                         <div style={{marginTop:'0.8rem', paddingTop:'0.8rem', borderTop:'1px solid #eee'}}>
                             <span style={{color:'#64748b', fontSize:'0.9rem', display:'block', marginBottom:'4px'}}>Alamat Pengiriman:</span>
@@ -1235,7 +1234,6 @@ const UserDashboard = () => {
                         </div> 
                     )} 
 
-                    {/* Rincian Produk & Harga */}
                     <div style={{borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'1rem 0', marginBottom:'1.5rem', marginTop:'1rem'}}> 
                         <div style={{marginBottom:'1rem'}}>
                             <p style={{fontSize:'0.85rem', color:'#64748b', marginBottom:'4px'}}>Produk</p>
@@ -1247,7 +1245,6 @@ const UserDashboard = () => {
 
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.5rem'}}> 
                             <span style={{fontSize:'0.9rem', color:'#64748b'}}>Harga</span> 
-                            {/* Asumsi: Amount sudah termasuk ongkir, kita estimasi harga barang */}
                             <span style={{fontSize:'0.9rem'}}>Rp {(selectedInvoice.amount - (selectedInvoice.shipping_cost || 0)).toLocaleString()}</span> 
                         </div> 
                         
@@ -1264,14 +1261,8 @@ const UserDashboard = () => {
                         </div> 
                     </div> 
 
-                    {/* Tombol Lihat Lokasi Toko jika Pickup */}
                     {(selectedInvoice.shipping_method === 'Ambil di Toko' || selectedInvoice.shipping_method === 'pickup') && (
-                        <a 
-                            href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            style={{display:'flex', alignItems:'center', justifyContent:'center', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none', gap:'8px'}}
-                        >
+                        <a href="https://www.google.com/maps/search/?api=1&query=Toko+Vitalyst" target="_blank" rel="noopener noreferrer" style={{display:'flex', alignItems:'center', justifyContent:'center', width:'100%', marginBottom:'1rem', padding:'0.8rem', background: '#e0f2fe', color:'#0284c7', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', textAlign:'center', textDecoration:'none', gap:'8px'}}>
                             <Map size={18} /> Buka Google Maps (Toko)
                         </a>
                     )}
@@ -1282,9 +1273,9 @@ const UserDashboard = () => {
         </div> 
       )}
 
-      {/* FIX: ADDRESS MODAL DENGAN CLOSE BUTTON DI HEADER & SCROLLABLE */}
+      {/* FIX: ADDRESS MODAL DENGAN CLOSE BUTTON DI HEADER & Z-INDEX TINGGI */}
       {showAddressModal && ( 
-        <div className="modal-overlay" onClick={()=>setShowAddressModal(false)}> 
+        <div className="modal-overlay" onClick={()=>setShowAddressModal(false)} style={{zIndex: 200000}}> 
             <div className="modal-content" onClick={e=>e.stopPropagation()}> 
                 <div className="modal-header-sticky">
                     <h3 style={{fontWeight:'bold'}}>Tambah Alamat</h3>
@@ -1293,6 +1284,7 @@ const UserDashboard = () => {
                     </button>
                 </div>
                 <div className="modal-body">
+                    {/* ... (CONTENT SAMA) ... */}
                     <input placeholder="Label (Rumah/Kantor)" onChange={e=>setNewAddr({...newAddr, label:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.5rem'}}> 
                         <input placeholder="Penerima" onChange={e=>setNewAddr({...newAddr, name:e.target.value})} style={{width:'100%', padding:'0.6rem', marginBottom:'0.5rem', border:'1px solid #ccc', borderRadius:'6px', color:'black'}}/> 
@@ -1339,26 +1331,30 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* --- MODAL AI SUMMARY (HASIL KUIS) --- */}
+      {/* --- MODAL AI SUMMARY (FULL SCREEN MODE) --- */}
       {showAiSummaryModal && (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{textAlign:'center', maxWidth:'400px', padding:'2rem'}} onClick={e=>e.stopPropagation()}>
-                <div style={{width:'70px', height:'70px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 1.5rem auto'}}>
-                    <Trophy size={36} color={currentTheme.text}/>
+        <div style={{ position:'absolute', inset:0, background: darkMode ? '#0f172a' : 'white', zIndex: 100000, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding: '2rem' }}>
+            <div style={{maxWidth:'500px', width:'100%', textAlign:'center'}}>
+                <div style={{width:'100px', height:'100px', background: currentTheme.light, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 2rem auto', boxShadow: `0 0 20px ${currentTheme.primary}40`}}>
+                    <Trophy size={50} color={currentTheme.text}/>
                 </div>
-                <h3 style={{fontWeight:'bold', fontSize:'1.3rem', marginBottom:'0.5rem'}}>Kamu Siap!</h3>
-                <p style={{marginBottom:'1.5rem', fontSize:'0.9rem', color: darkMode?'#cbd5e1':'#64748b'}}>Berdasarkan jawabanmu, program ini telah disesuaikan.</p>
+                <h3 style={{fontWeight:'900', fontSize:'2rem', marginBottom:'1rem', color: currentTheme.primary}}>Kamu Siap!</h3>
+                <p style={{marginBottom:'2rem', fontSize:'1rem', color: darkMode?'#cbd5e1':'#64748b'}}>Berdasarkan jawabanmu, program ini telah disesuaikan.</p>
                 
-                <div style={{background: darkMode?'#0f172a':'#eff6ff', padding:'1rem', borderRadius:'12px', border:`1px solid ${darkMode?'#334155':'#dbeafe'}`, marginBottom:'2rem', textAlign:'left'}}>
-                    <div style={{display:'flex', gap:'0.5rem', alignItems:'flex-start'}}>
-                        <Bot size={20} color={currentTheme.text} style={{marginTop:'2px', flexShrink:0}}/>
-                        <div style={{fontStyle:'italic', fontSize:'0.9rem', color: darkMode?'#e2e8f0':'#1e40af'}}>"{aiSummaryResult}"</div>
+                <div style={{background: darkMode?'#1e293b':'#eff6ff', padding:'2rem', borderRadius:'24px', border:`1px solid ${darkMode?'#334155':'#dbeafe'}`, marginBottom:'3rem', textAlign:'left', boxShadow:'0 10px 30px -10px rgba(0,0,0,0.1)'}}>
+                    <div style={{display:'flex', gap:'1rem', alignItems:'flex-start'}}>
+                        <Bot size={32} color={currentTheme.text} style={{marginTop:'4px', flexShrink:0}}/>
+                        <div style={{fontStyle:'italic', fontSize:'1.1rem', color: darkMode?'#e2e8f0':'#1e40af', lineHeight:'1.6'}}>
+                            "{aiSummaryResult}"
+                        </div>
                     </div>
                 </div>
 
                 <button 
                     onClick={() => { setShowAiSummaryModal(false); fetchData(); }}
-                    style={{width:'100%', padding:'0.9rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'8px', fontWeight:'bold', cursor:'pointer', fontSize:'1rem'}}
+                    style={{width:'100%', padding:'1.2rem', background: currentTheme.primary, color:'white', border:'none', borderRadius:'16px', fontWeight:'800', cursor:'pointer', fontSize:'1.1rem', boxShadow:`0 10px 20px ${currentTheme.primary}40`, transition:'transform 0.2s'}}
+                    onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                    onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
                     Mulai Program Sekarang
                 </button>
